@@ -1,0 +1,67 @@
+name: makan_mana_v2
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ── UI ────────────────────────────────────────────────────────────────────
+  cupertino_icons: ^1.0.8
+
+  # ── State Management ──────────────────────────────────────────────────────
+  flutter_bloc: ^9.1.1
+  equatable: ^2.0.8
+
+  # ── Supabase & Auth ───────────────────────────────────────────────────────
+  supabase_flutter: ^2.12.0
+  google_sign_in: ^7.2.0
+
+  # ── Environment ───────────────────────────────────────────────────────────
+  flutter_dotenv: ^6.0.0
+
+  # ── Location ──────────────────────────────────────────────────────────────
+  geolocator: ^14.0.2
+
+  # ── Maps ──────────────────────────────────────────────────────────────────
+  google_maps_flutter: ^2.10.0
+
+  # ── Networking ────────────────────────────────────────────────────────────
+  http: ^1.2.1
+
+  # ── Notifications ─────────────────────────────────────────────────────────
+  onesignal_flutter: ^5.2.5
+
+  # ── URL Launcher (for directions) ─────────────────────────────────────────
+  url_launcher: ^6.3.1
+
+  # ── Shared Preferences (for theme persistence) ────────────────────────────
+  shared_preferences: ^2.3.3
+
+  # ── Image Caching ─────────────────────────────────────────────────────────
+  cached_network_image: ^3.4.1
+  sensors_plus: ^7.0.0
+  flutter_compass: ^0.8.1
+  share_plus: ^12.0.2
+  geocoding: ^4.0.0
+  package_info_plus: ^9.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - .env
+    - assets/restaurants.json
+    - assets/images/onboard_1.png
+    - assets/images/onboard_2.png
+    - assets/images/onboard_3.png
