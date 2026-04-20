@@ -29,7 +29,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.restaurant_recommender"
+        applicationId = "com.example.makan_mana_v2"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -39,7 +39,7 @@ android {
         manifestPlaceholders["MAPS_API_KEY"] = localProperties.getProperty("MAPS_API_KEY") ?: ""
 
         // Required for Supabase Google OAuth deep link interception
-        manifestPlaceholders["appAuthRedirectScheme"] = "com.example.restaurant_recommender"
+        manifestPlaceholders["appAuthRedirectScheme"] = "com.example.makan_mana_v2"
     }
 
     buildTypes {

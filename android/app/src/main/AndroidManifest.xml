@@ -46,7 +46,7 @@
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data
-                    android:scheme="com.example.restaurant_recommender"
+                    android:scheme="com.example.makan_mana_v2"
                     android:host="login-callback"
                     android:pathPrefix="/"/>
             </intent-filter>
