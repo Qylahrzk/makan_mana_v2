@@ -11,6 +11,7 @@ import 'home_screen.dart';
 import 'search_screen.dart';
 import 'wishlist_screen.dart';
 import 'profile_screen.dart';
+import 'chat_screen.dart';
 
 class MainNavScreen extends StatefulWidget {
   final int initialIndex;
@@ -23,28 +24,37 @@ class MainNavScreen extends StatefulWidget {
 class _MainNavScreenState extends NavTabProxy<MainNavScreen>
     with TickerProviderStateMixin {
   late final ValueNotifier<int> _tabIndex;
+  late final List<Widget> _screens;
+
+  // ── Regular tab animation controllers (indices 0,1,3,4 — not 2) ──────────
+  // Index 2 is the center FAB — it has its own tap but no pill anim.
   late final List<AnimationController> _pillControllers;
   late final List<Animation<double>> _pillAnims;
-  late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
     _tabIndex = ValueNotifier<int>(widget.initialIndex);
 
-    _pillControllers = List.generate(4, (_) => AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    ));
+    // 5 animation controllers (one per tab including FAB)
+    _pillControllers = List.generate(
+      5,
+      (_) => AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 300),
+      ),
+    );
     _pillAnims = _pillControllers
         .map((c) => CurvedAnimation(parent: c, curve: Curves.easeOutCubic))
         .toList();
 
     _pillControllers[widget.initialIndex].value = 1.0;
 
+    // 5 screens: Home, Explore, Chat(FAB), Wishlist, Profile
     _screens = [
       const HomeScreen(),
       const RestaurantSearchScreen(),
+      const ChatScreen(), // index 2 — center FAB
       const WishlistScreen(),
       const ProfileScreen(),
     ];
@@ -64,8 +74,8 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
     final prev = _tabIndex.value;
     if (prev == index) return;
 
-    // ✅ Block wishlist tab (index 2) for guests
-    if (index == 2) {
+    // Wishlist tab (index 3) is still guest-guarded — unchanged
+    if (index == 3) {
       final authState = context.read<AuthCubit>().state;
       if (authState is! AuthAuthenticated) {
         GuestGuard.check(
@@ -76,6 +86,8 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
         return;
       }
     }
+
+    // Chat tab (index 4) — open to everyone, no guard needed
 
     _pillControllers[prev].reverse();
     _pillControllers[index].forward();
@@ -98,17 +110,21 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      ),
+    );
 
     return ValueListenableBuilder<int>(
       valueListenable: _tabIndex,
       builder: (context, currentIndex, _) => Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        // extendBody lets the list content scroll under the nav bar
+        extendBody: true,
         body: IndexedStack(index: currentIndex, children: _screens),
-        bottomNavigationBar: _PillNavBar(
+        bottomNavigationBar: _FloatingNavBar(
           currentIndex: currentIndex,
           pillAnims: _pillAnims,
           onTap: _onTabTap,
@@ -118,77 +134,179 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
   }
 }
 
-// ─── Pill Nav Bar ─────────────────────────────────────────────────────────────
+// ─── Floating Nav Bar ─────────────────────────────────────────────────────────
 
-class _PillNavBar extends StatelessWidget {
+class _FloatingNavBar extends StatelessWidget {
   final int currentIndex;
   final List<Animation<double>> pillAnims;
   final ValueChanged<int> onTap;
 
-  const _PillNavBar({
+  const _FloatingNavBar({
     required this.currentIndex,
     required this.pillAnims,
     required this.onTap,
   });
 
-  static const _items = [
-    _NavItemData(icon: Icons.home_rounded,    label: 'Home'),
-    _NavItemData(icon: Icons.search_rounded,  label: 'Explore'),
-    _NavItemData(icon: Icons.favorite_rounded, label: 'Wishlist'),
-    _NavItemData(icon: Icons.person_rounded,  label: 'Profile'),
+  // Nav items - index 2 is FAB (center), handled separately
+  static const _leftItems = [
+    _NavItemData(icon: Icons.home_rounded, label: 'Home', index: 0),
+    _NavItemData(icon: Icons.search_rounded, label: 'Explore', index: 1),
+  ];
+  static const _rightItems = [
+    _NavItemData(icon: Icons.favorite_rounded, label: 'Wishlist', index: 3),
+    _NavItemData(icon: Icons.person_rounded, label: 'Profile', index: 4),
   ];
 
   @override
   Widget build(BuildContext context) {
     final bottomPad = MediaQuery.of(context).padding.bottom;
-    final isDark    = Theme.of(context).brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isChatActive = currentIndex == 2;
 
     return Container(
+      // Extra bottom padding for home indicator bar on newer Android/iOS
+      padding: EdgeInsets.only(bottom: bottomPad > 0 ? bottomPad : 0),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: isDark
+            ? const Color(0xFF1E1E2E)
+            : Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.07),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
         ],
       ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.only(
-            left: 12,
-            right: 12,
-            top: 10,
-            bottom: bottomPad > 0 ? 4 : 10,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(_items.length, (i) => _PillItem(
-              data: _items[i],
-              index: i,
-              isActive: currentIndex == i,
-              animation: pillAnims[i],
-              onTap: () => onTap(i),
-              badgeBuilder: i == 2
-                  ? () => BlocBuilder<WishlistCubit, WishlistState>(
-                        builder: (_, state) {
-                          // ✅ Only show badge for authenticated users
-                          final authState =
-                              context.read<AuthCubit>().state;
-                          if (authState is! AuthAuthenticated) {
-                            return const SizedBox.shrink();
-                          }
-                          return (state is WishlistLoaded &&
-                                  state.items.isNotEmpty)
-                              ? _Badge(count: state.items.length)
-                              : const SizedBox.shrink();
-                        },
-                      )
-                  : null,
-            )),
-          ),
+      child: SizedBox(
+        height: 64,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            // ── Bar row: left items | gap | right items ─────────────
+            Row(
+              children: [
+                // Left side: Home + Explore
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: _leftItems
+                        .map(
+                          (item) => _PillItem(
+                            data: item,
+                            isActive: currentIndex == item.index,
+                            animation: pillAnims[item.index],
+                            onTap: () => onTap(item.index),
+                            badgeBuilder: null,
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+
+                // Center gap for the FAB (80px wide)
+                const SizedBox(width: 80),
+
+                // Right side: Wishlist + Profile
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: _rightItems
+                        .map(
+                          (item) => _PillItem(
+                            data: item,
+                            isActive: currentIndex == item.index,
+                            animation: pillAnims[item.index],
+                            onTap: () => onTap(item.index),
+                            badgeBuilder: item.index == 3
+                                ? () =>
+                                      BlocBuilder<WishlistCubit, WishlistState>(
+                                        builder: (ctx, state) {
+                                          final authState = ctx
+                                              .read<AuthCubit>()
+                                              .state;
+                                          if (authState is! AuthAuthenticated) {
+                                            return const SizedBox.shrink();
+                                          }
+                                          return (state is WishlistLoaded &&
+                                                  state.items.isNotEmpty)
+                                              ? _Badge(
+                                                  count: state.items.length,
+                                                )
+                                              : const SizedBox.shrink();
+                                        },
+                                      )
+                                : null,
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ],
+            ),
+
+            // ── Center FAB — elevated above the bar ──────────────────
+            // Matches screenshot: large filled circle, elevated,
+            // with a subtle shadow. Active state shows white glow ring.
+            Positioned(
+              top: -20, // lifts FAB above the bar
+              child: GestureDetector(
+                onTap: () => onTap(2),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isChatActive ? AppColors.primary : AppColors.primary,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(
+                          alpha: isChatActive ? 0.45 : 0.25,
+                        ),
+                        blurRadius: isChatActive ? 20 : 12,
+                        offset: const Offset(0, 4),
+                      ),
+                      // White ring when active (matches screenshot glow)
+                      if (isChatActive)
+                        BoxShadow(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          blurRadius: 0,
+                          spreadRadius: 3,
+                        ),
+                    ],
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Subtle inner gradient shimmer
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.white.withValues(alpha: 0.15),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -199,7 +317,6 @@ class _PillNavBar extends StatelessWidget {
 
 class _PillItem extends StatelessWidget {
   final _NavItemData data;
-  final int index;
   final bool isActive;
   final Animation<double> animation;
   final VoidCallback onTap;
@@ -207,11 +324,10 @@ class _PillItem extends StatelessWidget {
 
   const _PillItem({
     required this.data,
-    required this.index,
     required this.isActive,
     required this.animation,
     required this.onTap,
-    this.badgeBuilder,
+    required this.badgeBuilder,
   });
 
   @override
@@ -222,20 +338,17 @@ class _PillItem extends StatelessWidget {
       child: AnimatedBuilder(
         animation: animation,
         builder: (_, _) {
-          final t         = animation.value;
+          final t = animation.value;
           final pillColor = AppColors.primary.withValues(alpha: 0.12 * t);
           final iconColor = Color.lerp(
-            Theme.of(context)
-                .colorScheme
-                .onSurface
-                .withValues(alpha: 0.35),
+            Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38),
             AppColors.primary,
             t,
           )!;
 
           return Container(
             height: 42,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
               color: pillColor,
               borderRadius: BorderRadius.circular(24),
@@ -248,10 +361,7 @@ class _PillItem extends StatelessWidget {
                   children: [
                     Icon(data.icon, size: 22, color: iconColor),
                     if (badgeBuilder != null)
-                      Positioned(
-                        top: -4, right: -4,
-                        child: badgeBuilder!(),
-                      ),
+                      Positioned(top: -4, right: -4, child: badgeBuilder!()),
                   ],
                 ),
                 ClipRect(
@@ -290,7 +400,12 @@ class _PillItem extends StatelessWidget {
 class _NavItemData {
   final IconData icon;
   final String label;
-  const _NavItemData({required this.icon, required this.label});
+  final int index;
+  const _NavItemData({
+    required this.icon,
+    required this.label,
+    required this.index,
+  });
 }
 
 // ─── Badge ────────────────────────────────────────────────────────────────────
@@ -313,9 +428,10 @@ class _Badge extends StatelessWidget {
         child: Text(
           count > 9 ? '9+' : '$count',
           style: const TextStyle(
-              color: Colors.white,
-              fontSize: 7,
-              fontWeight: FontWeight.w800),
+            color: Colors.white,
+            fontSize: 7,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ),
     );
