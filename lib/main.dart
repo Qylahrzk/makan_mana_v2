@@ -5,44 +5,38 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'core/app_colors.dart';
+import 'core/app_constants.dart';
 import 'data/restaurant_repository.dart';
 import 'data/api_service.dart';
 import 'data/supabase_service.dart';
+import 'data/chat_service.dart'; // ← must be explicit
 import 'logic/cubits/auth_cubit.dart';
 import 'logic/cubits/recommendation_cubit.dart';
 import 'logic/cubits/wishlist_cubit.dart';
 import 'logic/cubits/profile_cubit.dart';
+import 'logic/cubits/chat_cubit.dart'; // ← must be explicit
+import 'logic/cubits/theme_cubit.dart';
+import 'logic/cubits/user_preferences_cubit.dart';
+import 'data/notification_service.dart';
 // ignore: unused_import
 import 'presentation/screens/splash_screen.dart';
-import 'core/app_constants.dart';
-import 'logic/cubits/theme_cubit.dart';
-import 'data/notification_service.dart';
-import 'logic/cubits/user_preferences_cubit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Load environment variables from .env
   await dotenv.load(fileName: '.env');
 
-  // 2. Initialize OneSignal push notifications
   await NotificationService.instance.initialize(
     dotenv.env['ONESIGNAL_APP_ID'] ?? '',
   );
 
-  // 3. Load saved theme
   final themeCubit = ThemeCubit();
   await themeCubit.loadSavedTheme();
 
-  // 4. Initialize Supabase
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
-
-  // Note: No deep link handling needed — Google Sign-In now uses
-  // native Android Credential Manager via google_sign_in 7.x,
-  // which doesn't require browser redirects or app_links.
 
   runApp(MyApp(themeCubit: themeCubit));
 }
@@ -84,13 +78,19 @@ class MyApp extends StatelessWidget {
           BlocProvider(
             create: (context) => WishlistCubit(context.read<SupabaseService>()),
           ),
+
+          // ChatCubit — persists across tab switches so conversation
+          // is not lost when the user navigates away and comes back
+          BlocProvider<ChatCubit>(
+            create: (_) => ChatCubit(ChatService.instance),
+          ),
         ],
         child: BlocBuilder<ThemeCubit, ThemeMode>(
           builder: (context, themeMode) => MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Terengganu Restaurant Recommender',
 
-            // ── LIGHT THEME ──────────────────────────────────────────
+            // ── LIGHT THEME ─────────────────────────────────────────
             theme: ThemeData(
               useMaterial3: true,
               scaffoldBackgroundColor: AppColors.background,
@@ -123,7 +123,7 @@ class MyApp extends StatelessWidget {
               dividerTheme: DividerThemeData(color: AppColors.divider),
             ),
 
-            // ── DARK THEME ───────────────────────────────────────────
+            // ── DARK THEME ──────────────────────────────────────────
             darkTheme: ThemeData(
               useMaterial3: true,
               colorScheme: const ColorScheme.dark(
