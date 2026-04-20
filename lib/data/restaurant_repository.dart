@@ -192,36 +192,47 @@ class RestaurantRepository {
         request = request.eq(RestaurantColumns.cuisineType, cuisineType);
       }
       // Dietary
-      if (isHalal == true)
+      if (isHalal == true) {
         request = request.eq(RestaurantColumns.isHalal, true);
-      if (isVegetarian == true)
+      }
+      if (isVegetarian == true) {
         request = request.eq(RestaurantColumns.isVegetarian, true);
-      if (isVegan == true)
+      }
+      if (isVegan == true) {
         request = request.eq(RestaurantColumns.isVegan, true);
+      }
       // Facilities
-      if (hasParking == true)
+      if (hasParking == true) {
         request = request.eq(RestaurantColumns.hasParking, true);
-      if (hasWifi == true)
+      }
+      if (hasWifi == true) {
         request = request.eq(RestaurantColumns.hasWifi, true);
+      }
       if (hasAc == true) request = request.eq('has_ac', true);
-      if (hasOutdoor == true)
+      if (hasOutdoor == true) {
         request = request.eq(RestaurantColumns.hasOutdoor, true);
+      }
       if (isAccessible == true) request = request.eq('is_accessible', true);
       // Vibes
-      if (isFamilyFriendly == true)
+      if (isFamilyFriendly == true) {
         request = request.eq(RestaurantColumns.isFamilyFriendly, true);
-      if (isGroupFriendly == true)
+      }
+      if (isGroupFriendly == true) {
         request = request.eq('is_group_friendly', true);
+      }
       if (isCasual == true) request = request.eq('is_casual', true);
-      if (isRomantic == true)
+      if (isRomantic == true) {
         request = request.eq(RestaurantColumns.isRomantic, true);
-      if (hasScenicView == true)
+      }
+      if (hasScenicView == true) {
         request = request.eq(RestaurantColumns.hasScenicView, true);
+      }
       // Service
       if (isWorthIt == true) request = request.eq('is_worth_it', true);
       if (isFastService == true) request = request.eq('is_fast_service', true);
-      if (minRating != null)
+      if (minRating != null) {
         request = request.gte(RestaurantColumns.rating, minRating);
+      }
 
       final response = await request
           .order(RestaurantColumns.rating, ascending: false)
