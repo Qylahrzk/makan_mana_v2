@@ -146,7 +146,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     r.lon ?? userLon,
   );
 
-  // ─── Attribute matchers ───────────────────────────────────────────────────
+  // ─── Attribute matchers (UPDATED TO MATCH CONSTANTS) ──────────────────────
   bool _matchesDietary(Restaurant r, String label) {
     switch (label) {
       case DietaryOptions.halal:
@@ -164,12 +164,14 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     switch (label) {
       case OccasionOptions.family:
         return r.isFamilyFriendly;
+      case OccasionOptions.group:
+        return r.isGroupFriendly;
+      case OccasionOptions.casual:
+        return r.isCasual;
       case OccasionOptions.romantic:
         return r.isRomantic;
       case OccasionOptions.scenicView:
         return r.hasScenicView;
-      case OccasionOptions.outdoor:
-        return r.hasOutdoor;
       default:
         return false;
     }
@@ -181,6 +183,12 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         return r.hasParking;
       case FacilityOptions.wifi:
         return r.hasWifi;
+      case FacilityOptions.ac:
+        return r.hasAc;
+      case FacilityOptions.accessible:
+        return r.isAccessible;
+      case FacilityOptions.outdoor:
+        return r.hasOutdoor;
       default:
         return false;
     }
@@ -296,7 +304,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   bool get _isSearching => _searchController.text.trim().isNotEmpty;
 
   // ─── Derived lists ────────────────────────────────────────────────────────
-  // Nearby: restaurants within 10 km, sorted by distance, max 10
   List<Restaurant> get _nearbyList =>
       _allRestaurants
           .where(
@@ -305,7 +312,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
           .toList()
         ..sort((a, b) => _getDistance(a).compareTo(_getDistance(b)));
 
-  // Top rated: sorted by rating, max 10
   List<Restaurant> get _topRatedList =>
       [..._allRestaurants]..sort((a, b) => b.rating.compareTo(a.rating));
 
@@ -365,7 +371,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                           child: CustomScrollView(
                             controller: _listController,
                             slivers: [
-                              // Search focused + has history → show recent searches
+                              // Recent searches — shown when focused + empty
                               if (_isSearchFocused &&
                                   _searchHistory.isNotEmpty &&
                                   !_isSearching)
@@ -373,10 +379,10 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                                   child: _buildRecentSearchesSection(),
                                 ),
 
-                              // Cuisine chips
+                              // Cuisine chips — always visible
                               SliverToBoxAdapter(child: _buildCuisineChips()),
 
-                              // When searching: show filtered results list
+                              // ── Searching / filtered mode ─────────────
                               if (_isSearching || _hasActiveFilters) ...[
                                 SliverToBoxAdapter(
                                   child: _buildResultsHeader(),
@@ -389,7 +395,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                                       16,
                                       0,
                                       16,
-                                      100,
+                                      120,
                                     ),
                                     sliver: SliverList(
                                       delegate: SliverChildBuilderDelegate(
@@ -400,32 +406,34 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                                     ),
                                   ),
                               ]
-                              // Default view: Nearby + Top Rated sections
+                              // ── Default browse mode ───────────────────
                               else ...[
                                 // Nearby section
-                                if (_nearbyList.isNotEmpty)
+                                if (_nearbyList.isNotEmpty) ...[
                                   SliverToBoxAdapter(
                                     child: _buildSectionHeader(
                                       title: 'Nearby',
                                       onSeeAll: () => _pushSeeAll(
-                                        _nearbyList,
+                                        _nearbyList.take(50).toList(),
                                         'Nearby Restaurants',
                                       ),
                                     ),
                                   ),
-                                if (_nearbyList.isNotEmpty)
                                   SliverToBoxAdapter(
                                     child: _buildHorizontalCardRow(
                                       _nearbyList.take(10).toList(),
                                     ),
                                   ),
+                                ],
 
                                 // Top Rated section
                                 SliverToBoxAdapter(
                                   child: _buildSectionHeader(
                                     title: 'Top Rated',
-                                    onSeeAll: () =>
-                                        _pushSeeAll(_topRatedList, 'Top Rated'),
+                                    onSeeAll: () => _pushSeeAll(
+                                      _topRatedList.take(50).toList(),
+                                      'Top Rated',
+                                    ),
                                   ),
                                 ),
                                 SliverToBoxAdapter(
@@ -434,7 +442,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                                   ),
                                 ),
 
-                                // All restaurants vertical list
+                                // All Restaurants vertical list
                                 SliverToBoxAdapter(
                                   child: _buildSectionHeader(
                                     title: 'All Restaurants',
@@ -448,7 +456,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                                     16,
                                     0,
                                     16,
-                                    100,
+                                    120,
                                   ),
                                   sliver: SliverList(
                                     delegate: SliverChildBuilderDelegate(
@@ -471,8 +479,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   }
 
   // ─── Top bar ──────────────────────────────────────────────────────────────
-  // Reference screenshot 2: location pill center, icon buttons right.
-  // We replace the heart/bell with a Map view pill button.
   Widget _buildTopBar() {
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
@@ -480,10 +486,9 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Row 1: title left, map + sort right ──────────────────────
+          // ── Row 1: title left, map button right ──────────────────────
           Row(
             children: [
-              // Left: title
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -510,80 +515,25 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                 ),
               ),
 
-              // Right: sort toggle + map view
-              Row(
-                children: [
-                  // Sort pill — cycles Nearest / Rating
-                  GestureDetector(
-                    onTap: () {
-                      setState(
-                        () => _sortBy = _sortBy == 'Nearest'
-                            ? 'Rating'
-                            : 'Nearest',
-                      );
-                      _applyFilters();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainer.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _sortBy == 'Nearest'
-                                ? Icons.near_me_rounded
-                                : Icons.star_rounded,
-                            size: 13,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.6),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _sortBy,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.6),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+              // Map view button
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MapScreen()),
+                ),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.09),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(width: 8),
-
-                  // Map view button
-                  GestureDetector(
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const MapScreen()),
-                    ),
-                    child: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.09),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.map_outlined,
-                        size: 19,
-                        color: AppColors.primary,
-                      ),
-                    ),
+                  child: Icon(
+                    Icons.map_outlined,
+                    size: 19,
+                    color: AppColors.primary,
                   ),
-                ],
+                ),
               ),
             ],
           ),
@@ -593,7 +543,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
           // ── Row 2: search bar + filter button ────────────────────────
           Row(
             children: [
-              // Search bar
               Expanded(
                 child: Container(
                   height: 46,
@@ -657,7 +606,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
               ),
               const SizedBox(width: 10),
 
-              // Filter button
               GestureDetector(
                 onTap: _showFilterSheet,
                 child: Container(
@@ -707,8 +655,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   }
 
   // ─── Recent searches section ───────────────────────────────────────────────
-  // Matches screenshot 3: "Recent search" title + result count, clock icon
-  // rows with restaurant name, clear all button.
   Widget _buildRecentSearchesSection() {
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
@@ -741,8 +687,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
             ],
           ),
           const SizedBox(height: 10),
-
-          // History items — styled like screenshot 3 (clock icon + name card)
           ..._searchHistory
               .take(5)
               .map(
@@ -870,7 +814,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   }
 
   // ─── Section header ────────────────────────────────────────────────────────
-  // Matches screenshot 4: "Nearby" left, "see All" right in teal.
   Widget _buildSectionHeader({
     required String title,
     String? subtitle,
@@ -882,10 +825,11 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.3,
+              color: AppColors.primary,
             ),
           ),
           if (subtitle != null) ...[
@@ -919,10 +863,9 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   }
 
   // ─── Horizontal card row ──────────────────────────────────────────────────
-  // Matches screenshot 4: image top, name, rating, cuisine, address below.
   Widget _buildHorizontalCardRow(List<Restaurant> list) {
     return SizedBox(
-      height: 210,
+      height: 230,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -932,6 +875,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     );
   }
 
+  // ─── Horizontal card ──────────────────────────────────────────────────────
   Widget _buildHorizontalCard(Restaurant r) {
     final km = _getDistance(r);
     return GestureDetector(
@@ -955,6 +899,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Image
             ClipRRect(
@@ -963,18 +908,20 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
               ),
               child: CachedNetworkImage(
                 imageUrl: RestaurantImage.getUrl(r.cuisineType, seed: r.id),
-                height: 110,
+                height: 100,
                 width: double.infinity,
                 fit: BoxFit.cover,
                 placeholder: (_, _) => _horizontalCardFallback(),
                 errorWidget: (_, _, _) => _horizontalCardFallback(),
               ),
             ),
-            // Info
+
+            // Info section
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+              padding: const EdgeInsets.fromLTRB(10, 7, 10, 7),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     r.name,
@@ -985,7 +932,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
+
                   Row(
                     children: [
                       Icon(Icons.star_rounded, size: 12, color: AppColors.star),
@@ -1000,6 +948,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                     ],
                   ),
                   const SizedBox(height: 3),
+
                   Text(
                     r.cuisineTypes.join(' · '),
                     maxLines: 1,
@@ -1010,7 +959,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
+
                   Row(
                     children: [
                       Icon(
@@ -1042,18 +992,18 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   }
 
   Widget _horizontalCardFallback() => Container(
-    height: 110,
+    height: 100,
     color: AppColors.primary.withValues(alpha: 0.07),
     child: Center(
       child: Icon(
         Icons.restaurant_rounded,
-        size: 28,
+        size: 26,
         color: AppColors.primary.withValues(alpha: 0.35),
       ),
     ),
   );
 
-  // ─── Results header (when searching) ──────────────────────────────────────
+  // ─── Results header ────────────────────────────────────────────────────────
   Widget _buildResultsHeader() {
     final count = _filteredResults.length;
     final sort = _sortBy == 'Nearest' ? 'nearest first' : 'top rated first';
@@ -1148,7 +1098,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         ),
         child: Row(
           children: [
-            // Thumbnail
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: CachedNetworkImage(
@@ -1162,7 +1111,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
             ),
             const SizedBox(width: 12),
 
-            // Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1255,7 +1203,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
               ),
             ),
 
-            // Action buttons
             Padding(
               padding: const EdgeInsets.only(left: 8),
               child: Column(
@@ -1378,7 +1325,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     ),
   );
 
-  // ─── See all push ─────────────────────────────────────────────────────────
+  // ─── See All navigation ────────────────────────────────────────────────────
   void _pushSeeAll(List<Restaurant> list, String title) {
     Navigator.push(
       context,
