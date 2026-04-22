@@ -152,8 +152,6 @@ class _HomeScreenState extends State<HomeScreen> {
     ]);
   }
 
-  // ── CHANGED: added 6 new KBF params (ac, accessible, groupFriendly,
-  //              casual, worthIt, fastService) to the API call ──────────────
   Future<void> _loadRecommended({UserPreferencesModel? preloadedPrefs}) async {
     try {
       final prefs =
@@ -174,25 +172,21 @@ class _HomeScreenState extends State<HomeScreen> {
         userLon: _userLon,
         district: 'Kuala Terengganu',
         distanceKm: prefs?.defaultRadius ?? 500.0,
-        // Dietary
         halal: prefs?.halal ?? false,
         vegetarian: prefs?.vegetarian ?? false,
         vegan: prefs?.vegan ?? false,
-        // Facilities
         parking: prefs?.hasParking ?? false,
         wifi: prefs?.hasWifi ?? false,
-        ac: prefs?.hasAc ?? false, // NEW
+        ac: prefs?.hasAc ?? false,
         outdoor: prefs?.hasOutdoor ?? false,
-        accessible: prefs?.accessible ?? false, // NEW
-        // Vibes
+        accessible: prefs?.accessible ?? false,
         familyFriendly: prefs?.familyFriendly ?? false,
-        groupFriendly: prefs?.groupFriendly ?? false, // NEW
-        casual: prefs?.casual ?? false, // NEW
+        groupFriendly: prefs?.groupFriendly ?? false,
+        casual: prefs?.casual ?? false,
         romantic: prefs?.romantic ?? false,
         scenicView: prefs?.scenicView ?? false,
-        // Service
-        worthIt: prefs?.worthIt ?? false, // NEW
-        fastService: prefs?.fastService ?? false, // NEW
+        worthIt: prefs?.worthIt ?? false,
+        fastService: prefs?.fastService ?? false,
         cuisineType: singleCuisine,
       );
 
@@ -434,6 +428,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
 
+    // ── FIX: calculate bottom clearance once so the sliver can use it ────────
+    // Nav bar (~62px) + raised FAB overhang (~28px) + safe area + breathing room
+    final bottomClearance = MediaQuery.of(context).padding.bottom + 100;
+
     return MultiBlocListener(
       listeners: [
         BlocListener<RecommendationCubit, RecommendationState>(
@@ -595,7 +593,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     : _buildCardRow(_popular),
               ),
 
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              // ── FIX: was SizedBox(height: 24) which was not enough to clear
+              // the nav bar + raised FAB. Now uses dynamic padding so the last
+              // card row scrolls fully above the bottom navigation bar.
+              SliverToBoxAdapter(child: SizedBox(height: bottomClearance)),
             ],
           ),
         ),

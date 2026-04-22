@@ -15,7 +15,7 @@ class AuthCubit extends Cubit<AuthState> {
   AuthCubit(this._supabaseService) : super(AuthInitial());
 
   // ─────────────────────────────────────────
-  // SESSION CHECK (called from SplashScreen)
+  // SESSION CHECK
   // ─────────────────────────────────────────
 
   Future<void> checkSession() async {
@@ -37,7 +37,7 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   // ─────────────────────────────────────────
-  // AUTH STATE STREAM LISTENER
+  // AUTH STATE STREAM
   // ─────────────────────────────────────────
 
   void _listenToAuthChanges() {
@@ -51,14 +51,26 @@ class AuthCubit extends Cubit<AuthState> {
 
         if (event == supa.AuthChangeEvent.signedIn && session != null) {
           try {
-            final userModel =
-                await _supabaseService.getUserProfile(session.user.id);
+            final userModel = await _supabaseService.getUserProfile(
+              session.user.id,
+            );
             emit(AuthAuthenticated(userModel));
-            // Link OneSignal device — covers both email AND Google OAuth paths
             await NotificationService.instance.loginUser(userModel.id);
             log('Signed in: ${userModel.email}');
           } catch (e) {
             log('Auth stream signedIn error: $e');
+            // FIX: Don't leave user stuck on AuthLoading if profile fetch
+            // fails (e.g. new Google user with no profile row yet).
+            // Build a minimal UserModel from the session data instead.
+            final fallback = UserModel(
+              id: session.user.id,
+              email: session.user.email ?? '',
+              fullName:
+                  session.user.userMetadata?['full_name'] as String? ??
+                  session.user.userMetadata?['name'] as String? ??
+                  'User',
+            );
+            emit(AuthAuthenticated(fallback));
           }
         } else if (event == supa.AuthChangeEvent.signedOut) {
           emit(AuthGuest());
@@ -67,7 +79,12 @@ class AuthCubit extends Cubit<AuthState> {
           log('Token refreshed for: ${session.user.email}');
         }
       },
-      onError: (e) => log('Auth stream error: $e'),
+      onError: (e) {
+        log('Auth stream error: $e');
+        // FIX: Don't silently swallow stream errors — emit guest so
+        // the user isn't stuck on a loading screen
+        emit(AuthGuest());
+      },
     );
   }
 
@@ -100,10 +117,7 @@ class AuthCubit extends Cubit<AuthState> {
   // LOGIN
   // ─────────────────────────────────────────
 
-  Future<void> login({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> login({required String email, required String password}) async {
     emit(AuthLoading());
     try {
       final user = await _supabaseService.signInWithEmail(
@@ -123,17 +137,37 @@ class AuthCubit extends Cubit<AuthState> {
   // ─────────────────────────────────────────
   // GOOGLE SIGN IN
   // ─────────────────────────────────────────
+  //
+  // Flow:
+  //   1. Start listening to auth stream FIRST (before browser opens)
+  //   2. Call supabase_service.signInWithGoogle() — opens browser
+  //   3. User authenticates in browser
+  //   4. Browser redirects to com.example.makan_mana_v2://login-callback
+  //   5. AndroidManifest intent-filter catches the deep link
+  //   6. Supabase SDK processes the callback → fires authStateStream signedIn
+  //   7. _listenToAuthChanges() handles the signedIn event → emits AuthAuthenticated
+  //
+  // IMPORTANT: The redirect URL used in signInWithGoogle() MUST exactly match
+  // what is registered in Supabase → Authentication → URL Configuration
+  // → Redirect URLs. For v2 this must be:
+  //   com.example.makan_mana_v2://login-callback
 
   Future<void> signInWithGoogle() async {
     emit(AuthLoading());
     try {
-      // ✅ Must start listening BEFORE opening the browser,
-      // so when the deep link returns, the stream catches it immediately
+      // Start listening BEFORE opening the browser so we catch
+      // the signedIn event that fires when the deep link returns
       _listenToAuthChanges();
       await _supabaseService.signInWithGoogle();
+      // After this call the browser opens. Control returns here
+      // immediately. The actual auth completion is handled by the
+      // auth stream listener above — we don't emit here.
     } catch (e) {
       log('signInWithGoogle cubit error: $e');
-      emit(AuthError(e.toString().replaceAll('Exception: ', '')));
+      // FIX: Cancel the stream if we get an immediate error
+      // so we don't leave a dangling listener
+      _authSubscription?.cancel();
+      emit(AuthError('Google sign-in failed. Please try again.'));
     }
   }
 
@@ -185,8 +219,8 @@ class AuthCubit extends Cubit<AuthState> {
   // ─────────────────────────────────────────
 
   UserModel? get currentUser {
-    final state = this.state;
-    if (state is AuthAuthenticated) return state.user;
+    final s = state;
+    if (s is AuthAuthenticated) return s.user;
     return null;
   }
 
