@@ -1,14 +1,3 @@
-// ============================================================
-// FILE: lib/presentation/screens/chat_screen.dart
-//
-// Changes vs previous version:
-//  1. ChatMessage now stores restaurants list from API response
-//  2. AI bubble renders restaurant mini-cards below the reply text
-//     (tappable → RestaurantDetailScreen via repo lookup)
-//  3. Markdown-like formatting (bold names) rendered cleanly
-//  4. FIX: Safe parsing for cuisine_type (handles both String and List)
-// ============================================================
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -23,7 +12,6 @@ import 'restaurant_detail_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
-
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
@@ -34,15 +22,12 @@ class _ChatScreenState extends State<ChatScreen> {
   final FocusNode _focusNode = FocusNode();
 
   static const List<(String, String)> _suggestions = [
-    ('Recommend halal cafe', 'Find me a halal cafe in Terengganu'),
-    ('Best seafood restaurant', 'Best seafood restaurant in Terengganu'),
-    ('Romantic dinner spots', 'Romantic dinner spots with scenic view'),
+    ('Halal cafe', 'Find me a halal cafe in Terengganu'),
+    ('Best seafood', 'Best seafood restaurant in Terengganu'),
+    ('Romantic dinner', 'Romantic dinner spots with scenic view'),
     ('Budget Malay food', 'Budget Malay food under RM15'),
-    (
-      'Family friendly with parking',
-      'Family-friendly restaurants with parking',
-    ),
-    ('Top rated restaurants', 'What are the highest rated restaurants?'),
+    ('Family + parking', 'Family-friendly restaurants with parking'),
+    ('Top rated', 'What are the highest rated restaurants?'),
   ];
 
   @override
@@ -64,23 +49,23 @@ class _ChatScreenState extends State<ChatScreen> {
   void _sendText(String text) {
     final prefs = context.read<UserPreferencesCubit>().current;
     context.read<ChatCubit>().sendMessage(
-      text,
-      halal: prefs?.halal ?? false,
-      vegetarian: prefs?.vegetarian ?? false,
-      vegan: prefs?.vegan ?? false,
-      parking: prefs?.hasParking ?? false,
-      wifi: prefs?.hasWifi ?? false,
-      ac: prefs?.hasAc ?? false,
-      outdoor: prefs?.hasOutdoor ?? false,
-      accessible: prefs?.accessible ?? false,
-      familyFriendly: prefs?.familyFriendly ?? false,
-      groupFriendly: prefs?.groupFriendly ?? false,
-      casual: prefs?.casual ?? false,
-      romantic: prefs?.romantic ?? false,
-      scenicView: prefs?.scenicView ?? false,
-      worthIt: prefs?.worthIt ?? false,
-      fastService: prefs?.fastService ?? false,
-    );
+          text,
+          halal: prefs?.halal ?? false,
+          vegetarian: prefs?.vegetarian ?? false,
+          vegan: prefs?.vegan ?? false,
+          parking: prefs?.hasParking ?? false,
+          wifi: prefs?.hasWifi ?? false,
+          ac: prefs?.hasAc ?? false,
+          outdoor: prefs?.hasOutdoor ?? false,
+          accessible: prefs?.accessible ?? false,
+          familyFriendly: prefs?.familyFriendly ?? false,
+          groupFriendly: prefs?.groupFriendly ?? false,
+          casual: prefs?.casual ?? false,
+          romantic: prefs?.romantic ?? false,
+          scenicView: prefs?.scenicView ?? false,
+          worthIt: prefs?.worthIt ?? false,
+          fastService: prefs?.fastService ?? false,
+        );
     _scrollToBottom();
   }
 
@@ -96,15 +81,13 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  // ── Open restaurant detail screen ─────────────────────────────────────────
-  // Looks up the full Restaurant object from the repo so the detail screen
-  // has LDA topic data, coordinates, etc.
   Future<void> _openRestaurant(Map<String, dynamic> preview) async {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) =>
-          Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      builder: (_) => Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      ),
     );
     try {
       final repo = context.read<RestaurantRepository>();
@@ -128,7 +111,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // Minimal Restaurant from the chat preview dict (fallback)
   Restaurant _previewToRestaurant(Map<String, dynamic> p) {
     List<String> safeCuisines = [];
     final rawCuisine = p['cuisine_type'];
@@ -137,7 +119,6 @@ class _ChatScreenState extends State<ChatScreen> {
     } else if (rawCuisine is String && rawCuisine.isNotEmpty) {
       safeCuisines = [rawCuisine];
     }
-
     return Restaurant(
       id: 0,
       name: p['name'] ?? '',
@@ -174,22 +155,21 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // ── BUILD ──────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarIconBrightness:
+            isDark ? Brightness.light : Brightness.dark,
       ),
     );
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       resizeToAvoidBottomInset: true,
-      appBar: _buildAppBar(),
+      appBar: _buildAppBar(isDark),
       body: SafeArea(
         child: Column(
           children: [
@@ -218,101 +198,137 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ── App bar ───────────────────────────────────────────────────────────────
-
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      titleSpacing: 16,
-      automaticallyImplyLeading: false,
-      title: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              Icons.auto_awesome_rounded,
-              size: 18,
-              color: AppColors.primary,
-            ),
+  //
+  // FIX: The AppBar now uses a teal gradient header — the same teal used on
+  // the home screen header — so the GanuBot title, subtitle, and icon are all
+  // rendered in white and are fully visible in both light and dark mode.
+  // The "Clear" button uses a white semi-transparent pill so it reads clearly
+  // against the coloured background.
+  PreferredSizeWidget _buildAppBar(bool isDark) {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(64),
+      child: Container(
+        decoration: BoxDecoration(
+          // Teal gradient — matches brand secondary color, same as home header
+          gradient: LinearGradient(
+            colors: isDark
+                ? [AppColors.darkSurface, AppColors.darkSurface]
+                : [
+                    AppColors.secondary,
+                    AppColors.secondaryLight,
+                  ],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
           ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'AI Food Assistant',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-              Text(
-                'Powered by Gemini + LDA',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.45),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      actions: [
-        BlocBuilder<ChatCubit, ChatState>(
-          builder: (context, state) {
-            if (state is ChatInitial) return const SizedBox();
-            return GestureDetector(
-              onTap: _showClearDialog,
-              child: Container(
-                margin: const EdgeInsets.only(right: 16),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.surfaceContainer,
-                  ),
-                ),
-                child: Text(
-                  'Clear',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.55),
-                  ),
-                ),
-              ),
-            );
-          },
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-      ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Divider(
-          height: 1,
-          color: Theme.of(context).colorScheme.surfaceContainer,
+        child: SafeArea(
+          bottom: false,
+          child: SizedBox(
+            height: 64,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  // Bot avatar icon
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.20),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.30),
+                        width: 1,
+                      ),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.auto_awesome_rounded,
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Title + subtitle
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'GanuBot 🤖',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        Text(
+                          'AI Food Assistant · Gemini + LDA',
+                          style: TextStyle(
+                            fontFamily: 'OpenSans',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withValues(alpha: 0.75),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Clear button — white pill, always visible on teal/dark bg
+                  BlocBuilder<ChatCubit, ChatState>(
+                    builder: (context, state) {
+                      if (state is ChatInitial) return const SizedBox();
+                      return GestureDetector(
+                        onTap: _showClearDialog,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 7,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.22),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.35),
+                              width: 1,
+                            ),
+                          ),
+                          child: const Text(
+                            'Clear',
+                            style: TextStyle(
+                              fontFamily: 'OpenSans',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 
   // ── Welcome screen ────────────────────────────────────────────────────────
-
   Widget _buildWelcome() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final prefs = context.watch<UserPreferencesCubit>().current;
     final activePrefs = <String>[];
     if (prefs?.halal == true) activePrefs.add('Halal');
@@ -330,54 +346,60 @@ class _ChatScreenState extends State<ChatScreen> {
     if (prefs?.fastService == true) activePrefs.add('Fast Service');
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+      padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Hero icon — orange (primary CTA identity)
           Container(
-            width: 60,
-            height: 60,
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(16),
+              color: AppColors.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.20),
+              ),
             ),
-            child: Icon(
-              Icons.restaurant_rounded,
-              size: 30,
-              color: AppColors.primary,
+            child: const Center(
+              child: Text('🍜', style: TextStyle(fontSize: 32)),
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Ask me anything',
+          const SizedBox(height: 18),
+
+          const Text(
+            'Makan maner rini? 🍜',
             style: TextStyle(
+              fontFamily: 'Montserrat',
               fontSize: 24,
               fontWeight: FontWeight.w800,
-              color: Theme.of(context).colorScheme.onSurface,
               letterSpacing: -0.5,
               height: 1.2,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            'about Terengganu restaurants',
+            'Terengganu restaurants, AI-powered',
             style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: AppColors.primary,
-              letterSpacing: -0.5,
+              fontFamily: 'Montserrat',
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.secondary,
+              letterSpacing: -0.2,
             ),
           ),
           const SizedBox(height: 10),
           Text(
-            'I know ~990 restaurants in the dataset. Ask for recommendations, '
-            'halal options, scenic spots, and more.',
+            'I know ~990 restaurants across Terengganu. '
+            'Ask for recommendations, halal options, scenic spots, and more.',
             style: TextStyle(
-              fontSize: 14,
-              height: 1.5,
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.55),
+              fontFamily: 'OpenSans',
+              fontSize: 13,
+              height: 1.55,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.55),
             ),
           ),
 
@@ -386,20 +408,17 @@ class _ChatScreenState extends State<ChatScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.secondary.withValues(alpha: 0.08),
+                color: AppColors.secondaryTint,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppColors.secondary.withValues(alpha: 0.2),
+                  color: AppColors.secondary.withValues(alpha: 0.25),
                 ),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.tune_rounded,
-                    size: 16,
-                    color: AppColors.secondary,
-                  ),
+                  Icon(Icons.tune_rounded,
+                      size: 16, color: AppColors.secondary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
@@ -408,6 +427,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         Text(
                           'Your preferences are active:',
                           style: TextStyle(
+                            fontFamily: 'OpenSans',
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: AppColors.secondary,
@@ -417,18 +437,22 @@ class _ChatScreenState extends State<ChatScreen> {
                         Text(
                           activePrefs.join(' · '),
                           style: TextStyle(
+                            fontFamily: 'OpenSans',
                             fontSize: 11,
-                            color: AppColors.secondary.withValues(alpha: 0.8),
+                            color:
+                                AppColors.secondary.withValues(alpha: 0.85),
                           ),
                         ),
                         const SizedBox(height: 3),
                         Text(
                           'My answers will match these automatically.',
                           style: TextStyle(
+                            fontFamily: 'OpenSans',
                             fontSize: 11,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.45),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.45),
                           ),
                         ),
                       ],
@@ -439,140 +463,190 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 26),
           Text(
-            'Try asking:',
+            'TRY ASKING',
             style: TextStyle(
-              fontSize: 11,
+              fontFamily: 'OpenSans',
+              fontSize: 10,
               fontWeight: FontWeight.w700,
-              letterSpacing: 0.8,
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.4),
+              letterSpacing: 1.2,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.38),
             ),
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _suggestions.map((s) {
-              final (label, prompt) = s;
+          // Suggestion chips — 2-column grid layout
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 2.8,
+            ),
+            itemCount: _suggestions.length,
+            itemBuilder: (_, i) {
+              final (label, prompt) = _suggestions[i];
               return GestureDetector(
                 onTap: () => _sendText(prompt),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
+                      horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(12),
+                    color: isDark
+                        ? AppColors.darkSurface
+                        : AppColors.surface,
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: Theme.of(context).colorScheme.surfaceContainer,
+                      color: AppColors.secondary.withValues(alpha: 0.20),
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
                   ),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.chat_bubble_outline_rounded,
-                        size: 13,
-                        color: AppColors.primary.withValues(alpha: 0.6),
-                      ),
-                      const SizedBox(width: 7),
                       Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: Theme.of(context).colorScheme.onSurface,
+                        _suggestionEmoji(label),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          label,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'OpenSans',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color:
+                                Theme.of(context).colorScheme.onSurface,
+                            height: 1.3,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
               );
-            }).toList(),
+            },
           ),
         ],
       ),
     );
   }
 
-  // ── Message list ──────────────────────────────────────────────────────────
+  String _suggestionEmoji(String label) {
+    if (label.contains('Halal')) return '✅';
+    if (label.contains('seafood') || label.contains('Seafood')) return '🦞';
+    if (label.contains('Romantic')) return '🕯️';
+    if (label.contains('Budget')) return '💰';
+    if (label.contains('Family')) return '👨‍👩‍👧';
+    if (label.contains('rated')) return '⭐';
+    return '🍽️';
+  }
 
+  // ── Message list ──────────────────────────────────────────────────────────
   Widget _buildMessageList(List<ChatMessageModel> messages) {
     return ListView.builder(
       controller: _scrollCtrl,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       itemCount: messages.length,
       itemBuilder: (_, i) => _buildBubble(messages[i]),
     );
   }
 
   // ── Single bubble ─────────────────────────────────────────────────────────
-
   Widget _buildBubble(ChatMessageModel msg) {
     if (msg.isTyping) return _buildTypingBubble();
     final isUser = msg.isUser;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // User bubble — orange (primary CTA color, 20% brand)
+    // Bot bubble  — subtle teal-tinted surface so it's distinct from
+    //               the white scaffold in light mode
+    final userBubbleColor = isDark ? AppColors.darkPrimary : AppColors.primary;
+    final botBubbleColor = isDark
+        ? AppColors.darkSurface
+        : const Color(0xFFF0F8F8); // very light teal tint
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Row(
-        mainAxisAlignment: isUser
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          // Bot avatar
           if (!isUser) ...[
             Container(
-              width: 28,
-              height: 28,
+              width: 30,
+              height: 30,
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.12),
+                gradient: const LinearGradient(
+                  colors: [AppColors.secondary, AppColors.secondaryLight],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                Icons.auto_awesome_rounded,
-                size: 14,
-                color: AppColors.primary,
+              child: const Center(
+                child: Icon(
+                  Icons.auto_awesome_rounded,
+                  size: 15,
+                  color: Colors.white,
+                ),
               ),
             ),
             const SizedBox(width: 8),
           ],
+
           Flexible(
             child: Column(
               crossAxisAlignment: isUser
                   ? CrossAxisAlignment.end
                   : CrossAxisAlignment.start,
               children: [
-                // ── Text bubble ───────────────────────────────────────
+                // Message bubble
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
+                      horizontal: 14, vertical: 11),
                   decoration: BoxDecoration(
                     color: isUser
-                        ? AppColors.primary
+                        ? userBubbleColor
                         : msg.isError
-                        ? Colors.red.withValues(alpha: 0.08)
-                        : Theme.of(context).colorScheme.surface,
+                            ? AppColors.error.withValues(alpha: 0.08)
+                            : botBubbleColor,
                     borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(16),
-                      topRight: const Radius.circular(16),
-                      bottomLeft: Radius.circular(isUser ? 16 : 4),
-                      bottomRight: Radius.circular(isUser ? 4 : 16),
+                      topLeft: const Radius.circular(18),
+                      topRight: const Radius.circular(18),
+                      bottomLeft: Radius.circular(isUser ? 18 : 4),
+                      bottomRight: Radius.circular(isUser ? 4 : 18),
                     ),
                     border: !isUser
                         ? Border.all(
                             color: msg.isError
-                                ? Colors.red.withValues(alpha: 0.25)
-                                : Theme.of(
-                                    context,
-                                  ).colorScheme.surfaceContainer,
+                                ? AppColors.error.withValues(alpha: 0.25)
+                                : AppColors.secondary.withValues(alpha: 0.15),
+                            width: 1,
                           )
                         : null,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -582,37 +656,38 @@ class _ChatScreenState extends State<ChatScreen> {
                             ? '${msg.text}\n\nPlease try again.'
                             : msg.text,
                         style: TextStyle(
+                          fontFamily: 'OpenSans',
                           fontSize: 14,
-                          height: 1.45,
+                          height: 1.5,
                           color: isUser
                               ? Colors.white
                               : msg.isError
-                              ? Colors.red[700]
-                              : Theme.of(context).colorScheme.onSurface,
+                                  ? AppColors.error
+                                  : Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         msg.timeLabel,
                         style: TextStyle(
+                          fontFamily: 'JetBrainsMono',
                           fontSize: 10,
                           color: isUser
                               ? Colors.white.withValues(alpha: 0.6)
-                              : Theme.of(
-                                  context,
-                                ).colorScheme.onSurface.withValues(alpha: 0.35),
+                              : Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.35),
                         ),
                       ),
                     ],
                   ),
                 ),
 
-                // ── Restaurant mini-cards (AI messages only) ──────────
+                // Restaurant cards below bot message
                 if (!isUser && msg.restaurants.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  ...msg.restaurants
-                      .take(5)
-                      .map(
+                  ...msg.restaurants.take(5).map(
                         (r) => _RestaurantMiniCard(
                           preview: r,
                           onTap: () => _openRestaurant(r),
@@ -622,6 +697,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ],
             ),
           ),
+
           if (isUser) const SizedBox(width: 8),
         ],
       ),
@@ -629,40 +705,53 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ── Typing bubble ─────────────────────────────────────────────────────────
-
   Widget _buildTypingBubble() {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
+            width: 30,
+            height: 30,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.secondary, AppColors.secondaryLight],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              Icons.auto_awesome_rounded,
-              size: 14,
-              color: AppColors.primary,
+            child: const Center(
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                size: 15,
+                color: Colors.white,
+              ),
             ),
           ),
           const SizedBox(width: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
+              color: const Color(0xFFF0F8F8),
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-                bottomRight: Radius.circular(16),
+                topLeft: Radius.circular(18),
+                topRight: Radius.circular(18),
+                bottomRight: Radius.circular(18),
                 bottomLeft: Radius.circular(4),
               ),
               border: Border.all(
-                color: Theme.of(context).colorScheme.surfaceContainer,
+                color: AppColors.secondary.withValues(alpha: 0.18),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: const _TypingDots(),
           ),
@@ -672,82 +761,120 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ── Input bar ─────────────────────────────────────────────────────────────
-
+  //
+  // FIX: Replaced the double-border approach (outer Container border +
+  // InputDecoration border) with a single clean container that has one border.
+  // The TextField uses InputBorder.none to prevent any internal border from
+  // rendering. Background is a slightly off-white/tinted surface so the bar
+  // is visually distinct from the white scaffold in light mode.
   Widget _buildInputBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return BlocBuilder<ChatCubit, ChatState>(
       builder: (context, state) {
         final sending = state is ChatSending;
+
         return Container(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
           decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
+            color: isDark
+                ? AppColors.darkSurface
+                : AppColors.surface,
             border: Border(
               top: BorderSide(
-                color: Theme.of(context).colorScheme.surfaceContainer,
+                // Single top border, slightly more visible in light mode
+                color: isDark
+                    ? const Color(0xFF2E2E42)
+                    : AppColors.divider,
+                width: 1,
               ),
             ),
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              // Text input — single border, tinted background
               Expanded(
                 child: Container(
+                  constraints: const BoxConstraints(maxHeight: 120),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(24),
+                    // Slightly tinted so it stands out from the white bar bg
+                    color: isDark
+                        ? AppColors.darkSurfaceVariant
+                        : AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(22),
                     border: Border.all(
-                      color: Theme.of(context).colorScheme.surfaceContainer,
+                      color: isDark
+                          ? AppColors.darkSecondary.withValues(alpha: 0.25)
+                          : AppColors.secondary.withValues(alpha: 0.30),
+                      width: 1.5,
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          controller: _textCtrl,
-                          focusNode: _focusNode,
-                          enabled: !sending,
-                          maxLines: 4,
-                          minLines: 1,
-                          textInputAction: TextInputAction.send,
-                          onSubmitted: (_) => sending ? null : _send(),
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: sending
-                                ? 'AI is thinking...'
-                                : 'Ask about restaurants...',
-                            hintStyle: TextStyle(
-                              fontSize: 14,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.38),
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 12,
-                            ),
-                          ),
-                        ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 4),
+                    child: TextField(
+                      controller: _textCtrl,
+                      focusNode: _focusNode,
+                      enabled: !sending,
+                      maxLines: 5,
+                      minLines: 1,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => sending ? null : _send(),
+                      style: TextStyle(
+                        fontFamily: 'OpenSans',
+                        fontSize: 14,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
-                      const SizedBox(width: 8),
-                    ],
+                      // InputBorder.none prevents the double-border issue
+                      // caused by InputDecorationTheme in main.dart
+                      decoration: InputDecoration(
+                        hintText: sending
+                            ? 'GanuBot is thinking...'
+                            : 'Ask about restaurants...',
+                        hintStyle: TextStyle(
+                          fontFamily: 'OpenSans',
+                          fontSize: 14,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.38),
+                        ),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                        ),
+                        isDense: true,
+                      ),
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
+
+              // Send button — orange (primary CTA)
               GestureDetector(
                 onTap: sending ? null : _send,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  width: 44,
-                  height: 44,
+                  width: 46,
+                  height: 46,
                   decoration: BoxDecoration(
                     color: sending
-                        ? AppColors.primary.withValues(alpha: 0.4)
+                        ? AppColors.primary.withValues(alpha: 0.45)
                         : AppColors.primary,
                     shape: BoxShape.circle,
+                    boxShadow: sending
+                        ? []
+                        : [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.35),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
                   ),
                   child: sending
                       ? const Center(
@@ -763,7 +890,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       : const Icon(
                           Icons.send_rounded,
                           color: Colors.white,
-                          size: 18,
+                          size: 19,
                         ),
                 ),
               ),
@@ -775,26 +902,30 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ── Clear dialog ──────────────────────────────────────────────────────────
-
   void _showClearDialog() {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Clear conversation?',
           style: TextStyle(
+            fontFamily: 'Montserrat',
             fontWeight: FontWeight.w800,
             color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         content: Text(
-          'All messages will be deleted.',
+          'All messages will be deleted and cannot be recovered.',
           style: TextStyle(
+            fontFamily: 'OpenSans',
             fontSize: 14,
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.5),
+            height: 1.4,
+            color: Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withValues(alpha: 0.55),
           ),
         ),
         actions: [
@@ -803,9 +934,11 @@ class _ChatScreenState extends State<ChatScreen> {
             child: Text(
               'Cancel',
               style: TextStyle(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.5),
+                fontFamily: 'OpenSans',
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.5),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -815,9 +948,10 @@ class _ChatScreenState extends State<ChatScreen> {
               Navigator.pop(context);
               context.read<ChatCubit>().clearChat();
             },
-            child: Text(
+            child: const Text(
               'Clear',
               style: TextStyle(
+                fontFamily: 'OpenSans',
                 color: AppColors.error,
                 fontWeight: FontWeight.w700,
               ),
@@ -830,21 +964,19 @@ class _ChatScreenState extends State<ChatScreen> {
 }
 
 // ─── Restaurant Mini-Card ─────────────────────────────────────────────────────
-// Shown below an AI reply bubble when the API returns restaurant suggestions.
-// Tapping opens the full RestaurantDetailScreen.
 
 class _RestaurantMiniCard extends StatelessWidget {
   final Map<String, dynamic> preview;
   final VoidCallback onTap;
-
-  const _RestaurantMiniCard({required this.preview, required this.onTap});
+  const _RestaurantMiniCard(
+      {required this.preview, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final name = preview['name'] as String? ?? '';
     final rating = (preview['rating'] as num?)?.toDouble() ?? 0.0;
 
-    // SAFE PARSING FOR CUISINE (Handles both String and List<dynamic>)
     String cuisine = '';
     final rawCuisine = preview['cuisine_type'];
     if (rawCuisine is List) {
@@ -856,7 +988,6 @@ class _RestaurantMiniCard extends StatelessWidget {
     final location = preview['municipality'] as String? ?? '';
     final isHalal = preview['is_halal'] == true;
     final price = preview['price_level'] as int?;
-
     final priceStr = switch (price) {
       1 => '💰',
       2 => '💰💰',
@@ -868,15 +999,17 @@ class _RestaurantMiniCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 6),
+        margin: const EdgeInsets.only(bottom: 7),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+          color: isDark ? AppColors.darkSurface : AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: AppColors.secondary.withValues(alpha: 0.18),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -884,22 +1017,24 @@ class _RestaurantMiniCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Cuisine icon container
+            // Emoji cuisine icon
             Container(
-              width: 40,
-              height: 40,
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
+                color: AppColors.secondaryTint,
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
                 child: Text(
                   _cuisineEmoji(cuisine),
-                  style: const TextStyle(fontSize: 18),
+                  style: const TextStyle(fontSize: 20),
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
+
+            // Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -909,12 +1044,13 @@ class _RestaurantMiniCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
+                      fontFamily: 'Montserrat',
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Row(
                     children: [
                       Icon(
@@ -928,7 +1064,8 @@ class _RestaurantMiniCard extends StatelessWidget {
                           location,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
+                          style: const TextStyle(
+                            fontFamily: 'OpenSans',
                             fontSize: 11,
                             color: AppColors.secondary,
                           ),
@@ -936,33 +1073,37 @@ class _RestaurantMiniCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.star_rounded, size: 12, color: AppColors.star),
-                      const SizedBox(width: 2),
+                      Icon(Icons.star_rounded,
+                          size: 12, color: AppColors.star),
+                      const SizedBox(width: 3),
                       Text(
                         AppUtils.formatRating(rating),
                         style: TextStyle(
+                          fontFamily: 'JetBrainsMono',
                           fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                       if (isHalal) ...[
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 7),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 5,
-                            vertical: 1,
-                          ),
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: Colors.green.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: Colors.green.withValues(alpha: 0.25),
+                            ),
                           ),
                           child: const Text(
                             'Halal',
                             style: TextStyle(
+                              fontFamily: 'OpenSans',
                               fontSize: 9,
                               color: Colors.green,
                               fontWeight: FontWeight.w700,
@@ -971,19 +1112,30 @@ class _RestaurantMiniCard extends StatelessWidget {
                         ),
                       ],
                       if (priceStr.isNotEmpty) ...[
-                        const SizedBox(width: 6),
-                        Text(priceStr, style: const TextStyle(fontSize: 9)),
+                        const SizedBox(width: 7),
+                        Text(priceStr,
+                            style: const TextStyle(fontSize: 9)),
                       ],
                     ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 13,
-              color: AppColors.primary.withValues(alpha: 0.5),
+
+            const SizedBox(width: 6),
+            // Arrow — orange CTA
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.10),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 12,
+                color: AppColors.primary,
+              ),
             ),
           ],
         ),
@@ -1016,7 +1168,7 @@ class _TypingDots extends StatefulWidget {
   State<_TypingDots> createState() => _TypingDotsState();
 }
 
-class _TypingDotsState extends State<_TypingDots>
+final class _TypingDotsState extends State<_TypingDots>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
 
@@ -1039,19 +1191,18 @@ class _TypingDotsState extends State<_TypingDots>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (_, _) => Row(
+      builder: (_, __) => Row(
         mainAxisSize: MainAxisSize.min,
         children: List.generate(3, (i) {
           final t = (_ctrl.value + i / 3.0) % 1.0;
-          final opacity = t < 0.5
-              ? 0.3 + (t / 0.5) * 0.7
-              : 1.0 - ((t - 0.5) / 0.5) * 0.7;
+          final opacity =
+              t < 0.5 ? 0.3 + (t / 0.5) * 0.7 : 1.0 - ((t - 0.5) / 0.5) * 0.7;
           return Container(
             width: 7,
             height: 7,
-            margin: const EdgeInsets.symmetric(horizontal: 2),
+            margin: const EdgeInsets.symmetric(horizontal: 3),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: opacity),
+              color: AppColors.secondary.withValues(alpha: opacity),
               shape: BoxShape.circle,
             ),
           );

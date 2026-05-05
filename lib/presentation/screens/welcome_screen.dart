@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:makan_mana_v2/presentation/screens/main_nav.dart';
 import '../../core/app_colors.dart';
-// ignore: unused_import
-import '../screens/search_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/signup_screen.dart';
 
@@ -252,7 +250,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '980 restaurants across Terengganu,\nrecommended just for you.',
+                        '997 restaurants across Terengganu,\nrecommended just for you.',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[500],

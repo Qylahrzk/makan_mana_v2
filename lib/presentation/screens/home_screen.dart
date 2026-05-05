@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:makan_mana_v2/core/app_router.dart';
 import '../../core/app_colors.dart';
+import '../../core/app_text_styles.dart';
 import '../../core/app_utils.dart';
 import '../../core/nav_tab_proxy.dart';
 import '../../core/guest_guard.dart';
@@ -84,9 +85,9 @@ class _HomeScreenState extends State<HomeScreen> {
     UserPreferencesModel? loadedPrefs;
     final authState = context.read<AuthCubit>().state;
     if (authState is AuthAuthenticated) {
-      loadedPrefs = await context.read<UserPreferencesCubit>().loadPreferences(
-        authState.user.id,
-      );
+      loadedPrefs = await context
+          .read<UserPreferencesCubit>()
+          .loadPreferences(authState.user.id);
     }
     await _loadSections(preloadedPrefs: loadedPrefs);
   }
@@ -112,20 +113,43 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final placemarks = await placemarkFromCoordinates(lat, lon);
       if (placemarks.isEmpty || !mounted) return;
-      final place = placemarks.first;
-      final district = place.subAdministrativeArea;
-      final locality = place.locality;
-      final state = place.administrativeArea;
-      final country = place.isoCountryCode;
+
+      String? neighbourhood;
+      String? city;
+      String? state;
+
+      for (final place in placemarks) {
+        final sub = place.subLocality?.trim();
+        final loc = place.locality?.trim();
+        final subAdmin = place.subAdministrativeArea?.trim();
+        final admin = place.administrativeArea?.trim();
+
+        neighbourhood ??= (sub?.isNotEmpty == true) ? sub : null;
+        city ??= (loc?.isNotEmpty == true)
+            ? loc
+            : (subAdmin?.isNotEmpty == true ? subAdmin : null);
+        state ??= (admin?.isNotEmpty == true) ? admin : null;
+
+        if (neighbourhood != null && city != null) break;
+        if (city != null && state != null) break;
+      }
+
       final parts = <String>[];
-      if (district != null && district.isNotEmpty) {
-        parts.add(district);
-      } else if (locality != null && locality.isNotEmpty)
-        parts.add(locality);
-      else if (state != null && state.isNotEmpty)
+      if (neighbourhood != null && neighbourhood.isNotEmpty) {
+        parts.add(neighbourhood);
+        if (city != null && city != neighbourhood) parts.add(city);
+      } else if (city != null && city.isNotEmpty) {
+        parts.add(city);
+        if (state != null && state.isNotEmpty && state != city) {
+          parts.add(state);
+        }
+      } else if (state != null && state.isNotEmpty) {
         parts.add(state);
-      if (country != null && country.isNotEmpty) parts.add(country);
-      if (parts.isNotEmpty) setState(() => _locationLabel = parts.join(', '));
+      }
+
+      if (parts.isNotEmpty && mounted) {
+        setState(() => _locationLabel = parts.join(', '));
+      }
     } catch (_) {}
   }
 
@@ -152,20 +176,14 @@ class _HomeScreenState extends State<HomeScreen> {
     ]);
   }
 
-  Future<void> _loadRecommended({UserPreferencesModel? preloadedPrefs}) async {
+  Future<void> _loadRecommended(
+      {UserPreferencesModel? preloadedPrefs}) async {
     try {
       final prefs =
           preloadedPrefs ?? context.read<UserPreferencesCubit>().current;
       final selectedCuisines = prefs?.cuisineTypes ?? [];
-
-      debugPrint(
-        'HomeScreen._loadRecommended: prefs=$prefs, '
-        'cuisines=$selectedCuisines',
-      );
-
-      final singleCuisine = selectedCuisines.length == 1
-          ? selectedCuisines.first
-          : null;
+      final singleCuisine =
+          selectedCuisines.length == 1 ? selectedCuisines.first : null;
 
       final result = await ApiService.instance.getRecommendations(
         userLat: _userLat,
@@ -192,41 +210,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
       var restaurants = result?.restaurants ?? [];
 
-      debugPrint(
-        'HomeScreen._loadRecommended: API returned ${restaurants.length}',
-      );
-      for (final r in restaurants.take(3)) {
-        debugPrint('  API → ${r.name}: cuisineTypes=${r.cuisineTypes}');
-      }
-
       if (selectedCuisines.isNotEmpty) {
         var filtered = restaurants
             .where((r) => r.matchesAnyCuisine(selectedCuisines))
             .toList();
-
-        debugPrint(
-          'HomeScreen._loadRecommended: API cuisine filter → ${filtered.length}',
-        );
-
         if (filtered.isEmpty) {
-          debugPrint(
-            'HomeScreen._loadRecommended: falling back to local cache',
-          );
           final allLocal = await context
               .read<RestaurantRepository>()
               .getAllRestaurants();
-          filtered =
-              allLocal
+          filtered = allLocal
                   .where((r) => r.matchesAnyCuisine(selectedCuisines))
                   .toList()
                 ..sort((a, b) => b.rating.compareTo(a.rating));
           filtered = filtered.take(10).toList();
-          debugPrint(
-            'HomeScreen._loadRecommended: local fallback → '
-            '${filtered.length} match $selectedCuisines',
-          );
         }
-
         restaurants = filtered;
       }
 
@@ -252,11 +249,11 @@ class _HomeScreenState extends State<HomeScreen> {
       final repo = context.read<RestaurantRepository>();
       final all = await repo.getAllRestaurants();
       final sorted = [...all]..sort((a, b) => b.rating.compareTo(a.rating));
-      final top50 = sorted.take(50).toList();
+
       if (mounted) {
         setState(() {
-          _allPopular = top50;
-          _popular = _applyRatingFilter(top50);
+          _allPopular = sorted;
+          _popular = _applyRatingFilter(sorted);
           _loadingPopular = false;
         });
       }
@@ -274,23 +271,18 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final repo = context.read<RestaurantRepository>();
       final all = await repo.getAllRestaurants();
-      final withDist =
-          all
-              .where((r) => r.lat != null && r.lon != null)
-              .map(
-                (r) => MapEntry(
-                  r,
-                  AppUtils.calculateDistance(
-                    _userLat,
-                    _userLon,
-                    r.lat!,
-                    r.lon!,
-                  ),
-                ),
-              )
-              .where((e) => e.value <= 30.0)
-              .toList()
-            ..sort((a, b) => a.value.compareTo(b.value));
+      final withDist = all
+          .where((r) => r.lat != null && r.lon != null)
+          .map(
+            (r) => MapEntry(
+              r,
+              AppUtils.calculateDistance(
+                  _userLat, _userLon, r.lat!, r.lon!),
+            ),
+          )
+          .where((e) => e.value <= 30.0)
+          .toList()
+        ..sort((a, b) => a.value.compareTo(b.value));
       if (mounted) {
         setState(() {
           _nearby = withDist.take(10).map((e) => e.key).toList();
@@ -302,9 +294,83 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// Returns up to 20 restaurants for the active filter.
+  ///
+  /// "All" — diversified mix: 4 excellent (≥4.5), 3 very good (4.0–4.49),
+  ///          2 good (3.0–3.99), 1 below-avg (<3.0). Surplus from a sparse
+  ///          band is reallocated to the next-lower band.
+  ///
+  /// "3.0+" — show 3.0–3.99 restaurants FIRST (ascending rating so lowest
+  ///           come first and users can actually discover them), then
+  ///           append higher-rated restaurants to fill to 20.
+  ///
+  /// "4.0+" — show 4.0–4.49 first, then ≥4.5.
+  ///
+  /// "4.5+" — show ≥4.5 ascending so there's still some variety.
   List<Restaurant> _applyRatingFilter(List<Restaurant> list) {
-    if (_minRatingFilter == null) return list.take(10).toList();
-    return list.where((r) => r.rating >= _minRatingFilter!).toList();
+    // ── Specific filter active ────────────────────────────────────────
+    if (_minRatingFilter != null) {
+      final min = _minRatingFilter!;
+
+      if (min == 3.0) {
+        // 3.0–3.99 ascending first, then 4.0+ descending
+        final band = list
+            .where((r) => r.rating >= 3.0 && r.rating < 4.0)
+            .toList()
+          ..sort((a, b) => a.rating.compareTo(b.rating));
+        final above = list
+            .where((r) => r.rating >= 4.0)
+            .toList()
+          ..sort((a, b) => b.rating.compareTo(a.rating));
+        return [...band, ...above].take(20).toList();
+      }
+
+      if (min == 4.0) {
+        // 4.0–4.49 ascending first, then ≥4.5 descending
+        final band = list
+            .where((r) => r.rating >= 4.0 && r.rating < 4.5)
+            .toList()
+          ..sort((a, b) => a.rating.compareTo(b.rating));
+        final above = list
+            .where((r) => r.rating >= 4.5)
+            .toList()
+          ..sort((a, b) => b.rating.compareTo(a.rating));
+        return [...band, ...above].take(20).toList();
+      }
+
+      if (min == 4.5) {
+        // ≥4.5 ascending so we see 4.5 restaurants, not just 5.0
+        return (list.where((r) => r.rating >= 4.5).toList()
+              ..sort((a, b) => a.rating.compareTo(b.rating)))
+            .take(20)
+            .toList();
+      }
+
+      // Generic fallback
+      return list.where((r) => r.rating >= min).take(20).toList();
+    }
+
+    // ── "All" — diversified mix ───────────────────────────────────────
+    final excellent = list.where((r) => r.rating >= 4.5).toList();
+    final veryGood =
+        list.where((r) => r.rating >= 4.0 && r.rating < 4.5).toList();
+    final good =
+        list.where((r) => r.rating >= 3.0 && r.rating < 4.0).toList();
+    final belowAvg = list.where((r) => r.rating < 3.0).toList();
+
+    const quotas = [4, 3, 2, 1];
+    final bands = [excellent, veryGood, good, belowAvg];
+    final result = <Restaurant>[];
+    int surplus = 0;
+
+    for (int i = 0; i < bands.length; i++) {
+      final wanted = quotas[i] + surplus;
+      final taken = bands[i].take(wanted).toList();
+      result.addAll(taken);
+      surplus = (wanted - taken.length).clamp(0, 5);
+    }
+
+    return result.take(10).toList();
   }
 
   void _switchToExploreTab() {
@@ -340,8 +406,7 @@ class _HomeScreenState extends State<HomeScreen> {
             content: Text('No $cuisine restaurants found nearby'),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
+                borderRadius: BorderRadius.circular(10)),
             margin: const EdgeInsets.all(16),
           ),
         );
@@ -394,22 +459,20 @@ class _HomeScreenState extends State<HomeScreen> {
       onAllowed: () {
         final user = context.read<AuthCubit>().currentUser;
         if (user == null) return;
-        context.read<WishlistCubit>().toggleWishlist(
-          userId: user.id,
-          restaurant: r,
-        );
+        context
+            .read<WishlistCubit>()
+            .toggleWishlist(userId: user.id, restaurant: r);
         final nowSaved = context.read<WishlistCubit>().isSaved(r.name);
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
             SnackBar(
-              content: Text(
-                nowSaved ? '❤️ Saved to wishlist' : 'Removed from wishlist',
-              ),
+              content: Text(nowSaved
+                  ? '❤️ Saved to wishlist'
+                  : 'Removed from wishlist'),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
+                  borderRadius: BorderRadius.circular(10)),
               margin: const EdgeInsets.all(16),
               duration: const Duration(seconds: 2),
             ),
@@ -421,16 +484,17 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Bottom nav bar height + safe area — so the last section isn't clipped
+    final bottomNavClearance =
+        MediaQuery.of(context).padding.bottom + 80;
+
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarIconBrightness:
+            isDark ? Brightness.light : Brightness.dark,
       ),
     );
-
-    // ── FIX: calculate bottom clearance once so the sliver can use it ────────
-    // Nav bar (~62px) + raised FAB overhang (~28px) + safe area + breathing room
-    final bottomClearance = MediaQuery.of(context).padding.bottom + 100;
 
     return MultiBlocListener(
       listeners: [
@@ -451,13 +515,11 @@ class _HomeScreenState extends State<HomeScreen> {
             }
           },
         ),
-
         BlocListener<UserPreferencesCubit, UserPreferencesState>(
           listenWhen: (previous, current) =>
               previous is PreferencesSaving && current is PreferencesLoaded,
           listener: (ctx, state) {
             if (!mounted) return;
-            debugPrint('HomeScreen: prefs saved → refreshing recommendations');
             setState(() {
               _loadingRecommended = true;
               _errorRecommended = false;
@@ -476,13 +538,12 @@ class _HomeScreenState extends State<HomeScreen> {
               SliverToBoxAdapter(child: _buildHeader()),
               const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
-              if (_isWalking) SliverToBoxAdapter(child: _buildWalkingBanner()),
+              if (_isWalking)
+                SliverToBoxAdapter(child: _buildWalkingBanner()),
 
               SliverToBoxAdapter(
                 child: _buildSectionHeader(
-                  emoji: '🍽️',
-                  title: 'Browse by Category',
-                ),
+                    emoji: '🍽️', title: 'Browse by Category'),
               ),
               SliverToBoxAdapter(child: _buildCategoryRow()),
 
@@ -494,13 +555,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   showSeeAll: _nearby.isNotEmpty,
                   onSeeAll: _nearby.isNotEmpty
                       ? () => Navigator.pushNamed(
-                          context,
-                          '/recommendation',
-                          arguments: RecommendationArgs(
-                            recommendations: _nearby,
-                            isFromApi: false,
-                          ),
-                        )
+                            context,
+                            '/recommendation',
+                            arguments: RecommendationArgs(
+                              recommendations: _nearby,
+                              isFromApi: false,
+                            ),
+                          )
                       : null,
                 ),
               ),
@@ -508,8 +569,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _loadingNearby
                     ? _buildSkeletonRow()
                     : _nearby.isEmpty
-                    ? _buildNearbyEmptyState()
-                    : _buildCardRow(_nearby),
+                        ? _buildNearbyEmptyState()
+                        : _buildCardRow(_nearby),
               ),
 
               SliverToBoxAdapter(
@@ -520,13 +581,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   showSeeAll: true,
                   onSeeAll: _recommended.isNotEmpty
                       ? () => Navigator.pushNamed(
-                          context,
-                          '/recommendation',
-                          arguments: RecommendationArgs(
-                            recommendations: _recommended,
-                            isFromApi: true,
-                          ),
-                        )
+                            context,
+                            '/recommendation',
+                            arguments: RecommendationArgs(
+                              recommendations: _recommended,
+                              isFromApi: true,
+                            ),
+                          )
                       : null,
                 ),
               ),
@@ -534,38 +595,36 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _loadingRecommended
                     ? _buildSkeletonRow()
                     : _errorRecommended
-                    ? _buildOfflineState(
-                        onRetry: () {
-                          setState(() {
-                            _loadingRecommended = true;
-                            _errorRecommended = false;
-                          });
-                          _loadRecommended();
-                        },
-                      )
-                    : _recommended.isEmpty
-                    ? _buildEmptyRecommendations()
-                    : _buildCardRow(_recommended, showFindSimilar: true),
+                        ? _buildOfflineState(
+                            onRetry: () {
+                              setState(() {
+                                _loadingRecommended = true;
+                                _errorRecommended = false;
+                              });
+                              _loadRecommended();
+                            },
+                          )
+                        : _recommended.isEmpty
+                            ? _buildEmptyRecommendations()
+                            : _buildCardRow(_recommended,
+                                showFindSimilar: true),
               ),
 
               SliverToBoxAdapter(
                 child: _buildSectionHeader(
                   emoji: '🔥',
                   title: 'Most Popular',
-                  subtitle: _minRatingFilter == null
-                      ? 'Top-rated across Terengganu'
-                      : '${_popular.length} restaurants rated '
-                            '${_minRatingFilter!.toStringAsFixed(1)}+',
+                  subtitle: _popularSubtitle(),
                   showSeeAll: true,
                   onSeeAll: _allPopular.isNotEmpty
                       ? () => Navigator.pushNamed(
-                          context,
-                          '/recommendation',
-                          arguments: RecommendationArgs(
-                            recommendations: _allPopular,
-                            isFromApi: false,
-                          ),
-                        )
+                            context,
+                            '/recommendation',
+                            arguments: RecommendationArgs(
+                              recommendations: _allPopular,
+                              isFromApi: false,
+                            ),
+                          )
                       : null,
                 ),
               ),
@@ -576,27 +635,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _loadingPopular
                     ? _buildSkeletonRow()
                     : _errorPopular
-                    ? _buildOfflineState(
-                        onRetry: () {
-                          setState(() {
-                            _loadingPopular = true;
-                            _errorPopular = false;
-                          });
-                          _loadPopular();
-                        },
-                      )
-                    : _popular.isEmpty
-                    ? _buildEmptyState(
-                        'No restaurants rated '
-                        '${_minRatingFilter?.toStringAsFixed(1) ?? "0.0"}+',
-                      )
-                    : _buildCardRow(_popular),
+                        ? _buildOfflineState(
+                            onRetry: () {
+                              setState(() {
+                                _loadingPopular = true;
+                                _errorPopular = false;
+                              });
+                              _loadPopular();
+                            },
+                          )
+                        : _popular.isEmpty
+                            ? _buildEmptyState(
+                                'No restaurants found for this filter')
+                            : _buildCardRow(_popular),
               ),
 
-              // ── FIX: was SizedBox(height: 24) which was not enough to clear
-              // the nav bar + raised FAB. Now uses dynamic padding so the last
-              // card row scrolls fully above the bottom navigation bar.
-              SliverToBoxAdapter(child: SizedBox(height: bottomClearance)),
+              // FIX: Dynamic bottom clearance so the last section is
+              // never hidden behind the floating nav bar.
+              SliverToBoxAdapter(
+                  child: SizedBox(height: bottomNavClearance)),
             ],
           ),
         ),
@@ -604,245 +661,26 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildRatingFilterRow() {
-    return SizedBox(
-      height: 40,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-        itemCount: _ratingOptions.length,
-        itemBuilder: (_, i) {
-          final (label, value) = _ratingOptions[i];
-          final active = _minRatingFilter == value;
-          return GestureDetector(
-            onTap: () {
-              if (_minRatingFilter == value) return;
-              setState(() {
-                _minRatingFilter = value;
-                _popular = _applyRatingFilter(_allPopular);
-              });
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-              decoration: BoxDecoration(
-                color: active
-                    ? AppColors.star.withValues(alpha: 0.15)
-                    : Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: active
-                      ? AppColors.star
-                      : Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.12),
-                  width: active ? 1.5 : 1,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (value != null) ...[
-                    Icon(
-                      Icons.star_rounded,
-                      size: 13,
-                      color: active
-                          ? AppColors.star
-                          : Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.4),
-                    ),
-                    const SizedBox(width: 3),
-                  ],
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: active
-                          ? AppColors.star
-                          : Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
+  // ── Subtitle helper ────────────────────────────────────────────────────────
+
+  String _popularSubtitle() {
+    if (_minRatingFilter == null) {
+      return 'A mix of picks across Terengganu';
+    }
+    if (_minRatingFilter == 3.0) {
+      return 'Showing 3.0–3.99 ⭐ restaurants first';
+    }
+    if (_minRatingFilter == 4.0) {
+      return 'Showing 4.0–4.49 ⭐ restaurants first';
+    }
+    if (_minRatingFilter == 4.5) {
+      return 'Showing 4.5+ ⭐ restaurants (lowest first)';
+    }
+    return '${_popular.length} restaurants rated '
+        '${_minRatingFilter!.toStringAsFixed(1)}+';
   }
 
-  Widget _buildWalkingBanner() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0D9488), Color(0xFFFF6B35)],
-        ),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0D9488).withValues(alpha: 0.25),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.directions_walk_rounded,
-            color: Colors.white,
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Text(
-              "You're on the move! Showing restaurants near you.",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: () => setState(() => _isWalking = false),
-            child: const Icon(
-              Icons.close_rounded,
-              color: Colors.white70,
-              size: 18,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNearbyEmptyState() {
-    final outsideTerengganu =
-        _userLat < 3.8 ||
-        _userLat > 6.2 ||
-        _userLon < 102.3 ||
-        _userLon > 103.5;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.08),
-          ),
-        ),
-        child: Row(
-          children: [
-            Text(
-              outsideTerengganu ? '✈️' : '📍',
-              style: const TextStyle(fontSize: 28),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    outsideTerengganu
-                        ? "You're outside Terengganu"
-                        : 'No restaurants nearby',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    outsideTerengganu
-                        ? "Showing all Terengganu restaurants above — plan your next visit!"
-                        : 'Try expanding your search radius in the filter.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      height: 1.4,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.55),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyRecommendations() {
-    final prefs = context.read<UserPreferencesCubit>().current;
-    final hasCuisine = prefs?.cuisineTypes.isNotEmpty ?? false;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.08),
-          ),
-        ),
-        child: Row(
-          children: [
-            Text(
-              hasCuisine ? '🍽️' : '✨',
-              style: const TextStyle(fontSize: 28),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    hasCuisine
-                        ? 'No ${prefs!.cuisineTypes.join(" or ")} restaurants found'
-                        : 'No recommendations yet',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    hasCuisine
-                        ? 'The AI server may not have results for your cuisine preference right now. Try pulling down to refresh.'
-                        : 'Set your cuisine preferences in Profile → My Preferences.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      height: 1.4,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.55),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // ── Header ────────────────────────────────────────────────────────────────
 
   Widget _buildHeader() {
     final scaffoldBg = Theme.of(context).scaffoldBackgroundColor;
@@ -853,9 +691,9 @@ class _HomeScreenState extends State<HomeScreen> {
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                Color(0xFF1F5A68),
-                Color(0xFF2F6F7E),
-                Color(0xFF4096AA),
+                Color(0xFF0A5260),
+                Color(0xFF15687A),
+                Color(0xFF1E8599),
                 Color(0xFFFF8C42),
               ],
               begin: Alignment.topLeft,
@@ -865,7 +703,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 36),
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 60),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -876,11 +714,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         onTap: _locationLoading ? null : _loadLocation,
                         child: Row(
                           children: [
-                            const Icon(
-                              Icons.location_on_rounded,
-                              size: 13,
-                              color: Colors.white70,
-                            ),
+                            const Icon(Icons.location_on_rounded,
+                                size: 13, color: Colors.white70),
                             const SizedBox(width: 3),
                             if (_locationLoading)
                               const SizedBox(
@@ -901,11 +736,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ),
                             const SizedBox(width: 2),
-                            const Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              size: 14,
-                              color: Colors.white70,
-                            ),
+                            const Icon(Icons.keyboard_arrow_down_rounded,
+                                size: 14, color: Colors.white70),
                           ],
                         ),
                       ),
@@ -922,7 +754,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               color: Colors.white.withValues(alpha: 0.2),
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.5),
+                                color:
+                                    Colors.white.withValues(alpha: 0.5),
                                 width: 1.5,
                               ),
                             ),
@@ -977,33 +810,26 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Row(
                         children: [
                           const SizedBox(width: 14),
-                          const Icon(
-                            Icons.search_rounded,
-                            color: AppColors.primary,
-                            size: 22,
-                          ),
+                          const Icon(Icons.search_rounded,
+                              color: AppColors.primary, size: 22),
                           const SizedBox(width: 10),
                           const Expanded(
                             child: Text(
                               'Search restaurants, cuisine...',
                               style: TextStyle(
-                                color: Color(0xFFAAAAAA),
-                                fontSize: 14,
-                              ),
+                                  color: Color(0xFFAAAAAA), fontSize: 14),
                             ),
                           ),
                           Container(
                             margin: const EdgeInsets.only(right: 8),
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.12),
+                              color: AppColors.primary
+                                  .withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Icon(
-                              Icons.tune_rounded,
-                              size: 18,
-                              color: AppColors.primary,
-                            ),
+                            child: const Icon(Icons.tune_rounded,
+                                size: 18, color: AppColors.primary),
                           ),
                         ],
                       ),
@@ -1019,13 +845,255 @@ class _HomeScreenState extends State<HomeScreen> {
           left: 0,
           right: 0,
           child: CustomPaint(
-            size: const Size(double.infinity, 28),
-            painter: _ArcFillPainter(bgColor: scaffoldBg),
+            size: const Size(double.infinity, 56),
+            painter: _ConvexBottomCurvePainter(bgColor: scaffoldBg),
           ),
         ),
       ],
     );
   }
+
+  // ── Rating filter row ──────────────────────────────────────────────────────
+
+  Widget _buildRatingFilterRow() {
+    return SizedBox(
+      height: 42,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+        itemCount: _ratingOptions.length,
+        itemBuilder: (_, i) {
+          final (label, value) = _ratingOptions[i];
+          final active = _minRatingFilter == value;
+          return GestureDetector(
+            onTap: () {
+              if (_minRatingFilter == value) return;
+              setState(() {
+                _minRatingFilter = value;
+                _popular = _applyRatingFilter(_allPopular);
+              });
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: active
+                    ? AppColors.star.withValues(alpha: 0.15)
+                    : Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: active
+                      ? AppColors.star
+                      : Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.12),
+                  width: active ? 1.5 : 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (value != null) ...[
+                    Icon(
+                      Icons.star_rounded,
+                      size: 13,
+                      color: active
+                          ? AppColors.star
+                          : Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.4),
+                    ),
+                    const SizedBox(width: 3),
+                  ],
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: active
+                          ? AppColors.star
+                          : Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ── Walking banner ─────────────────────────────────────────────────────────
+
+  Widget _buildWalkingBanner() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0D9488), Color(0xFFFF6B35)],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0D9488).withValues(alpha: 0.25),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.directions_walk_rounded,
+              color: Colors.white, size: 20),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              "You're on the move! Showing restaurants near you.",
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => setState(() => _isWalking = false),
+            child: const Icon(Icons.close_rounded,
+                color: Colors.white70, size: 18),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Nearby empty state ─────────────────────────────────────────────────────
+
+  Widget _buildNearbyEmptyState() {
+    final outsideTerengganu = _userLat < 3.8 ||
+        _userLat > 6.2 ||
+        _userLon < 102.3 ||
+        _userLon > 103.5;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withValues(alpha: 0.08),
+          ),
+        ),
+        child: Row(
+          children: [
+            Text(outsideTerengganu ? '✈️' : '📍',
+                style: const TextStyle(fontSize: 28)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    outsideTerengganu
+                        ? "You're outside Terengganu"
+                        : 'No restaurants nearby',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onSurface),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    outsideTerengganu
+                        ? "Showing all Terengganu restaurants above — plan your next visit!"
+                        : 'Try expanding your search radius in the filter.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.4,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.55),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Empty recommendations ──────────────────────────────────────────────────
+
+  Widget _buildEmptyRecommendations() {
+    final prefs = context.read<UserPreferencesCubit>().current;
+    final hasCuisine = prefs?.cuisineTypes.isNotEmpty ?? false;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withValues(alpha: 0.08),
+          ),
+        ),
+        child: Row(
+          children: [
+            Text(hasCuisine ? '🍽️' : '✨',
+                style: const TextStyle(fontSize: 28)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    hasCuisine
+                        ? 'No ${prefs!.cuisineTypes.join(" or ")} restaurants found'
+                        : 'No recommendations yet',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onSurface),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    hasCuisine
+                        ? 'The AI server may not have results for your cuisine preference right now. Try pulling down to refresh.'
+                        : 'Set your cuisine preferences in Profile → My Preferences.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.4,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.55),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Section header ─────────────────────────────────────────────────────────
 
   Widget _buildSectionHeader({
     required String emoji,
@@ -1063,16 +1131,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         'See All',
                         style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
+                            fontSize: 13,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600),
                       ),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        size: 18,
-                        color: AppColors.primary,
-                      ),
+                      Icon(Icons.chevron_right_rounded,
+                          size: 18, color: AppColors.primary),
                     ],
                   ),
                 ),
@@ -1086,9 +1150,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 subtitle,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.5),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.5),
                 ),
               ),
             ),
@@ -1097,6 +1162,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  // ── Category row ───────────────────────────────────────────────────────────
 
   static const Map<String, String> _categoryEmoji = {
     'All': '🍽️',
@@ -1135,7 +1202,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCardRow(List<Restaurant> list, {bool showFindSimilar = false}) {
+  // ── Card row ───────────────────────────────────────────────────────────────
+
+  Widget _buildCardRow(List<Restaurant> list,
+      {bool showFindSimilar = false}) {
     return SizedBox(
       height: showFindSimilar ? 280 : 220,
       child: ListView.builder(
@@ -1149,11 +1219,14 @@ class _HomeScreenState extends State<HomeScreen> {
           showFindSimilar: showFindSimilar,
           onTap: () => _openDetail(list[i]),
           onWishlist: () => _toggleWishlist(list[i]),
-          onFindSimilar: showFindSimilar ? () => _findSimilar(list[i]) : null,
+          onFindSimilar:
+              showFindSimilar ? () => _findSimilar(list[i]) : null,
         ),
       ),
     );
   }
+
+  // ── Offline state ──────────────────────────────────────────────────────────
 
   Widget _buildOfflineState({required VoidCallback onRetry}) {
     return Padding(
@@ -1167,7 +1240,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.wifi_off_rounded, color: Colors.orange, size: 22),
+            const Icon(Icons.wifi_off_rounded,
+                color: Colors.orange, size: 22),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -1176,19 +1250,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Text(
                     'Could not reach server',
                     style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      color: Colors.orange,
-                    ),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: Colors.orange),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     'The AI server may be waking up. Try again.',
                     style: TextStyle(
                       fontSize: 11,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.7),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.7),
                     ),
                   ),
                 ],
@@ -1199,9 +1273,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: onRetry,
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
+                    horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.orange,
                   borderRadius: BorderRadius.circular(8),
@@ -1209,10 +1281,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Text(
                   'Retry',
                   style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700),
                 ),
               ),
             ),
@@ -1221,6 +1292,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  // ── Skeleton row ───────────────────────────────────────────────────────────
 
   Widget _buildSkeletonRow() {
     return SizedBox(
@@ -1242,9 +1315,10 @@ class _HomeScreenState extends State<HomeScreen> {
           msg,
           style: TextStyle(
             fontSize: 13,
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.4),
+            color: Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withValues(alpha: 0.4),
           ),
         ),
       ),
@@ -1266,17 +1340,46 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
+// ─── Convex Curve Painter ─────────────────────────────────────────────────────
+
+class _ConvexBottomCurvePainter extends CustomPainter {
+  const _ConvexBottomCurvePainter({required this.bgColor});
+  final Color bgColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = bgColor
+      ..style = PaintingStyle.fill;
+    const offsets = [0.0, 1.5, -1.5];
+    for (final dy in offsets) {
+      final path = Path();
+      path.moveTo(0, size.height);
+      path.lineTo(0, size.height * 0.55 + dy);
+      path.cubicTo(
+        size.width * 0.20, size.height * 0.55 + dy - 6,
+        size.width * 0.80, size.height * 0.55 + dy - 6,
+        size.width, size.height * 0.55 + dy,
+      );
+      path.lineTo(size.width, size.height);
+      path.close();
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ConvexBottomCurvePainter old) =>
+      old.bgColor != bgColor;
+}
+
 // ─── Category Chip ────────────────────────────────────────────────────────────
 
 class _CategoryChip extends StatelessWidget {
   final String label;
   final String emoji;
   final VoidCallback onTap;
-  const _CategoryChip({
-    required this.label,
-    required this.emoji,
-    required this.onTap,
-  });
+  const _CategoryChip(
+      {required this.label, required this.emoji, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1302,17 +1405,16 @@ class _CategoryChip extends StatelessWidget {
                 ],
               ),
               child: Center(
-                child: Text(emoji, style: const TextStyle(fontSize: 26)),
-              ),
+                  child: Text(emoji,
+                      style: const TextStyle(fontSize: 26))),
             ),
             const SizedBox(height: 6),
             Text(
               label,
               style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onSurface),
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -1346,35 +1448,35 @@ class _RestaurantCard extends StatelessWidget {
   });
 
   Widget _gradientFallback() => Container(
-    height: 108,
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [
-          AppColors.secondary.withValues(alpha: 0.75),
-          AppColors.primary.withValues(alpha: 0.55),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-    ),
-    child: Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.restaurant_rounded, color: Colors.white, size: 30),
-          const SizedBox(height: 4),
-          Text(
-            restaurant.cuisineType,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
+        height: 108,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.secondary.withValues(alpha: 0.75),
+              AppColors.primary.withValues(alpha: 0.55),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-        ],
-      ),
-    ),
-  );
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.restaurant_rounded,
+                  color: Colors.white, size: 30),
+              const SizedBox(height: 4),
+              Text(
+                restaurant.cuisineType,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -1409,8 +1511,7 @@ class _RestaurantCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
-                  ),
+                      top: Radius.circular(20)),
                   child: CachedNetworkImage(
                     imageUrl: RestaurantImage.getUrl(
                       r.cuisineType.isNotEmpty ? r.cuisineType : 'Other',
@@ -1427,8 +1528,7 @@ class _RestaurantCard extends StatelessWidget {
                 Positioned.fill(
                   child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(20),
-                    ),
+                        top: Radius.circular(20)),
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -1448,9 +1548,7 @@ class _RestaurantCard extends StatelessWidget {
                   left: 8,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 3,
-                    ),
+                        horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.45),
                       borderRadius: BorderRadius.circular(20),
@@ -1458,10 +1556,9 @@ class _RestaurantCard extends StatelessWidget {
                     child: Text(
                       r.cuisineType,
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                      ),
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700),
                     ),
                   ),
                 ),
@@ -1474,9 +1571,10 @@ class _RestaurantCard extends StatelessWidget {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surface.withValues(alpha: 0.9),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surface
+                            .withValues(alpha: 0.9),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -1486,9 +1584,10 @@ class _RestaurantCard extends StatelessWidget {
                         size: 16,
                         color: isSaved
                             ? Colors.red
-                            : Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.35),
+                            : Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.35),
                       ),
                     ),
                   ),
@@ -1498,28 +1597,22 @@ class _RestaurantCard extends StatelessWidget {
                   left: 8,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 3,
-                    ),
+                        horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.55),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       children: [
-                        const Icon(
-                          Icons.star_rounded,
-                          size: 11,
-                          color: Color(0xFFFBBF24),
-                        ),
+                        const Icon(Icons.star_rounded,
+                            size: 11, color: Color(0xFFFBBF24)),
                         const SizedBox(width: 3),
                         Text(
                           AppUtils.formatRating(r.rating),
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700),
                         ),
                       ],
                     ),
@@ -1537,19 +1630,15 @@ class _RestaurantCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onSurface),
                   ),
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      Icon(
-                        Icons.location_on_rounded,
-                        size: 11,
-                        color: AppColors.secondary,
-                      ),
+                      Icon(Icons.location_on_rounded,
+                          size: 11, color: AppColors.secondary),
                       const SizedBox(width: 2),
                       Expanded(
                         child: Text(
@@ -1558,9 +1647,10 @@ class _RestaurantCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 11,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.5),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.5),
                           ),
                         ),
                       ),
@@ -1570,9 +1660,10 @@ class _RestaurantCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.4),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.4),
                           ),
                         ),
                     ],
@@ -1586,22 +1677,18 @@ class _RestaurantCard extends StatelessWidget {
                             (a) => Container(
                               margin: const EdgeInsets.only(right: 4),
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
+                                  horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: AppColors.secondary.withValues(
-                                  alpha: 0.08,
-                                ),
+                                color: AppColors.secondary
+                                    .withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 a,
                                 style: const TextStyle(
-                                  fontSize: 9,
-                                  color: Color(0xFF2F6F7E),
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                    fontSize: 9,
+                                    color: AppColors.secondary,
+                                    fontWeight: FontWeight.w600),
                               ),
                             ),
                           )
@@ -1624,19 +1711,15 @@ class _RestaurantCard extends StatelessWidget {
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.auto_awesome_rounded,
-                              size: 12,
-                              color: Colors.white,
-                            ),
+                            Icon(Icons.auto_awesome_rounded,
+                                size: 12, color: Colors.white),
                             SizedBox(width: 4),
                             Text(
                               'Find Similar',
                               style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                              ),
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700),
                             ),
                           ],
                         ),
@@ -1672,10 +1755,8 @@ class _SkeletonCardState extends State<_SkeletonCard>
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     )..repeat(reverse: true);
-    _anim = Tween<double>(
-      begin: 0.3,
-      end: 0.7,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _anim = Tween<double>(begin: 0.3, end: 0.7)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -1703,8 +1784,7 @@ class _SkeletonCardState extends State<_SkeletonCard>
               decoration: BoxDecoration(
                 color: Colors.grey.withValues(alpha: _anim.value),
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(20),
-                ),
+                    top: Radius.circular(20)),
               ),
             ),
             Padding(
@@ -1727,46 +1807,11 @@ class _SkeletonCardState extends State<_SkeletonCard>
   }
 
   Widget _box(double w, double h) => Container(
-    width: w,
-    height: h,
-    decoration: BoxDecoration(
-      color: Colors.grey.withValues(alpha: _anim.value),
-      borderRadius: BorderRadius.circular(6),
-    ),
-  );
-}
-
-// ─── Arc Painter ──────────────────────────────────────────────────────────────
-
-class _ArcFillPainter extends CustomPainter {
-  const _ArcFillPainter({required this.bgColor});
-  final Color bgColor;
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = bgColor;
-    final path = Path()
-      ..moveTo(0, size.height)
-      ..lineTo(0, size.height * 0.5)
-      ..quadraticBezierTo(
-        size.width * 0.5,
-        -size.height * 0.2,
-        size.width,
-        size.height * 0.5,
-      )
-      ..lineTo(size.width, size.height)
-      ..close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(_ArcFillPainter old) => old.bgColor != bgColor;
-}
-
-class _ArcHeaderPainter extends CustomPainter {
-  const _ArcHeaderPainter({required this.bgColor});
-  final Color bgColor;
-  @override
-  void paint(Canvas canvas, Size size) {}
-  @override
-  bool shouldRepaint(_ArcHeaderPainter old) => false;
+        width: w,
+        height: h,
+        decoration: BoxDecoration(
+          color: Colors.grey.withValues(alpha: _anim.value),
+          borderRadius: BorderRadius.circular(6),
+        ),
+      );
 }

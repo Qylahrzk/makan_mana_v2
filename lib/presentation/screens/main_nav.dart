@@ -25,9 +25,6 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
     with TickerProviderStateMixin {
   late final ValueNotifier<int> _tabIndex;
   late final List<Widget> _screens;
-
-  // ── Regular tab animation controllers (indices 0,1,3,4 — not 2) ──────────
-  // Index 2 is the center FAB — it has its own tap but no pill anim.
   late final List<AnimationController> _pillControllers;
   late final List<Animation<double>> _pillAnims;
 
@@ -36,7 +33,6 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
     super.initState();
     _tabIndex = ValueNotifier<int>(widget.initialIndex);
 
-    // 5 animation controllers (one per tab including FAB)
     _pillControllers = List.generate(
       5,
       (_) => AnimationController(
@@ -50,11 +46,10 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
 
     _pillControllers[widget.initialIndex].value = 1.0;
 
-    // 5 screens: Home, Explore, Chat(FAB), Wishlist, Profile
     _screens = [
       const HomeScreen(),
       const RestaurantSearchScreen(),
-      const ChatScreen(), // index 2 — center FAB
+      const ChatScreen(),
       const WishlistScreen(),
       const ProfileScreen(),
     ];
@@ -74,7 +69,6 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
     final prev = _tabIndex.value;
     if (prev == index) return;
 
-    // Wishlist tab (index 3) is still guest-guarded — unchanged
     if (index == 3) {
       final authState = context.read<AuthCubit>().state;
       if (authState is! AuthAuthenticated) {
@@ -86,8 +80,6 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
         return;
       }
     }
-
-    // Chat tab (index 4) — open to everyone, no guard needed
 
     _pillControllers[prev].reverse();
     _pillControllers[index].forward();
@@ -113,7 +105,8 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarIconBrightness:
+            isDark ? Brightness.light : Brightness.dark,
       ),
     );
 
@@ -121,7 +114,6 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
       valueListenable: _tabIndex,
       builder: (context, currentIndex, _) => Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        // extendBody lets the list content scroll under the nav bar
         extendBody: true,
         body: IndexedStack(index: currentIndex, children: _screens),
         bottomNavigationBar: _FloatingNavBar(
@@ -147,13 +139,13 @@ class _FloatingNavBar extends StatelessWidget {
     required this.onTap,
   });
 
-  // Nav items - index 2 is FAB (center), handled separately
   static const _leftItems = [
     _NavItemData(icon: Icons.home_rounded, label: 'Home', index: 0),
     _NavItemData(icon: Icons.search_rounded, label: 'Explore', index: 1),
   ];
   static const _rightItems = [
-    _NavItemData(icon: Icons.favorite_rounded, label: 'Wishlist', index: 3),
+    _NavItemData(
+        icon: Icons.favorite_rounded, label: 'Wishlist', index: 3),
     _NavItemData(icon: Icons.person_rounded, label: 'Profile', index: 4),
   ];
 
@@ -163,12 +155,16 @@ class _FloatingNavBar extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isChatActive = currentIndex == 2;
 
+    // Orange is the active/CTA color in both modes
+    final activePrimary = isDark
+        ? AppColors.darkPrimary
+        : AppColors.primary;
+
     return Container(
-      // Extra bottom padding for home indicator bar on newer Android/iOS
       padding: EdgeInsets.only(bottom: bottomPad > 0 ? bottomPad : 0),
       decoration: BoxDecoration(
         color: isDark
-            ? const Color(0xFF1E1E2E)
+            ? AppColors.darkSurface
             : Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
@@ -184,10 +180,9 @@ class _FloatingNavBar extends StatelessWidget {
           clipBehavior: Clip.none,
           alignment: Alignment.center,
           children: [
-            // ── Bar row: left items | gap | right items ─────────────
             Row(
               children: [
-                // Left side: Home + Explore
+                // Left: Home + Explore
                 Expanded(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -198,6 +193,7 @@ class _FloatingNavBar extends StatelessWidget {
                             isActive: currentIndex == item.index,
                             animation: pillAnims[item.index],
                             onTap: () => onTap(item.index),
+                            activePrimary: activePrimary,
                             badgeBuilder: null,
                           ),
                         )
@@ -205,10 +201,9 @@ class _FloatingNavBar extends StatelessWidget {
                   ),
                 ),
 
-                // Center gap for the FAB (80px wide)
-                const SizedBox(width: 80),
+                const SizedBox(width: 80), // gap for center FAB
 
-                // Right side: Wishlist + Profile
+                // Right: Wishlist + Profile
                 Expanded(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -219,24 +214,24 @@ class _FloatingNavBar extends StatelessWidget {
                             isActive: currentIndex == item.index,
                             animation: pillAnims[item.index],
                             onTap: () => onTap(item.index),
+                            activePrimary: activePrimary,
                             badgeBuilder: item.index == 3
-                                ? () =>
-                                      BlocBuilder<WishlistCubit, WishlistState>(
-                                        builder: (ctx, state) {
-                                          final authState = ctx
-                                              .read<AuthCubit>()
-                                              .state;
-                                          if (authState is! AuthAuthenticated) {
-                                            return const SizedBox.shrink();
-                                          }
-                                          return (state is WishlistLoaded &&
-                                                  state.items.isNotEmpty)
-                                              ? _Badge(
-                                                  count: state.items.length,
-                                                )
-                                              : const SizedBox.shrink();
-                                        },
-                                      )
+                                ? () => BlocBuilder<WishlistCubit,
+                                        WishlistState>(
+                                      builder: (ctx, state) {
+                                        final authState =
+                                            ctx.read<AuthCubit>().state;
+                                        if (authState
+                                            is! AuthAuthenticated) {
+                                          return const SizedBox.shrink();
+                                        }
+                                        return (state is WishlistLoaded &&
+                                                state.items.isNotEmpty)
+                                            ? _Badge(
+                                                count: state.items.length)
+                                            : const SizedBox.shrink();
+                                      },
+                                    )
                                 : null,
                           ),
                         )
@@ -246,11 +241,9 @@ class _FloatingNavBar extends StatelessWidget {
               ],
             ),
 
-            // ── Center FAB — elevated above the bar ──────────────────
-            // Matches screenshot: large filled circle, elevated,
-            // with a subtle shadow. Active state shows white glow ring.
+            // ── Center FAB — orange CTA ──────────────────────────────
             Positioned(
-              top: -20, // lifts FAB above the bar
+              top: -20,
               child: GestureDetector(
                 onTap: () => onTap(2),
                 child: AnimatedContainer(
@@ -259,19 +252,18 @@ class _FloatingNavBar extends StatelessWidget {
                   height: 64,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isChatActive ? AppColors.primary : AppColors.primary,
+                    color: activePrimary,
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withValues(
-                          alpha: isChatActive ? 0.45 : 0.25,
+                        color: activePrimary.withValues(
+                          alpha: isChatActive ? 0.55 : 0.35,
                         ),
-                        blurRadius: isChatActive ? 20 : 12,
+                        blurRadius: isChatActive ? 24 : 14,
                         offset: const Offset(0, 4),
                       ),
-                      // White ring when active (matches screenshot glow)
                       if (isChatActive)
                         BoxShadow(
-                          color: Colors.white.withValues(alpha: 0.3),
+                          color: Colors.white.withValues(alpha: 0.25),
                           blurRadius: 0,
                           spreadRadius: 3,
                         ),
@@ -280,7 +272,7 @@ class _FloatingNavBar extends StatelessWidget {
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      // Subtle inner gradient shimmer
+                      // Inner shimmer
                       Container(
                         width: 64,
                         height: 64,
@@ -290,13 +282,13 @@ class _FloatingNavBar extends StatelessWidget {
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [
-                              Colors.white.withValues(alpha: 0.15),
+                              Colors.white.withValues(alpha: 0.20),
                               Colors.transparent,
                             ],
                           ),
                         ),
                       ),
-                      Icon(
+                      const Icon(
                         Icons.auto_awesome_rounded,
                         color: Colors.white,
                         size: 28,
@@ -320,6 +312,7 @@ class _PillItem extends StatelessWidget {
   final bool isActive;
   final Animation<double> animation;
   final VoidCallback onTap;
+  final Color activePrimary;
   final Widget Function()? badgeBuilder;
 
   const _PillItem({
@@ -327,6 +320,7 @@ class _PillItem extends StatelessWidget {
     required this.isActive,
     required this.animation,
     required this.onTap,
+    required this.activePrimary,
     required this.badgeBuilder,
   });
 
@@ -339,10 +333,15 @@ class _PillItem extends StatelessWidget {
         animation: animation,
         builder: (_, _) {
           final t = animation.value;
-          final pillColor = AppColors.primary.withValues(alpha: 0.12 * t);
+          // Orange pill background when active
+          final pillColor =
+              activePrimary.withValues(alpha: 0.13 * t);
           final iconColor = Color.lerp(
-            Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38),
-            AppColors.primary,
+            Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withValues(alpha: 0.38),
+            activePrimary,
             t,
           )!;
 
@@ -361,7 +360,8 @@ class _PillItem extends StatelessWidget {
                   children: [
                     Icon(data.icon, size: 22, color: iconColor),
                     if (badgeBuilder != null)
-                      Positioned(top: -4, right: -4, child: badgeBuilder!()),
+                      Positioned(
+                          top: -4, right: -4, child: badgeBuilder!()),
                   ],
                 ),
                 ClipRect(
@@ -376,9 +376,10 @@ class _PillItem extends StatelessWidget {
                           child: Text(
                             data.label,
                             style: TextStyle(
+                              fontFamily: 'OpenSans',
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
+                              color: activePrimary,
                             ),
                           ),
                         ),

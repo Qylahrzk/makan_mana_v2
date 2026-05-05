@@ -18,14 +18,14 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  final _formKey      = GlobalKey<FormState>();
-  final _nameCtrl     = TextEditingController();
-  final _emailCtrl    = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _nameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-  final _confirmCtrl  = TextEditingController();
+  final _confirmCtrl = TextEditingController();
   bool _obscurePassword = true;
-  bool _obscureConfirm  = true;
-  bool _agreedToTerms   = false;
+  bool _obscureConfirm = true;
+  bool _agreedToTerms = false;
   bool _submitAttempted = false;
 
   @override
@@ -42,29 +42,32 @@ class _SignupScreenState extends State<SignupScreen> {
     if (!_agreedToTerms) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(
-          content:         const Text('Please agree to the Terms & Privacy Policy'),
-          backgroundColor: AppColors.error,
-          behavior:        SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10)),
-          margin: const EdgeInsets.all(16),
-        ));
+        ..showSnackBar(
+          SnackBar(
+            content: const Text('Please agree to the Terms & Privacy Policy'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
       return;
     }
     setState(() => _submitAttempted = true);
     context.read<AuthCubit>().signUp(
-          email:    _emailCtrl.text.trim(),
-          password: _passwordCtrl.text,
-          fullName: _nameCtrl.text.trim(),
-        );
+      email: _emailCtrl.text.trim(),
+      password: _passwordCtrl.text,
+      fullName: _nameCtrl.text.trim(),
+    );
   }
 
   void _goToMainNav() {
     Navigator.pushAndRemoveUntil(
       context,
       PageRouteBuilder(
-        pageBuilder:        (_, _, _) => const MainNavScreen(),
+        pageBuilder: (_, _, _) => const MainNavScreen(),
         transitionDuration: const Duration(milliseconds: 400),
         transitionsBuilder: (_, anim, _, child) =>
             FadeTransition(opacity: anim, child: child),
@@ -75,10 +78,12 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor:          Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
 
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
@@ -88,14 +93,17 @@ class _SignupScreenState extends State<SignupScreen> {
           setState(() => _submitAttempted = false);
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(
-              content:         Text(state.message),
-              backgroundColor: AppColors.error,
-              behavior:        SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-              margin: const EdgeInsets.all(16),
-            ));
+            ..showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: AppColors.error,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                margin: const EdgeInsets.all(16),
+              ),
+            );
         }
       },
       child: Scaffold(
@@ -108,7 +116,6 @@ class _SignupScreenState extends State<SignupScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   const SizedBox(height: 20),
 
                   // ── Back ─────────────────────────────────────────────
@@ -120,18 +127,21 @@ class _SignupScreenState extends State<SignupScreen> {
                   const Text(
                     'Create\nAccount ✨',
                     style: TextStyle(
-                      fontSize:      34,
-                      fontWeight:    FontWeight.w900,
-                      color:         Color(0xFF1A1A1A),
+                      fontSize: 34,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF1A1A1A),
                       letterSpacing: -0.8,
-                      height:        1.2,
+                      height: 1.2,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Join Makan Mana and discover great food',
                     style: TextStyle(
-                        fontSize: 14, color: Colors.grey[500], height: 1.5),
+                      fontSize: 14,
+                      color: Colors.grey[500],
+                      height: 1.5,
+                    ),
                   ),
 
                   const SizedBox(height: 36),
@@ -140,9 +150,9 @@ class _SignupScreenState extends State<SignupScreen> {
                   const _FieldLabel(label: 'Full Name'),
                   const SizedBox(height: 8),
                   _InputField(
-                    controller:   _nameCtrl,
-                    hint:         'Your full name',
-                    prefixIcon:   Icons.person_outline_rounded,
+                    controller: _nameCtrl,
+                    hint: 'Your full name',
+                    prefixIcon: Icons.person_outline_rounded,
                     keyboardType: TextInputType.name,
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) {
@@ -161,10 +171,10 @@ class _SignupScreenState extends State<SignupScreen> {
                   const _FieldLabel(label: 'Email Address'),
                   const SizedBox(height: 8),
                   _InputField(
-                    controller:   _emailCtrl,
-                    hint:         'you@example.com',
+                    controller: _emailCtrl,
+                    hint: 'you@example.com',
                     keyboardType: TextInputType.emailAddress,
-                    prefixIcon:   Icons.email_outlined,
+                    prefixIcon: Icons.email_outlined,
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) {
                         return 'Please enter your email';
@@ -182,19 +192,19 @@ class _SignupScreenState extends State<SignupScreen> {
                   const _FieldLabel(label: 'Password'),
                   const SizedBox(height: 8),
                   _InputField(
-                    controller:  _passwordCtrl,
-                    hint:        'Min. 8 characters',
+                    controller: _passwordCtrl,
+                    hint: 'Min. 8 characters',
                     obscureText: _obscurePassword,
-                    prefixIcon:  Icons.lock_outline_rounded,
+                    prefixIcon: Icons.lock_outline_rounded,
                     suffixIcon: GestureDetector(
-                      onTap: () => setState(
-                          () => _obscurePassword = !_obscurePassword),
+                      onTap: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                       child: Icon(
                         _obscurePassword
                             ? Icons.visibility_off_outlined
                             : Icons.visibility_outlined,
                         color: Colors.grey[400],
-                        size:  20,
+                        size: 20,
                       ),
                     ),
                     validator: (v) {
@@ -214,19 +224,19 @@ class _SignupScreenState extends State<SignupScreen> {
                   const _FieldLabel(label: 'Confirm Password'),
                   const SizedBox(height: 8),
                   _InputField(
-                    controller:  _confirmCtrl,
-                    hint:        'Re-enter your password',
+                    controller: _confirmCtrl,
+                    hint: 'Re-enter your password',
                     obscureText: _obscureConfirm,
-                    prefixIcon:  Icons.lock_outline_rounded,
+                    prefixIcon: Icons.lock_outline_rounded,
                     suffixIcon: GestureDetector(
-                      onTap: () => setState(
-                          () => _obscureConfirm = !_obscureConfirm),
+                      onTap: () =>
+                          setState(() => _obscureConfirm = !_obscureConfirm),
                       child: Icon(
                         _obscureConfirm
                             ? Icons.visibility_off_outlined
                             : Icons.visibility_outlined,
                         color: Colors.grey[400],
-                        size:  20,
+                        size: 20,
                       ),
                     ),
                     validator: (v) {
@@ -247,14 +257,16 @@ class _SignupScreenState extends State<SignupScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SizedBox(
-                        width: 22, height: 22,
+                        width: 22,
+                        height: 22,
                         child: Checkbox(
-                          value:       _agreedToTerms,
-                          onChanged:   (v) =>
+                          value: _agreedToTerms,
+                          onChanged: (v) =>
                               setState(() => _agreedToTerms = v ?? false),
                           activeColor: AppColors.primary,
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4)),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                           side: BorderSide(color: Colors.grey[300]!),
                         ),
                       ),
@@ -263,21 +275,23 @@ class _SignupScreenState extends State<SignupScreen> {
                         child: Text.rich(
                           TextSpan(
                             style: TextStyle(
-                                fontSize: 13, color: Colors.grey[500]),
+                              fontSize: 13,
+                              color: Colors.grey[500],
+                            ),
                             children: [
                               const TextSpan(text: 'I agree to the '),
                               TextSpan(
-                                text:  'Terms of Service',
+                                text: 'Terms of Service',
                                 style: TextStyle(
-                                  color:      AppColors.primary,
+                                  color: AppColors.primary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                               const TextSpan(text: ' and '),
                               TextSpan(
-                                text:  'Privacy Policy',
+                                text: 'Privacy Policy',
                                 style: TextStyle(
-                                  color:      AppColors.primary,
+                                  color: AppColors.primary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -301,28 +315,36 @@ class _SignupScreenState extends State<SignupScreen> {
                     builder: (context, state) {
                       final loading = state is AuthLoading && _submitAttempted;
                       return SizedBox(
-                        width:  double.infinity,
+                        width: double.infinity,
                         height: 54,
                         child: ElevatedButton(
                           onPressed: loading ? null : _submit,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
-                            disabledBackgroundColor:
-                                AppColors.primary.withValues(alpha: 0.6),
+                            disabledBackgroundColor: AppColors.primary
+                                .withValues(alpha: 0.6),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14)),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                           ),
                           child: loading
                               ? const SizedBox(
-                                  width: 22, height: 22,
+                                  width: 22,
+                                  height: 22,
                                   child: CircularProgressIndicator(
-                                      color: Colors.white, strokeWidth: 2.5))
-                              : const Text('Create Account',
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : const Text(
+                                  'Create Account',
                                   style: TextStyle(
-                                      fontSize:   16,
-                                      fontWeight: FontWeight.w700)),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                         ),
                       );
                     },
@@ -335,25 +357,31 @@ class _SignupScreenState extends State<SignupScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('Already have an account?',
-                            style: TextStyle(
-                                fontSize: 14, color: Colors.grey[500])),
+                        Text(
+                          'Already have an account?',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[500],
+                          ),
+                        ),
                         TextButton(
                           onPressed: () => Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(
-                                builder: (_) => const LoginScreen()),
+                              builder: (_) => const LoginScreen(),
+                            ),
                           ),
                           style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
                           ),
-                          child: Text('Sign In',
-                              style: TextStyle(
-                                fontSize:   14,
-                                fontWeight: FontWeight.w700,
-                                color:      AppColors.primary,
-                              )),
+                          child: Text(
+                            'Sign In',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -378,13 +406,17 @@ class _BackButton extends StatelessWidget {
     return GestureDetector(
       onTap: () => Navigator.pop(context),
       child: Container(
-        width: 42, height: 42,
+        width: 42,
+        height: 42,
         decoration: BoxDecoration(
-          color:        const Color(0xFFF5F5F5),
+          color: const Color(0xFFF5F5F5),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Icon(Icons.arrow_back_ios_new_rounded,
-            size: 18, color: Color(0xFF1A1A1A)),
+        child: const Icon(
+          Icons.arrow_back_ios_new_rounded,
+          size: 18,
+          color: Color(0xFF1A1A1A),
+        ),
       ),
     );
   }
@@ -399,9 +431,9 @@ class _FieldLabel extends StatelessWidget {
     return Text(
       label,
       style: const TextStyle(
-        fontSize:      13,
-        fontWeight:    FontWeight.w700,
-        color:         Color(0xFF1A1A1A),
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+        color: Color(0xFF1A1A1A),
         letterSpacing: 0.2,
       ),
     );
@@ -421,7 +453,7 @@ class _InputField extends StatelessWidget {
     required this.controller,
     required this.hint,
     required this.prefixIcon,
-    this.obscureText  = false,
+    this.obscureText = false,
     this.keyboardType,
     this.suffixIcon,
     this.validator,
@@ -430,40 +462,45 @@ class _InputField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TextFormField(
-      controller:   controller,
-      obscureText:  obscureText,
+      controller: controller,
+      obscureText: obscureText,
       keyboardType: keyboardType,
-      validator:    validator,
+      validator: validator,
       style: const TextStyle(
-          fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF1A1A1A)),
+        fontSize: 15,
+        fontWeight: FontWeight.w500,
+        color: Color(0xFF1A1A1A),
+      ),
       decoration: InputDecoration(
-        hintText:  hint,
+        hintText: hint,
         hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
         prefixIcon: Icon(prefixIcon, size: 20, color: Colors.grey[400]),
         suffixIcon: suffixIcon,
-        filled:     true,
-        fillColor:  const Color(0xFFF8F8F8),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        filled: true,
+        fillColor: const Color(0xFFF8F8F8),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:   BorderSide(color: Colors.grey[200]!),
+          borderSide: BorderSide(color: Colors.grey[200]!),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:   BorderSide(color: Colors.grey[200]!),
+          borderSide: BorderSide(color: Colors.grey[200]!),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:   BorderSide(color: AppColors.primary, width: 1.5),
+          borderSide: BorderSide(color: AppColors.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:   BorderSide(color: AppColors.error, width: 1.5),
+          borderSide: BorderSide(color: AppColors.error, width: 1.5),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:   BorderSide(color: AppColors.error, width: 1.5),
+          borderSide: BorderSide(color: AppColors.error, width: 1.5),
         ),
       ),
     );

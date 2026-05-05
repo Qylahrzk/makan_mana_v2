@@ -1,28 +1,3 @@
-// ============================================================
-// FILE: lib/presentation/screens/profile_screen.dart
-//
-// FIX — App version now reads from package_info_plus instead
-// of being hardcoded as '1.0.0'.
-//
-// HOW IT WORKS:
-//   1. _ProfileScreenState adds a String? _appVersion field.
-//   2. initState() calls _loadAppVersion() which uses
-//      PackageInfo.fromPlatform() — an async call that reads
-//      the real version from AndroidManifest.xml / Info.plist.
-//   3. The version string is stored in _appVersion state.
-//   4. The "App Version" menu item shows _appVersion ?? '...'
-//      (dots shown while loading, version shown once resolved).
-//
-// WHY NOT HARDCODE:
-//   Hardcoding '1.0.0' means every time you bump pubspec.yaml
-//   version you'd have to remember to update this string too.
-//   package_info_plus reads it automatically from the build config.
-//
-// IMPORTANT: make sure package_info_plus is in pubspec.yaml:
-//   dependencies:
-//     package_info_plus: ^8.0.0   (or latest)
-// ============================================================
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -30,6 +5,7 @@ import 'package:makan_mana_v2/logic/cubits/theme_cubit.dart';
 import 'package:makan_mana_v2/logic/cubits/user_preferences_cubit.dart';
 import 'package:makan_mana_v2/presentation/screens/personalisation_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_colors.dart';
 import '../../logic/cubits/auth_cubit.dart';
 import '../../logic/cubits/profile_cubit.dart';
@@ -37,6 +13,10 @@ import '../../logic/cubits/wishlist_cubit.dart';
 import '../../models/user_model.dart';
 import 'wishlist_screen.dart';
 import 'welcome_screen.dart';
+
+// ─── SUS Google Form URL ──────────────────────────────────────────────────────
+// Replace the URL below with your actual Google Form link.
+const _kSusFeedbackUrl = 'https://forms.gle/MhoC8jBwLZj5TbeQ9';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -46,59 +26,79 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // ── App version state ──────────────────────────────────────────────────────
-  // Null while loading (shows '...' in UI), populated after PackageInfo resolves.
   String? _appVersion;
 
   @override
   void initState() {
     super.initState();
-    _loadAppVersion(); // read real version from build config
-    _loadProfileData(); // load Supabase profile + wishlist + preferences
+    _loadAppVersion();
+    _loadProfileData();
   }
 
-  // ── Load app version dynamically ──────────────────────────────────────────
-  // Reads version and build number from AndroidManifest / Info.plist.
-  // Shown as "1.0.0+1" (version + build) or just "1.0.0" if build is empty.
   Future<void> _loadAppVersion() async {
     try {
       final info = await PackageInfo.fromPlatform();
       if (!mounted) return;
       setState(() {
-        // Show "version+build" if build number exists, otherwise just version
         _appVersion = info.buildNumber.isNotEmpty
             ? '${info.version}+${info.buildNumber}'
             : info.version;
       });
     } catch (_) {
-      // Fallback if package_info_plus fails (e.g. on web or in tests)
-      if (mounted) setState(() => _appVersion = '1.0.0');
+      if (mounted) setState(() => _appVersion = '2.0.0');
     }
   }
 
-  // ── Load user data ────────────────────────────────────────────────────────
-  // Loads profile, wishlist count, and preferences badge — auth users only.
-  // NOTE: We intentionally do NOT call loadPreferences() again when the
-  // user taps "My Preferences". PersonalisationScreen manages its own
-  // loading to avoid the race condition that wipes cubit.current.
   Future<void> _loadProfileData() async {
-    await Future.microtask(
-      () {},
-    ); // let the frame settle before reading context
+    await Future.microtask(() {});
     if (!mounted) return;
     final authState = context.read<AuthCubit>().state;
     if (authState is AuthAuthenticated) {
       context.read<ProfileCubit>().loadProfile(authState.user.id);
       context.read<WishlistCubit>().loadWishlist(authState.user.id);
-      // Load preferences to show "Configured ✓" badge in the menu row.
-      // This is a read-only operation — it does NOT interfere with
-      // PersonalisationScreen because that screen does its own fresh load.
       context.read<UserPreferencesCubit>().loadPreferences(authState.user.id);
     }
   }
 
+  // ── Open SUS feedback form ────────────────────────────────────────────────
+  Future<void> _openSusFeedback() async {
+    final uri = Uri.parse(_kSusFeedbackUrl);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Could not open the feedback form.'),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              margin: const EdgeInsets.all(16),
+            ),
+          );
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Could not open the feedback form.'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    }
+  }
+
   // ── Theme picker sheet ────────────────────────────────────────────────────
-  // Bottom sheet to switch between System / Light / Dark themes.
   void _showThemeSheet(BuildContext context) {
     const themeOptions = [
       _ThemeOption(
@@ -268,7 +268,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ── Notifications sheet ───────────────────────────────────────────────────
-  // Informs user that push notifications aren't available in this version.
   void _showNotificationSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -390,7 +389,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ── Language sheet ────────────────────────────────────────────────────────
-  // Shows English (active) and Bahasa Malaysia (coming soon).
   void _showLanguageSheet(BuildContext context) {
     final languages = [
       {'flag': '🇬🇧', 'name': 'English', 'active': true},
@@ -532,7 +530,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ── Edit name sheet ───────────────────────────────────────────────────────
-  // Bottom sheet with a validated text field to update the display name.
   void _showEditNameSheet(BuildContext context, UserModel user) {
     final ctrl = TextEditingController(text: user.fullName);
     final formKey = GlobalKey<FormState>();
@@ -769,7 +766,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final isAuthenticated = authState is AuthAuthenticated;
 
     return BlocListener<AuthCubit, AuthState>(
-      // Redirect to WelcomeScreen after logout
       listener: (context, state) {
         if (state is AuthGuest) {
           Navigator.pushAndRemoveUntil(
@@ -785,7 +781,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
       },
       child: BlocListener<ProfileCubit, ProfileState>(
-        // Show snackbar on name update success / error
         listener: (context, state) {
           if (state is ProfileUpdateSuccess) {
             ScaffoldMessenger.of(context)
@@ -842,7 +837,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                   const SizedBox(height: 28),
 
-                  // ── Profile card (authenticated users only) ────────────────
+                  // ── Profile card ───────────────────────────────────────────
                   if (isAuthenticated)
                     BlocBuilder<ProfileCubit, ProfileState>(
                       builder: (context, state) {
@@ -864,7 +859,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Column(
                       children: [
-                        // ── Activity (authenticated only) ──────────────────────
+                        // ── Activity ───────────────────────────────────────────
                         if (isAuthenticated) ...[
                           _SectionHeader(label: 'Activity'),
                           const SizedBox(height: 8),
@@ -903,7 +898,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _SectionHeader(label: 'Personalisation'),
                         const SizedBox(height: 8),
 
-                        // Guest sign-up nudge banner
                         if (!isAuthenticated)
                           Container(
                             margin: const EdgeInsets.only(bottom: 10),
@@ -1000,7 +994,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
 
-                        // My Preferences menu row
                         _MenuCard(
                           items: [
                             _MenuItem(
@@ -1071,11 +1064,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     );
                                   return;
                                 }
-                                // KEY: Do NOT call loadPreferences() here.
-                                // PersonalisationScreen loads its own state.
-                                // Calling loadPreferences() here would emit
-                                // PreferencesLoading, clearing cubit.current
-                                // before PersonalisationScreen reads it.
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -1175,9 +1163,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 8),
                         _MenuCard(
                           items: [
-                            // App Version — reads real version from PackageInfo.
-                            // Shows '...' while the async call is in flight,
-                            // then shows e.g. "1.0.0+4" or "1.2.3" once resolved.
                             _MenuItem(
                               icon: Icons.info_outline_rounded,
                               iconColor: AppColors.primary,
@@ -1186,7 +1171,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               onTap: () {},
                               showChevron: false,
                             ),
-
                             _MenuItem(
                               icon: Icons.school_rounded,
                               iconColor: AppColors.secondary,
@@ -1194,6 +1178,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               trailingText: 'UiTM',
                               onTap: () {},
                               showChevron: false,
+                            ),
+
+                            // ── SUS Feedback button ────────────────────────────
+                            // Opens the Google Form SUS questionnaire in browser.
+                            // Replace _kSusFeedbackUrl at the top of this file
+                            // with your actual Google Form link.
+                            _MenuItem(
+                              icon: Icons.rate_review_rounded,
+                              iconColor: const Color(0xFF7C4DFF),
+                              label: 'Feedback',
+                              trailing: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF7C4DFF,
+                                  ).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  'Google Form',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF7C4DFF),
+                                  ),
+                                ),
+                              ),
+                              onTap: _openSusFeedback,
                             ),
                           ],
                         ),
@@ -1244,7 +1259,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 // ─── Profile Card ─────────────────────────────────────────────────────────────
-// Avatar (initials circle), name, email, join date, edit-name button.
 
 class _ProfileCard extends StatelessWidget {
   final UserModel user;
@@ -1394,6 +1408,7 @@ class _ProfileCard extends StatelessWidget {
 }
 
 // ─── Section Header ───────────────────────────────────────────────────────────
+
 class _SectionHeader extends StatelessWidget {
   final String label;
   const _SectionHeader({required this.label});
@@ -1416,7 +1431,7 @@ class _SectionHeader extends StatelessWidget {
 }
 
 // ─── Menu Card ────────────────────────────────────────────────────────────────
-// Groups related _MenuItem rows with dividers between them.
+
 class _MenuCard extends StatelessWidget {
   final List<_MenuItem> items;
   const _MenuCard({required this.items});
@@ -1457,7 +1472,7 @@ class _MenuCard extends StatelessWidget {
 }
 
 // ─── Menu Item ────────────────────────────────────────────────────────────────
-// A single tappable row: icon → label → optional trailing widget or text.
+
 class _MenuItem extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
@@ -1538,7 +1553,7 @@ class _MenuItem extends StatelessWidget {
 }
 
 // ─── Count Badge ──────────────────────────────────────────────────────────────
-// Small pill showing a number, used for wishlist count in the menu row.
+
 class _CountBadge extends StatelessWidget {
   final int count;
   final Color color;
@@ -1557,7 +1572,8 @@ class _CountBadge extends StatelessWidget {
   );
 }
 
-// ─── Theme Option data class ──────────────────────────────────────────────────
+// ─── Theme Option ─────────────────────────────────────────────────────────────
+
 class _ThemeOption {
   final ThemeMode mode;
   final IconData icon;
