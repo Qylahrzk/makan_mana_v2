@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
-/// Central text styles for Terengganu Restaurant Recommender.
-/// Follows Material 3 type scale naming conventions.
+/// Central text styles for Makan Mana v2.
+///
+/// Font roles:
+///   Montserrat     — Headlines, restaurant names, screen titles
+///   Open Sans      — Body text, descriptions, review summaries
+///   JetBrainsMono  — Technical data: match scores, LDA labels, percentages
 class AppTextStyles {
-  AppTextStyles._(); // Prevent instantiation
+  AppTextStyles._();
 
   // ─────────────────────────────────────────
-  // DISPLAY — Large hero text (onboarding, splash)
+  // DISPLAY — Montserrat — Hero text
   // ─────────────────────────────────────────
 
   static const TextStyle displayLarge = TextStyle(
+    fontFamily: 'Montserrat',
     fontSize: 32,
     fontWeight: FontWeight.w800,
     color: AppColors.textPrimary,
@@ -19,6 +24,7 @@ class AppTextStyles {
   );
 
   static const TextStyle displayMedium = TextStyle(
+    fontFamily: 'Montserrat',
     fontSize: 28,
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
@@ -27,10 +33,11 @@ class AppTextStyles {
   );
 
   // ─────────────────────────────────────────
-  // HEADLINE — Screen titles, section headers
+  // HEADLINE — Montserrat — Screen titles, section headers
   // ─────────────────────────────────────────
 
   static const TextStyle headlineLarge = TextStyle(
+    fontFamily: 'Montserrat',
     fontSize: 24,
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
@@ -38,6 +45,7 @@ class AppTextStyles {
   );
 
   static const TextStyle headlineMedium = TextStyle(
+    fontFamily: 'Montserrat',
     fontSize: 20,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
@@ -45,6 +53,7 @@ class AppTextStyles {
   );
 
   static const TextStyle headlineSmall = TextStyle(
+    fontFamily: 'Montserrat',
     fontSize: 18,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
@@ -52,10 +61,11 @@ class AppTextStyles {
   );
 
   // ─────────────────────────────────────────
-  // TITLE — Card titles, restaurant names
+  // TITLE — Montserrat — Card titles, restaurant names
   // ─────────────────────────────────────────
 
   static const TextStyle titleLarge = TextStyle(
+    fontFamily: 'Montserrat',
     fontSize: 16,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
@@ -63,6 +73,7 @@ class AppTextStyles {
   );
 
   static const TextStyle titleMedium = TextStyle(
+    fontFamily: 'Montserrat',
     fontSize: 15,
     fontWeight: FontWeight.w500,
     color: AppColors.textPrimary,
@@ -70,6 +81,7 @@ class AppTextStyles {
   );
 
   static const TextStyle titleSmall = TextStyle(
+    fontFamily: 'Montserrat',
     fontSize: 14,
     fontWeight: FontWeight.w500,
     color: AppColors.textPrimary,
@@ -77,24 +89,27 @@ class AppTextStyles {
   );
 
   // ─────────────────────────────────────────
-  // BODY — General content, descriptions
+  // BODY — Open Sans — Content, descriptions, reviews
   // ─────────────────────────────────────────
 
   static const TextStyle bodyLarge = TextStyle(
+    fontFamily: 'OpenSans',
     fontSize: 16,
     fontWeight: FontWeight.w400,
     color: AppColors.textPrimary,
-    height: 1.5,
+    height: 1.6,
   );
 
   static const TextStyle bodyMedium = TextStyle(
+    fontFamily: 'OpenSans',
     fontSize: 14,
     fontWeight: FontWeight.w400,
     color: AppColors.textSecondary,
-    height: 1.5,
+    height: 1.6,
   );
 
   static const TextStyle bodySmall = TextStyle(
+    fontFamily: 'OpenSans',
     fontSize: 12,
     fontWeight: FontWeight.w400,
     color: AppColors.textSecondary,
@@ -102,10 +117,11 @@ class AppTextStyles {
   );
 
   // ─────────────────────────────────────────
-  // LABEL — Tags, chips, badges, buttons
+  // LABEL — Open Sans — Chips, tags, badges
   // ─────────────────────────────────────────
 
   static const TextStyle labelLarge = TextStyle(
+    fontFamily: 'OpenSans',
     fontSize: 14,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
@@ -113,6 +129,7 @@ class AppTextStyles {
   );
 
   static const TextStyle labelMedium = TextStyle(
+    fontFamily: 'OpenSans',
     fontSize: 12,
     fontWeight: FontWeight.w500,
     color: AppColors.textSecondary,
@@ -120,6 +137,7 @@ class AppTextStyles {
   );
 
   static const TextStyle labelSmall = TextStyle(
+    fontFamily: 'OpenSans',
     fontSize: 11,
     fontWeight: FontWeight.w500,
     color: AppColors.textSecondary,
@@ -127,132 +145,188 @@ class AppTextStyles {
   );
 
   // ─────────────────────────────────────────
-  // SPECIFIC USE CASES
+  // DATA — JetBrains Mono — AI labels, match scores, percentages
   // ─────────────────────────────────────────
 
-  /// Onboarding screen title
-  static const TextStyle onboardingTitle = TextStyle(
-    fontSize: 24,
+  /// KBF match score — e.g. "92% Match"
+  static const TextStyle matchScore = TextStyle(
+    fontFamily: 'JetBrainsMono',
+    fontSize: 13,
     fontWeight: FontWeight.w700,
-    color: AppColors.textPrimary,
-    height: 1.3,
+    color: AppColors.primary,
+    letterSpacing: 0.0,
   );
 
-  /// Onboarding screen subtitle
+  /// LDA topic label — e.g. "Family Dining"
+  static const TextStyle ldaLabel = TextStyle(
+    fontFamily: 'JetBrainsMono',
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    color: AppColors.ldaTagText,
+    letterSpacing: 0.2,
+  );
+
+  /// Technical data label — e.g. "LDA Analysis", "KBF Score"
+  static const TextStyle dataLabel = TextStyle(
+    fontFamily: 'JetBrainsMono',
+    fontSize: 10,
+    fontWeight: FontWeight.w500,
+    color: AppColors.textSecondary,
+    letterSpacing: 0.5,
+  );
+
+  /// Large percentage — e.g. "95%" in the circular match indicator
+  static const TextStyle matchPercentage = TextStyle(
+    fontFamily: 'JetBrainsMono',
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+    color: AppColors.primary,
+    letterSpacing: -0.5,
+  );
+
+  // ─────────────────────────────────────────
+  // SPECIFIC SCREEN STYLES
+  // ─────────────────────────────────────────
+
+  static const TextStyle onboardingTitle = TextStyle(
+    fontFamily: 'Montserrat',
+    fontSize: 26,
+    fontWeight: FontWeight.w800,
+    color: AppColors.textPrimary,
+    height: 1.25,
+  );
+
   static const TextStyle onboardingSubtitle = TextStyle(
-    fontSize: 14,
+    fontFamily: 'OpenSans',
+    fontSize: 15,
     fontWeight: FontWeight.w400,
     color: AppColors.textSecondary,
     height: 1.6,
   );
 
-  /// Primary button text
   static const TextStyle buttonPrimary = TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w600,
+    fontFamily: 'Montserrat',
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
     color: Colors.white,
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   );
 
-  /// Secondary / outlined button text
   static const TextStyle buttonSecondary = TextStyle(
-    fontSize: 16,
+    fontFamily: 'Montserrat',
+    fontSize: 15,
     fontWeight: FontWeight.w600,
     color: AppColors.primary,
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   );
 
-  /// AppBar title
   static const TextStyle appBarTitle = TextStyle(
+    fontFamily: 'Montserrat',
     fontSize: 18,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w700,
     color: Colors.white,
   );
 
-  /// Restaurant name on card
   static const TextStyle restaurantName = TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w600,
+    fontFamily: 'Montserrat',
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
     height: 1.3,
   );
 
-  /// Restaurant cuisine / category tag
   static const TextStyle restaurantTag = TextStyle(
+    fontFamily: 'OpenSans',
     fontSize: 11,
     fontWeight: FontWeight.w500,
-    color: AppColors.secondary,
+    color: AppColors.primary,
     letterSpacing: 0.2,
   );
 
-  /// Star rating text
   static const TextStyle ratingText = TextStyle(
+    fontFamily: 'OpenSans',
     fontSize: 13,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w700,
     color: AppColors.star,
   );
 
-  /// Input field text
   static const TextStyle inputText = TextStyle(
+    fontFamily: 'OpenSans',
     fontSize: 15,
     fontWeight: FontWeight.w400,
     color: AppColors.textPrimary,
   );
 
-  /// Input field hint text
   static const TextStyle inputHint = TextStyle(
+    fontFamily: 'OpenSans',
     fontSize: 15,
     fontWeight: FontWeight.w400,
     color: AppColors.disabledText,
   );
 
-  /// Input field label
   static const TextStyle inputLabel = TextStyle(
+    fontFamily: 'OpenSans',
     fontSize: 13,
     fontWeight: FontWeight.w500,
     color: AppColors.textSecondary,
   );
 
-  /// Error text below input fields
   static const TextStyle errorText = TextStyle(
+    fontFamily: 'OpenSans',
     fontSize: 12,
     fontWeight: FontWeight.w400,
     color: AppColors.error,
   );
 
-  /// "Continue as Guest" or secondary link text
   static const TextStyle linkText = TextStyle(
+    fontFamily: 'OpenSans',
     fontSize: 14,
     fontWeight: FontWeight.w500,
-    color: AppColors.secondary,
+    color: AppColors.primary,
     decoration: TextDecoration.underline,
-    decorationColor: AppColors.secondary,
+    decorationColor: AppColors.primary,
+  );
+
+  static const TextStyle botMessage = TextStyle(
+    fontFamily: 'OpenSans',
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    color: AppColors.botBubbleText,
+    height: 1.55,
+  );
+
+  static const TextStyle userMessage = TextStyle(
+    fontFamily: 'OpenSans',
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    color: AppColors.userBubbleText,
+    height: 1.55,
   );
 
   // ─────────────────────────────────────────
   // DARK MODE OVERRIDES
   // ─────────────────────────────────────────
 
-  /// Body text for dark mode
   static const TextStyle bodyLargeDark = TextStyle(
+    fontFamily: 'OpenSans',
     fontSize: 16,
     fontWeight: FontWeight.w400,
     color: AppColors.darkOnSurface,
-    height: 1.5,
+    height: 1.6,
   );
 
   static const TextStyle bodyMediumDark = TextStyle(
+    fontFamily: 'OpenSans',
     fontSize: 14,
     fontWeight: FontWeight.w400,
-    color: AppColors.darkSecondary,
-    height: 1.5,
+    color: AppColors.darkTextSecondary,
+    height: 1.6,
   );
 
   // ─────────────────────────────────────────
   // HELPER
   // ─────────────────────────────────────────
 
-  /// Returns bodyLarge or bodyLargeDark based on current theme brightness
   static TextStyle adaptiveBody(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark
         ? bodyLargeDark
