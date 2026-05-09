@@ -2,13 +2,11 @@
 // FILE: lib/data/chat_service.dart
 //
 // HTTP service for the /chat endpoint on your Flask API.
-// Follows the same singleton pattern as ApiService.
 //
-// FLOW:
-//   Flutter sends message + all user preferences → Flask POST /chat
-//   Flask pre-filters restaurants by preference, then calls Gemini (RAG)
-//   Flask returns { "reply": "...", "restaurants": [...] }
-//   ChatService returns the map to ChatCubit
+// v3.1 CHANGES:
+//   - Returns full response map including relaxed_criteria,
+//     has_partial_match, and matched_filters per restaurant
+//     so ChatCubit + ChatScreen can render explainability chips.
 // ============================================================
 
 import 'dart:convert';
@@ -22,14 +20,17 @@ class ChatService {
 
   /// POSTs the user's message + all preference flags to Flask /chat.
   ///
-  /// WHY WE SEND ALL PREFERENCES:
-  /// Flask uses them to pre-filter restaurants BEFORE calling Gemini.
-  /// For example, if halal=true, Flask removes all non-halal restaurants
-  /// from the list it sends to Gemini — so Gemini only ever sees relevant
-  /// results. This makes the AI reply more accurate without any extra cost.
-  ///
-  /// Returns: { "reply": String, "restaurants": List<dynamic> }
-  /// Throws a descriptive String on failure.
+  /// Returns the full decoded response map:
+  ///   {
+  ///     "reply":             String,
+  ///     "restaurants":       List<Map>,   ← now includes matched_filters
+  ///     "model_used":        String,
+  ///     "search_used":       bool,
+  ///     "search_query":      String,
+  ///     "intent":            String,
+  ///     "relaxed_criteria":  List<String>,
+  ///     "has_partial_match": bool,
+  ///   }
   Future<Map<String, dynamic>> sendMessage({
     required String message,
     // Dietary

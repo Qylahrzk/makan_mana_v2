@@ -1,8 +1,10 @@
 // ============================================================
 // FILE: lib/logic/cubits/chat_cubit.dart
 //
-// Updated: ChatMessageModel.ai() now receives restaurants list
-// from the API response so they render as cards in chat_screen.
+// v3.1 CHANGES:
+//   - Extracts relaxed_criteria + has_partial_match from API response
+//   - Passes both into ChatMessageModel.ai() so the screen can render
+//     'Partial match' banners and explainability chips per message.
 // ============================================================
 
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -102,11 +104,27 @@ class ChatCubit extends Cubit<ChatState> {
           (response['reply'] as String?)?.trim() ??
           'Sorry, I could not understand that. Please try again.';
 
-      // Extract restaurant list from the API response for mini-cards
+      // Restaurant list — each item may include matched_filters
       final rawList = response['restaurants'] as List<dynamic>? ?? [];
       final restaurants = rawList.whereType<Map<String, dynamic>>().toList();
 
-      _messages.add(ChatMessageModel.ai(reply, restaurants: restaurants));
+      // NEW: explainability fields from v3.1 API
+      final rawRelaxed = response['relaxed_criteria'] as List<dynamic>? ?? [];
+      final relaxedCriteria = rawRelaxed.map((e) => e.toString()).toList();
+      final hasPartialMatch = response['has_partial_match'] as bool? ?? false;
+      final modelUsed = response['model_used'] as String? ?? '';
+      final searchUsed = response['search_used'] as bool? ?? false;
+
+      _messages.add(
+        ChatMessageModel.ai(
+          reply,
+          restaurants: restaurants,
+          relaxedCriteria: relaxedCriteria,
+          hasPartialMatch: hasPartialMatch,
+          modelUsed: modelUsed,
+          searchUsed: searchUsed,
+        ),
+      );
       emit(ChatLoaded(List.from(_messages)));
     } catch (e) {
       _messages.removeWhere((m) => m.isTyping);

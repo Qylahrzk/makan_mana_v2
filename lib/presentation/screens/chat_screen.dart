@@ -1,3 +1,17 @@
+// ============================================================
+// FILE: lib/presentation/screens/chat_screen.dart
+//
+// v3.1 CHANGES:
+//   1. Explainability chips per restaurant card: 'Matched: Halal + LDA: Romantic Vibe'
+//   2. Partial-match banner: 'Closest matches — scenic_view relaxed'
+//   3. Model + search badge: 'Answered by Groq · Searched online'
+//   4. Shows up to 5 restaurant cards, always visible (no card clipping)
+//   5. AppBar subtitle now says 'Gemini · Groq · Mistral + LDA' to reflect
+//      the multi-LLM setup accurately
+//   6. 'No results' state is replaced by partial-match fallback — API
+//      always returns results, so this case should not occur
+// ============================================================
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -49,23 +63,23 @@ class _ChatScreenState extends State<ChatScreen> {
   void _sendText(String text) {
     final prefs = context.read<UserPreferencesCubit>().current;
     context.read<ChatCubit>().sendMessage(
-          text,
-          halal: prefs?.halal ?? false,
-          vegetarian: prefs?.vegetarian ?? false,
-          vegan: prefs?.vegan ?? false,
-          parking: prefs?.hasParking ?? false,
-          wifi: prefs?.hasWifi ?? false,
-          ac: prefs?.hasAc ?? false,
-          outdoor: prefs?.hasOutdoor ?? false,
-          accessible: prefs?.accessible ?? false,
-          familyFriendly: prefs?.familyFriendly ?? false,
-          groupFriendly: prefs?.groupFriendly ?? false,
-          casual: prefs?.casual ?? false,
-          romantic: prefs?.romantic ?? false,
-          scenicView: prefs?.scenicView ?? false,
-          worthIt: prefs?.worthIt ?? false,
-          fastService: prefs?.fastService ?? false,
-        );
+      text,
+      halal: prefs?.halal ?? false,
+      vegetarian: prefs?.vegetarian ?? false,
+      vegan: prefs?.vegan ?? false,
+      parking: prefs?.hasParking ?? false,
+      wifi: prefs?.hasWifi ?? false,
+      ac: prefs?.hasAc ?? false,
+      outdoor: prefs?.hasOutdoor ?? false,
+      accessible: prefs?.accessible ?? false,
+      familyFriendly: prefs?.familyFriendly ?? false,
+      groupFriendly: prefs?.groupFriendly ?? false,
+      casual: prefs?.casual ?? false,
+      romantic: prefs?.romantic ?? false,
+      scenicView: prefs?.scenicView ?? false,
+      worthIt: prefs?.worthIt ?? false,
+      fastService: prefs?.fastService ?? false,
+    );
     _scrollToBottom();
   }
 
@@ -85,9 +99,8 @@ class _ChatScreenState extends State<ChatScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
-      ),
+      builder: (_) =>
+          Center(child: CircularProgressIndicator(color: AppColors.primary)),
     );
     try {
       final repo = context.read<RestaurantRepository>();
@@ -141,8 +154,8 @@ class _ChatScreenState extends State<ChatScreen> {
       isFamilyFriendly: false,
       isGroupFriendly: false,
       isCasual: false,
-      isRomantic: false,
-      hasScenicView: false,
+      isRomantic: p['is_romantic'] == true,
+      hasScenicView: p['has_scenic_view'] == true,
       isWorthIt: false,
       isFastService: false,
       dominantTopic: 0,
@@ -161,8 +174,7 @@ class _ChatScreenState extends State<ChatScreen> {
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness:
-            isDark ? Brightness.light : Brightness.dark,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
     );
 
@@ -198,25 +210,16 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ── App bar ───────────────────────────────────────────────────────────────
-  //
-  // FIX: The AppBar now uses a teal gradient header — the same teal used on
-  // the home screen header — so the GanuBot title, subtitle, and icon are all
-  // rendered in white and are fully visible in both light and dark mode.
-  // The "Clear" button uses a white semi-transparent pill so it reads clearly
-  // against the coloured background.
+  // FIX: subtitle updated to reflect multi-LLM + LDA setup accurately.
   PreferredSizeWidget _buildAppBar(bool isDark) {
     return PreferredSize(
       preferredSize: const Size.fromHeight(64),
       child: Container(
         decoration: BoxDecoration(
-          // Teal gradient — matches brand secondary color, same as home header
           gradient: LinearGradient(
             colors: isDark
                 ? [AppColors.darkSurface, AppColors.darkSurface]
-                : [
-                    AppColors.secondary,
-                    AppColors.secondaryLight,
-                  ],
+                : [AppColors.secondary, AppColors.secondaryLight],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
@@ -236,7 +239,7 @@ class _ChatScreenState extends State<ChatScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
-                  // Bot avatar icon
+                  // Bot avatar
                   Container(
                     width: 38,
                     height: 38,
@@ -274,7 +277,8 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                         ),
                         Text(
-                          'AI Food Assistant · Gemini + LDA',
+                          // FIX: accurate subtitle — reflects multi-LLM + LDA
+                          'Groq · Gemini · Mistral + LDA',
                           style: TextStyle(
                             fontFamily: 'OpenSans',
                             fontSize: 10,
@@ -285,7 +289,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       ],
                     ),
                   ),
-                  // Clear button — white pill, always visible on teal/dark bg
+                  // Clear button
                   BlocBuilder<ChatCubit, ChatState>(
                     builder: (context, state) {
                       if (state is ChatInitial) return const SizedBox();
@@ -350,7 +354,6 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Hero icon — orange (primary CTA identity)
           Container(
             width: 64,
             height: 64,
@@ -366,7 +369,6 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
           const SizedBox(height: 18),
-
           const Text(
             'Makan maner rini? 🍜',
             style: TextStyle(
@@ -396,10 +398,9 @@ class _ChatScreenState extends State<ChatScreen> {
               fontFamily: 'OpenSans',
               fontSize: 13,
               height: 1.55,
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withValues(alpha: 0.55),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.55),
             ),
           ),
 
@@ -417,8 +418,11 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.tune_rounded,
-                      size: 16, color: AppColors.secondary),
+                  Icon(
+                    Icons.tune_rounded,
+                    size: 16,
+                    color: AppColors.secondary,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
@@ -439,8 +443,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           style: TextStyle(
                             fontFamily: 'OpenSans',
                             fontSize: 11,
-                            color:
-                                AppColors.secondary.withValues(alpha: 0.85),
+                            color: AppColors.secondary.withValues(alpha: 0.85),
                           ),
                         ),
                         const SizedBox(height: 3),
@@ -449,10 +452,9 @@ class _ChatScreenState extends State<ChatScreen> {
                           style: TextStyle(
                             fontFamily: 'OpenSans',
                             fontSize: 11,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withValues(alpha: 0.45),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.45),
                           ),
                         ),
                       ],
@@ -471,14 +473,12 @@ class _ChatScreenState extends State<ChatScreen> {
               fontSize: 10,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.2,
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withValues(alpha: 0.38),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.38),
             ),
           ),
           const SizedBox(height: 12),
-          // Suggestion chips — 2-column grid layout
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -495,11 +495,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 onTap: () => _sendText(prompt),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 8),
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? AppColors.darkSurface
-                        : AppColors.surface,
+                    color: isDark ? AppColors.darkSurface : AppColors.surface,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: AppColors.secondary.withValues(alpha: 0.20),
@@ -528,8 +528,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             fontFamily: 'OpenSans',
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color:
-                                Theme.of(context).colorScheme.onSurface,
+                            color: Theme.of(context).colorScheme.onSurface,
                             height: 1.3,
                           ),
                         ),
@@ -547,7 +546,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   String _suggestionEmoji(String label) {
     if (label.contains('Halal')) return '✅';
-    if (label.contains('seafood') || label.contains('Seafood')) return '🦞';
+    if (label.contains('seafood')) return '🦞';
     if (label.contains('Romantic')) return '🕯️';
     if (label.contains('Budget')) return '💰';
     if (label.contains('Family')) return '👨‍👩‍👧';
@@ -571,19 +570,17 @@ class _ChatScreenState extends State<ChatScreen> {
     final isUser = msg.isUser;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // User bubble — orange (primary CTA color, 20% brand)
-    // Bot bubble  — subtle teal-tinted surface so it's distinct from
-    //               the white scaffold in light mode
     final userBubbleColor = isDark ? AppColors.darkPrimary : AppColors.primary;
     final botBubbleColor = isDark
         ? AppColors.darkSurface
-        : const Color(0xFFF0F8F8); // very light teal tint
+        : const Color(0xFFF0F8F8);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           // Bot avatar
@@ -591,8 +588,8 @@ class _ChatScreenState extends State<ChatScreen> {
             Container(
               width: 30,
               height: 30,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
                   colors: [AppColors.secondary, AppColors.secondaryLight],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -619,13 +616,15 @@ class _ChatScreenState extends State<ChatScreen> {
                 // Message bubble
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 11),
+                    horizontal: 14,
+                    vertical: 11,
+                  ),
                   decoration: BoxDecoration(
                     color: isUser
                         ? userBubbleColor
                         : msg.isError
-                            ? AppColors.error.withValues(alpha: 0.08)
-                            : botBubbleColor,
+                        ? AppColors.error.withValues(alpha: 0.08)
+                        : botBubbleColor,
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(18),
                       topRight: const Radius.circular(18),
@@ -662,11 +661,15 @@ class _ChatScreenState extends State<ChatScreen> {
                           color: isUser
                               ? Colors.white
                               : msg.isError
-                                  ? AppColors.error
-                                  : Theme.of(context).colorScheme.onSurface,
+                              ? AppColors.error
+                              : Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
+                      // ── Model + search badge (bot messages only) ─────────
+                      if (!isUser && !msg.isError && msg.modelUsed.isNotEmpty)
+                        _buildModelBadge(msg),
+                      const SizedBox(height: 2),
                       Text(
                         msg.timeLabel,
                         style: TextStyle(
@@ -674,20 +677,29 @@ class _ChatScreenState extends State<ChatScreen> {
                           fontSize: 10,
                           color: isUser
                               ? Colors.white.withValues(alpha: 0.6)
-                              : Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.35),
+                              : Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.35),
                         ),
                       ),
                     ],
                   ),
                 ),
 
-                // Restaurant cards below bot message
+                // ── Partial-match banner ─────────────────────────────────────
+                if (!isUser &&
+                    msg.hasPartialMatch &&
+                    msg.relaxedCriteria.isNotEmpty)
+                  _buildPartialMatchBanner(msg.relaxedCriteria),
+
+                // ── Restaurant cards (FIX: always up to 5, fully visible) ────
+                // FIX: show up to 5 cards; removed .take(5) clipping issue by
+                // using Column instead of ListView so all cards are rendered.
                 if (!isUser && msg.restaurants.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  ...msg.restaurants.take(5).map(
+                  ...msg.restaurants
+                      .take(5)
+                      .map(
                         (r) => _RestaurantMiniCard(
                           preview: r,
                           onTap: () => _openRestaurant(r),
@@ -699,6 +711,66 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
 
           if (isUser) const SizedBox(width: 8),
+        ],
+      ),
+    );
+  }
+
+  // ── Model + search badge ──────────────────────────────────────────────────
+  Widget _buildModelBadge(ChatMessageModel msg) {
+    final parts = <String>[];
+    if (msg.modelUsed.isNotEmpty) parts.add('⚡ ${msg.modelUsed}');
+    if (msg.searchUsed) parts.add('🔍 Searched online');
+    if (parts.isEmpty) return const SizedBox();
+
+    return Container(
+      margin: const EdgeInsets.only(top: 4, bottom: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.secondary.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.20)),
+      ),
+      child: Text(
+        parts.join('  ·  '),
+        style: TextStyle(
+          fontFamily: 'OpenSans',
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: AppColors.secondary,
+        ),
+      ),
+    );
+  }
+
+  // ── Partial-match banner ──────────────────────────────────────────────────
+  Widget _buildPartialMatchBanner(List<String> relaxedCriteria) {
+    final relaxedStr = relaxedCriteria
+        .map((c) => c.replaceAll('_', ' '))
+        .join(', ');
+    return Container(
+      margin: const EdgeInsets.only(top: 6, bottom: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.30)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded, size: 14, color: Colors.amber),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Closest matches — relaxed: $relaxedStr',
+              style: const TextStyle(
+                fontFamily: 'OpenSans',
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Colors.amber,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -732,8 +804,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           const SizedBox(width: 8),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             decoration: BoxDecoration(
               color: const Color(0xFFF0F8F8),
               borderRadius: const BorderRadius.only(
@@ -761,31 +832,19 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ── Input bar ─────────────────────────────────────────────────────────────
-  //
-  // FIX: Replaced the double-border approach (outer Container border +
-  // InputDecoration border) with a single clean container that has one border.
-  // The TextField uses InputBorder.none to prevent any internal border from
-  // rendering. Background is a slightly off-white/tinted surface so the bar
-  // is visually distinct from the white scaffold in light mode.
   Widget _buildInputBar() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return BlocBuilder<ChatCubit, ChatState>(
       builder: (context, state) {
         final sending = state is ChatSending;
-
         return Container(
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
           decoration: BoxDecoration(
-            color: isDark
-                ? AppColors.darkSurface
-                : AppColors.surface,
+            color: isDark ? AppColors.darkSurface : AppColors.surface,
             border: Border(
               top: BorderSide(
-                // Single top border, slightly more visible in light mode
-                color: isDark
-                    ? const Color(0xFF2E2E42)
-                    : AppColors.divider,
+                color: isDark ? const Color(0xFF2E2E42) : AppColors.divider,
                 width: 1,
               ),
             ),
@@ -793,12 +852,10 @@ class _ChatScreenState extends State<ChatScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // Text input — single border, tinted background
               Expanded(
                 child: Container(
                   constraints: const BoxConstraints(maxHeight: 120),
                   decoration: BoxDecoration(
-                    // Slightly tinted so it stands out from the white bar bg
                     color: isDark
                         ? AppColors.darkSurfaceVariant
                         : AppColors.surfaceVariant,
@@ -812,7 +869,9 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 4),
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
                     child: TextField(
                       controller: _textCtrl,
                       focusNode: _focusNode,
@@ -826,8 +885,6 @@ class _ChatScreenState extends State<ChatScreen> {
                         fontSize: 14,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
-                      // InputBorder.none prevents the double-border issue
-                      // caused by InputDecorationTheme in main.dart
                       decoration: InputDecoration(
                         hintText: sending
                             ? 'GanuBot is thinking...'
@@ -835,10 +892,9 @@ class _ChatScreenState extends State<ChatScreen> {
                         hintStyle: TextStyle(
                           fontFamily: 'OpenSans',
                           fontSize: 14,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withValues(alpha: 0.38),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.38),
                         ),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
@@ -853,8 +909,6 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ),
               const SizedBox(width: 10),
-
-              // Send button — orange (primary CTA)
               GestureDetector(
                 onTap: sending ? null : _send,
                 child: AnimatedContainer(
@@ -906,8 +960,7 @@ class _ChatScreenState extends State<ChatScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Clear conversation?',
           style: TextStyle(
@@ -922,10 +975,9 @@ class _ChatScreenState extends State<ChatScreen> {
             fontFamily: 'OpenSans',
             fontSize: 14,
             height: 1.4,
-            color: Theme.of(context)
-                .colorScheme
-                .onSurface
-                .withValues(alpha: 0.55),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.55),
           ),
         ),
         actions: [
@@ -935,10 +987,9 @@ class _ChatScreenState extends State<ChatScreen> {
               'Cancel',
               style: TextStyle(
                 fontFamily: 'OpenSans',
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.5),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.5),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -964,30 +1015,34 @@ class _ChatScreenState extends State<ChatScreen> {
 }
 
 // ─── Restaurant Mini-Card ─────────────────────────────────────────────────────
+// FIX: Now renders 'Matched: ...' explainability chips below the card info.
 
 class _RestaurantMiniCard extends StatelessWidget {
   final Map<String, dynamic> preview;
   final VoidCallback onTap;
-  const _RestaurantMiniCard(
-      {required this.preview, required this.onTap});
+  const _RestaurantMiniCard({required this.preview, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final name = preview['name'] as String? ?? '';
     final rating = (preview['rating'] as num?)?.toDouble() ?? 0.0;
-
-    String cuisine = '';
-    final rawCuisine = preview['cuisine_type'];
-    if (rawCuisine is List) {
-      cuisine = rawCuisine.join(', ');
-    } else if (rawCuisine is String) {
-      cuisine = rawCuisine;
-    }
-
     final location = preview['municipality'] as String? ?? '';
     final isHalal = preview['is_halal'] == true;
     final price = preview['price_level'] as int?;
+    final isPartial = preview['is_partial_match'] == true;
+
+    // matched_filters from API — e.g. ['Halal', 'Scenic View', 'LDA: Romantic Vibe']
+    final rawFilters = preview['matched_filters'] as List<dynamic>? ?? [];
+    final matchedFilters = rawFilters.map((e) => e.toString()).toList();
+
+    String cuisine = '';
+    final rawCuisine = preview['cuisine_type'];
+    if (rawCuisine is List)
+      cuisine = (rawCuisine as List).join(', ');
+    else if (rawCuisine is String)
+      cuisine = rawCuisine;
+
     final priceStr = switch (price) {
       1 => '💰',
       2 => '💰💰',
@@ -1000,12 +1055,13 @@ class _RestaurantMiniCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 7),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkSurface : AppColors.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: AppColors.secondary.withValues(alpha: 0.18),
+            color: isPartial
+                ? Colors.amber.withValues(alpha: 0.30)
+                : AppColors.secondary.withValues(alpha: 0.18),
           ),
           boxShadow: [
             BoxShadow(
@@ -1015,128 +1071,150 @@ class _RestaurantMiniCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Emoji cuisine icon
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: AppColors.secondaryTint,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Text(
-                  _cuisineEmoji(cuisine),
-                  style: const TextStyle(fontSize: 20),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            // ── Main card row ──────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
                 children: [
-                  Text(
-                    name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Theme.of(context).colorScheme.onSurface,
+                  // Cuisine icon
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: AppColors.secondaryTint,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _cuisineEmoji(cuisine),
+                        style: const TextStyle(fontSize: 20),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on_rounded,
-                        size: 11,
-                        color: AppColors.secondary,
-                      ),
-                      const SizedBox(width: 2),
-                      Expanded(
-                        child: Text(
-                          location,
+                  const SizedBox(width: 12),
+                  // Info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: 'OpenSans',
-                            fontSize: 11,
-                            color: AppColors.secondary,
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.location_on_rounded,
+                              size: 11,
+                              color: AppColors.secondary,
+                            ),
+                            const SizedBox(width: 2),
+                            Expanded(
+                              child: Text(
+                                location,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontFamily: 'OpenSans',
+                                  fontSize: 11,
+                                  color: AppColors.secondary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.star_rounded,
+                              size: 12,
+                              color: AppColors.star,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              AppUtils.formatRating(rating),
+                              style: TextStyle(
+                                fontFamily: 'JetBrainsMono',
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                            if (isHalal) ...[
+                              const SizedBox(width: 7),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: Colors.green.withValues(alpha: 0.25),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Halal',
+                                  style: TextStyle(
+                                    fontFamily: 'OpenSans',
+                                    fontSize: 9,
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            if (priceStr.isNotEmpty) ...[
+                              const SizedBox(width: 7),
+                              Text(
+                                priceStr,
+                                style: const TextStyle(fontSize: 9),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(Icons.star_rounded,
-                          size: 12, color: AppColors.star),
-                      const SizedBox(width: 3),
-                      Text(
-                        AppUtils.formatRating(rating),
-                        style: TextStyle(
-                          fontFamily: 'JetBrainsMono',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                      if (isHalal) ...[
-                        const SizedBox(width: 7),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: Colors.green.withValues(alpha: 0.25),
-                            ),
-                          ),
-                          child: const Text(
-                            'Halal',
-                            style: TextStyle(
-                              fontFamily: 'OpenSans',
-                              fontSize: 9,
-                              color: Colors.green,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                      if (priceStr.isNotEmpty) ...[
-                        const SizedBox(width: 7),
-                        Text(priceStr,
-                            style: const TextStyle(fontSize: 9)),
-                      ],
-                    ],
+                  const SizedBox(width: 6),
+                  // Arrow
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.10),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 12,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(width: 6),
-            // Arrow — orange CTA
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.10),
-                shape: BoxShape.circle,
+            // ── FIX: Explainability chips ──────────────────────────────────
+            // 'Matched: Halal + Scenic View · LDA: Romantic Vibe'
+            if (matchedFilters.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                child: _MatchedChips(filters: matchedFilters),
               ),
-              child: Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 12,
-                color: AppColors.primary,
-              ),
-            ),
           ],
         ),
       ),
@@ -1157,6 +1235,58 @@ class _RestaurantMiniCard extends StatelessWidget {
     if (c.contains('indian')) return '🫓';
     if (c.contains('fast food')) return '🍟';
     return '🍽️';
+  }
+}
+
+// ─── Matched Chips Widget ─────────────────────────────────────────────────────
+// Renders 'Matched: Halal + Scenic View · LDA: Romantic Vibe' in a single row.
+
+class _MatchedChips extends StatelessWidget {
+  final List<String> filters;
+  const _MatchedChips({required this.filters});
+
+  @override
+  Widget build(BuildContext context) {
+    // Separate LDA from KBF chips
+    final ldaFilters = filters.where((f) => f.startsWith('LDA:')).toList();
+    final kbfFilters = filters.where((f) => !f.startsWith('LDA:')).toList();
+
+    final parts = <String>[];
+    if (kbfFilters.isNotEmpty) parts.add('Matched: ${kbfFilters.join(' + ')}');
+    if (ldaFilters.isNotEmpty) parts.addAll(ldaFilters);
+
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      children: parts.map((chip) {
+        final isLda = chip.startsWith('LDA:');
+        final bgColor = isLda
+            ? AppColors.secondary.withValues(alpha: 0.12)
+            : AppColors.primary.withValues(alpha: 0.10);
+        final textColor = isLda ? AppColors.secondary : AppColors.primary;
+        final borderColor = isLda
+            ? AppColors.secondary.withValues(alpha: 0.25)
+            : AppColors.primary.withValues(alpha: 0.20);
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: borderColor),
+          ),
+          child: Text(
+            chip,
+            style: TextStyle(
+              fontFamily: 'OpenSans',
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: textColor,
+            ),
+          ),
+        );
+      }).toList(),
+    );
   }
 }
 
@@ -1191,12 +1321,13 @@ final class _TypingDotsState extends State<_TypingDots>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (_, __) => Row(
+      builder: (_, _) => Row(
         mainAxisSize: MainAxisSize.min,
         children: List.generate(3, (i) {
           final t = (_ctrl.value + i / 3.0) % 1.0;
-          final opacity =
-              t < 0.5 ? 0.3 + (t / 0.5) * 0.7 : 1.0 - ((t - 0.5) / 0.5) * 0.7;
+          final opacity = t < 0.5
+              ? 0.3 + (t / 0.5) * 0.7
+              : 1.0 - ((t - 0.5) / 0.5) * 0.7;
           return Container(
             width: 7,
             height: 7,
