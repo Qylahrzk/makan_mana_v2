@@ -482,7 +482,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   Widget _buildTopBar() {
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -496,19 +496,10 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                     Text(
                       'Discovery',
                       style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
                         letterSpacing: -0.5,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    Text(
-                      'Kuala Terengganu',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.45),
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                   ],
@@ -853,7 +844,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.secondary,
+                  color: AppColors.primary,
                 ),
               ),
             ),
