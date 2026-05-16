@@ -12,7 +12,7 @@ import 'data/supabase_service.dart';
 import 'data/chat_service.dart';
 import 'logic/cubits/auth_cubit.dart';
 import 'logic/cubits/recommendation_cubit.dart';
-import 'logic/cubits/wishlist_cubit.dart';
+import 'logic/cubits/favourite_cubit.dart';
 import 'logic/cubits/profile_cubit.dart';
 import 'logic/cubits/chat_cubit.dart';
 import 'logic/cubits/theme_cubit.dart';
@@ -57,8 +57,7 @@ class MyApp extends StatelessWidget {
           BlocProvider<ThemeCubit>.value(value: themeCubit),
 
           BlocProvider(
-            create: (context) =>
-                UserPreferencesCubit(Supabase.instance.client),
+            create: (context) => UserPreferencesCubit(Supabase.instance.client),
           ),
 
           BlocProvider(
@@ -69,18 +68,16 @@ class MyApp extends StatelessWidget {
           ),
 
           BlocProvider(
-            create: (context) =>
-                AuthCubit(context.read<SupabaseService>()),
+            create: (context) => AuthCubit(context.read<SupabaseService>()),
+          ),
+
+          BlocProvider(
+            create: (context) => ProfileCubit(context.read<SupabaseService>()),
           ),
 
           BlocProvider(
             create: (context) =>
-                ProfileCubit(context.read<SupabaseService>()),
-          ),
-
-          BlocProvider(
-            create: (context) =>
-                WishlistCubit(context.read<SupabaseService>()),
+                FavouriteCubit(context.read<SupabaseService>()),
           ),
 
           BlocProvider<ChatCubit>(
@@ -205,8 +202,7 @@ class MyApp extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   // Orange outline button — secondary CTA
                   foregroundColor: AppColors.primary,
-                  side: const BorderSide(
-                      color: AppColors.primary, width: 1.5),
+                  side: const BorderSide(color: AppColors.primary, width: 1.5),
                   textStyle: const TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 15,
@@ -262,16 +258,14 @@ class MyApp extends StatelessWidget {
                 ),
               ),
 
-              dividerTheme:
-                  const DividerThemeData(color: AppColors.divider),
+              dividerTheme: const DividerThemeData(color: AppColors.divider),
 
               cardTheme: CardThemeData(
                 color: AppColors.surface,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
-                  side: const BorderSide(
-                      color: AppColors.divider, width: 1),
+                  side: const BorderSide(color: AppColors.divider, width: 1),
                 ),
               ),
             ),
@@ -469,16 +463,14 @@ class MyApp extends StatelessWidget {
                 ),
               ),
 
-              dividerTheme:
-                  const DividerThemeData(color: Color(0xFF2E2E42)),
+              dividerTheme: const DividerThemeData(color: Color(0xFF2E2E42)),
 
               cardTheme: CardThemeData(
                 color: AppColors.darkSurface,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
-                  side: const BorderSide(
-                      color: Color(0xFF2E2E42), width: 1),
+                  side: const BorderSide(color: Color(0xFF2E2E42), width: 1),
                 ),
               ),
 

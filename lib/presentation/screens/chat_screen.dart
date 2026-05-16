@@ -1038,9 +1038,9 @@ class _RestaurantMiniCard extends StatelessWidget {
 
     String cuisine = '';
     final rawCuisine = preview['cuisine_type'];
-    if (rawCuisine is List)
-      cuisine = (rawCuisine as List).join(', ');
-    else if (rawCuisine is String)
+    if (rawCuisine is List) {
+      cuisine = (rawCuisine).join(', ');
+    } else if (rawCuisine is String)
       cuisine = rawCuisine;
 
     final priceStr = switch (price) {

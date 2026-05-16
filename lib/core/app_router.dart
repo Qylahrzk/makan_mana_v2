@@ -14,7 +14,7 @@ import '../presentation/screens/search_screen.dart';
 import '../presentation/screens/restaurant_detail_screen.dart';
 import '../presentation/screens/recommendation_screen.dart';
 import '../presentation/screens/map_screen.dart';
-import '../presentation/screens/wishlist_screen.dart';
+import '../presentation/screens/favourite_screen.dart';
 import '../presentation/screens/profile_screen.dart';
 
 /// AppRouter
@@ -51,7 +51,6 @@ class AppRouter {
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
-
       // ── Auth flow ────────────────────────────────────────────────────────
       case AppRoutes.splash:
         return _fade(const SplashScreen());
@@ -84,8 +83,8 @@ class AppRouter {
       case AppRoutes.map:
         return _slide(const MapScreen());
 
-      case AppRoutes.wishlist:
-        return _slide(const WishlistScreen());
+      case AppRoutes.favourite:
+        return _slide(const FavouriteScreen());
 
       case AppRoutes.profile:
         return _slide(const ProfileScreen());
@@ -98,12 +97,14 @@ class AppRouter {
       case AppRoutes.recommendation:
         final args = settings.arguments as RecommendationArgs?;
         if (args == null) return _error(settings.name);
-        return _slide(RecommendationScreen(
-          recommendations:   args.recommendations,
-          selectedRestaurant: args.selectedRestaurant,
-          isFromApi:         args.isFromApi,
-          relaxedFilters:    args.relaxedFilters,
-        ));
+        return _slide(
+          RecommendationScreen(
+            recommendations: args.recommendations,
+            selectedRestaurant: args.selectedRestaurant,
+            isFromApi: args.isFromApi,
+            relaxedFilters: args.relaxedFilters,
+          ),
+        );
 
       default:
         return _error(settings.name);
@@ -119,10 +120,7 @@ class AppRouter {
       transitionDuration: const Duration(milliseconds: 350),
       reverseTransitionDuration: const Duration(milliseconds: 250),
       transitionsBuilder: (_, animation, _, child) => FadeTransition(
-        opacity: CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeInOut,
-        ),
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeInOut),
         child: child,
       ),
     );
@@ -139,24 +137,23 @@ class AppRouter {
           begin: const Offset(1.0, 0.0),
           end: Offset.zero,
         ).chain(CurveTween(curve: Curves.easeOutCubic));
-        return SlideTransition(
-          position: animation.drive(tween),
-          child: child,
-        );
+        return SlideTransition(position: animation.drive(tween), child: child);
       },
     );
   }
 
   /// 404 fallback
   static PageRoute<T> _error<T>(String? name) {
-    return _fade(Scaffold(
-      body: Center(
-        child: Text(
-          'No route defined for "$name"',
-          style: const TextStyle(color: Colors.red),
+    return _fade(
+      Scaffold(
+        body: Center(
+          child: Text(
+            'No route defined for "$name"',
+            style: const TextStyle(color: Colors.red),
+          ),
         ),
       ),
-    ));
+    );
   }
 }
 

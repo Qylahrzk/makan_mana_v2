@@ -250,7 +250,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '997 restaurants across Terengganu,\nrecommended just for you.',
+                        '994 restaurants across Terengganu,\nrecommended just for you.',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[500],

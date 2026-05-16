@@ -46,7 +46,7 @@ class AppRoutes {
   static const String recommendation = '/recommendation';
   static const String restaurantDetail = '/restaurant-detail';
   static const String map = '/map';
-  static const String wishlist = '/wishlist';
+  static const String favourite = '/favourite';
   static const String profile = '/profile';
 }
 
@@ -58,7 +58,7 @@ class SupabaseTables {
   SupabaseTables._();
 
   static const String users = 'users';
-  static const String wishlists = 'wishlists';
+  static const String favourites = 'favourites';
   static const String restaurantProfiles = 'restaurant_profiles';
 }
 
@@ -141,11 +141,11 @@ class UserColumns {
 }
 
 // ─────────────────────────────────────────
-// SUPABASE COLUMN NAMES — wishlists
+// SUPABASE COLUMN NAMES — favourites
 // ─────────────────────────────────────────
 
-class WishlistColumns {
-  WishlistColumns._();
+class FavouriteColumns {
+  FavouriteColumns._();
 
   static const String id = 'id';
   static const String createdAt = 'created_at';
@@ -327,10 +327,10 @@ class AppMessages {
   static const String passwordResetSent =
       'Password reset email sent. Check your inbox.';
 
-  static const String wishlistAdded = 'Added to your wishlist!';
-  static const String wishlistRemoved = 'Removed from wishlist.';
-  static const String wishlistEmpty =
-      'Your wishlist is empty. Start exploring!';
+  static const String favouriteAdded = 'Added to your favourite!';
+  static const String favouriteRemoved = 'Removed from favourite.';
+  static const String favouriteEmpty =
+      'Your favourite is empty. Start exploring!';
 
   static const String noResultsFound =
       'No restaurants found. Try adjusting your filters.';

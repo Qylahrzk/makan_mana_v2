@@ -48,7 +48,7 @@ import '../../core/restaurant_image.dart';
 import '../../core/guest_guard.dart';
 import '../../data/restaurant_repository.dart';
 import '../../logic/cubits/auth_cubit.dart';
-import '../../logic/cubits/wishlist_cubit.dart';
+import '../../logic/cubits/favourite_cubit.dart';
 import '../../logic/cubits/restaurant_detail_cubit.dart';
 import '../../models/restaurant_model.dart';
 
@@ -466,9 +466,9 @@ class _RestaurantDetailView extends StatelessWidget {
                               onTap: _shareRestaurant,
                             ),
                             const SizedBox(width: 10),
-                            BlocBuilder<WishlistCubit, WishlistState>(
+                            BlocBuilder<FavouriteCubit, FavouriteState>(
                               builder: (context, state) {
-                                final saved = state is WishlistLoaded
+                                final saved = state is FavouriteLoaded
                                     ? state.isSaved(restaurant.name)
                                     : false;
                                 return _floatingIconButton(
@@ -489,8 +489,8 @@ class _RestaurantDetailView extends StatelessWidget {
                                           .currentUser;
                                       if (user == null) return;
                                       context
-                                          .read<WishlistCubit>()
-                                          .toggleWishlist(
+                                          .read<FavouriteCubit>()
+                                          .toggleFavourite(
                                             userId: user.id,
                                             restaurant: restaurant,
                                           );

@@ -9,9 +9,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_colors.dart';
 import '../../logic/cubits/auth_cubit.dart';
 import '../../logic/cubits/profile_cubit.dart';
-import '../../logic/cubits/wishlist_cubit.dart';
+import '../../logic/cubits/favourite_cubit.dart';
 import '../../models/user_model.dart';
-import 'wishlist_screen.dart';
+import 'favourite_screen.dart';
 import 'welcome_screen.dart';
 
 // ─── SUS Google Form URL ──────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final authState = context.read<AuthCubit>().state;
     if (authState is AuthAuthenticated) {
       context.read<ProfileCubit>().loadProfile(authState.user.id);
-      context.read<WishlistCubit>().loadWishlist(authState.user.id);
+      context.read<FavouriteCubit>().loadFavourite(authState.user.id);
       context.read<UserPreferencesCubit>().loadPreferences(authState.user.id);
     }
   }
@@ -870,9 +870,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 iconColor: Colors.red,
                                 label: 'My Wishlist',
                                 trailing:
-                                    BlocBuilder<WishlistCubit, WishlistState>(
+                                    BlocBuilder<FavouriteCubit, FavouriteState>(
                                       builder: (_, state) {
-                                        if (state is WishlistLoaded &&
+                                        if (state is FavouriteLoaded &&
                                             state.items.isNotEmpty) {
                                           return _CountBadge(
                                             count: state.items.length,
@@ -885,7 +885,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const WishlistScreen(),
+                                    builder: (_) => const FavouriteScreen(),
                                   ),
                                 ),
                               ),

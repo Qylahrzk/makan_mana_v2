@@ -6,7 +6,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:makan_mana_v2/core/app_router.dart';
 import '../../core/app_colors.dart';
-import '../../core/app_text_styles.dart';
 import '../../core/app_utils.dart';
 import '../../core/nav_tab_proxy.dart';
 import '../../core/guest_guard.dart';
@@ -16,7 +15,7 @@ import '../../data/api_service.dart';
 import '../../data/location_service.dart';
 import '../../data/motion_service.dart';
 import '../../logic/cubits/auth_cubit.dart';
-import '../../logic/cubits/wishlist_cubit.dart';
+import '../../logic/cubits/favourite_cubit.dart';
 import '../../logic/cubits/recommendation_cubit.dart';
 import '../../logic/cubits/user_preferences_cubit.dart';
 import '../../models/restaurant_model.dart';
@@ -85,9 +84,9 @@ class _HomeScreenState extends State<HomeScreen> {
     UserPreferencesModel? loadedPrefs;
     final authState = context.read<AuthCubit>().state;
     if (authState is AuthAuthenticated) {
-      loadedPrefs = await context
-          .read<UserPreferencesCubit>()
-          .loadPreferences(authState.user.id);
+      loadedPrefs = await context.read<UserPreferencesCubit>().loadPreferences(
+        authState.user.id,
+      );
     }
     await _loadSections(preloadedPrefs: loadedPrefs);
   }
@@ -176,14 +175,14 @@ class _HomeScreenState extends State<HomeScreen> {
     ]);
   }
 
-  Future<void> _loadRecommended(
-      {UserPreferencesModel? preloadedPrefs}) async {
+  Future<void> _loadRecommended({UserPreferencesModel? preloadedPrefs}) async {
     try {
       final prefs =
           preloadedPrefs ?? context.read<UserPreferencesCubit>().current;
       final selectedCuisines = prefs?.cuisineTypes ?? [];
-      final singleCuisine =
-          selectedCuisines.length == 1 ? selectedCuisines.first : null;
+      final singleCuisine = selectedCuisines.length == 1
+          ? selectedCuisines.first
+          : null;
 
       final result = await ApiService.instance.getRecommendations(
         userLat: _userLat,
@@ -218,7 +217,8 @@ class _HomeScreenState extends State<HomeScreen> {
           final allLocal = await context
               .read<RestaurantRepository>()
               .getAllRestaurants();
-          filtered = allLocal
+          filtered =
+              allLocal
                   .where((r) => r.matchesAnyCuisine(selectedCuisines))
                   .toList()
                 ..sort((a, b) => b.rating.compareTo(a.rating));
@@ -271,18 +271,23 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final repo = context.read<RestaurantRepository>();
       final all = await repo.getAllRestaurants();
-      final withDist = all
-          .where((r) => r.lat != null && r.lon != null)
-          .map(
-            (r) => MapEntry(
-              r,
-              AppUtils.calculateDistance(
-                  _userLat, _userLon, r.lat!, r.lon!),
-            ),
-          )
-          .where((e) => e.value <= 30.0)
-          .toList()
-        ..sort((a, b) => a.value.compareTo(b.value));
+      final withDist =
+          all
+              .where((r) => r.lat != null && r.lon != null)
+              .map(
+                (r) => MapEntry(
+                  r,
+                  AppUtils.calculateDistance(
+                    _userLat,
+                    _userLon,
+                    r.lat!,
+                    r.lon!,
+                  ),
+                ),
+              )
+              .where((e) => e.value <= 30.0)
+              .toList()
+            ..sort((a, b) => a.value.compareTo(b.value));
       if (mounted) {
         setState(() {
           _nearby = withDist.take(10).map((e) => e.key).toList();
@@ -314,26 +319,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (min == 3.0) {
         // 3.0–3.99 ascending first, then 4.0+ descending
-        final band = list
-            .where((r) => r.rating >= 3.0 && r.rating < 4.0)
-            .toList()
-          ..sort((a, b) => a.rating.compareTo(b.rating));
-        final above = list
-            .where((r) => r.rating >= 4.0)
-            .toList()
+        final band =
+            list.where((r) => r.rating >= 3.0 && r.rating < 4.0).toList()
+              ..sort((a, b) => a.rating.compareTo(b.rating));
+        final above = list.where((r) => r.rating >= 4.0).toList()
           ..sort((a, b) => b.rating.compareTo(a.rating));
         return [...band, ...above].take(20).toList();
       }
 
       if (min == 4.0) {
         // 4.0–4.49 ascending first, then ≥4.5 descending
-        final band = list
-            .where((r) => r.rating >= 4.0 && r.rating < 4.5)
-            .toList()
-          ..sort((a, b) => a.rating.compareTo(b.rating));
-        final above = list
-            .where((r) => r.rating >= 4.5)
-            .toList()
+        final band =
+            list.where((r) => r.rating >= 4.0 && r.rating < 4.5).toList()
+              ..sort((a, b) => a.rating.compareTo(b.rating));
+        final above = list.where((r) => r.rating >= 4.5).toList()
           ..sort((a, b) => b.rating.compareTo(a.rating));
         return [...band, ...above].take(20).toList();
       }
@@ -352,10 +351,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // ── "All" — diversified mix ───────────────────────────────────────
     final excellent = list.where((r) => r.rating >= 4.5).toList();
-    final veryGood =
-        list.where((r) => r.rating >= 4.0 && r.rating < 4.5).toList();
-    final good =
-        list.where((r) => r.rating >= 3.0 && r.rating < 4.0).toList();
+    final veryGood = list
+        .where((r) => r.rating >= 4.0 && r.rating < 4.5)
+        .toList();
+    final good = list.where((r) => r.rating >= 3.0 && r.rating < 4.0).toList();
     final belowAvg = list.where((r) => r.rating < 3.0).toList();
 
     const quotas = [4, 3, 2, 1];
@@ -406,7 +405,8 @@ class _HomeScreenState extends State<HomeScreen> {
             content: Text('No $cuisine restaurants found nearby'),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
+              borderRadius: BorderRadius.circular(10),
+            ),
             margin: const EdgeInsets.all(16),
           ),
         );
@@ -459,20 +459,22 @@ class _HomeScreenState extends State<HomeScreen> {
       onAllowed: () {
         final user = context.read<AuthCubit>().currentUser;
         if (user == null) return;
-        context
-            .read<WishlistCubit>()
-            .toggleWishlist(userId: user.id, restaurant: r);
-        final nowSaved = context.read<WishlistCubit>().isSaved(r.name);
+        context.read<FavouriteCubit>().toggleFavourite(
+          userId: user.id,
+          restaurant: r,
+        );
+        final nowSaved = context.read<FavouriteCubit>().isSaved(r.name);
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
             SnackBar(
-              content: Text(nowSaved
-                  ? '❤️ Saved to wishlist'
-                  : 'Removed from wishlist'),
+              content: Text(
+                nowSaved ? '❤️ Saved to wishlist' : 'Removed from wishlist',
+              ),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                borderRadius: BorderRadius.circular(10),
+              ),
               margin: const EdgeInsets.all(16),
               duration: const Duration(seconds: 2),
             ),
@@ -485,14 +487,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     // Bottom nav bar height + safe area — so the last section isn't clipped
-    final bottomNavClearance =
-        MediaQuery.of(context).padding.bottom + 80;
+    final bottomNavClearance = MediaQuery.of(context).padding.bottom + 80;
 
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness:
-            isDark ? Brightness.light : Brightness.dark,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
     );
 
@@ -538,12 +538,13 @@ class _HomeScreenState extends State<HomeScreen> {
               SliverToBoxAdapter(child: _buildHeader()),
               const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
-              if (_isWalking)
-                SliverToBoxAdapter(child: _buildWalkingBanner()),
+              if (_isWalking) SliverToBoxAdapter(child: _buildWalkingBanner()),
 
               SliverToBoxAdapter(
                 child: _buildSectionHeader(
-                    emoji: '🍽️', title: 'Browse by Category'),
+                  emoji: '🍽️',
+                  title: 'Browse by Category',
+                ),
               ),
               SliverToBoxAdapter(child: _buildCategoryRow()),
 
@@ -555,13 +556,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   showSeeAll: _nearby.isNotEmpty,
                   onSeeAll: _nearby.isNotEmpty
                       ? () => Navigator.pushNamed(
-                            context,
-                            '/recommendation',
-                            arguments: RecommendationArgs(
-                              recommendations: _nearby,
-                              isFromApi: false,
-                            ),
-                          )
+                          context,
+                          '/recommendation',
+                          arguments: RecommendationArgs(
+                            recommendations: _nearby,
+                            isFromApi: false,
+                          ),
+                        )
                       : null,
                 ),
               ),
@@ -569,8 +570,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _loadingNearby
                     ? _buildSkeletonRow()
                     : _nearby.isEmpty
-                        ? _buildNearbyEmptyState()
-                        : _buildCardRow(_nearby),
+                    ? _buildNearbyEmptyState()
+                    : _buildCardRow(_nearby),
               ),
 
               SliverToBoxAdapter(
@@ -581,13 +582,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   showSeeAll: true,
                   onSeeAll: _recommended.isNotEmpty
                       ? () => Navigator.pushNamed(
-                            context,
-                            '/recommendation',
-                            arguments: RecommendationArgs(
-                              recommendations: _recommended,
-                              isFromApi: true,
-                            ),
-                          )
+                          context,
+                          '/recommendation',
+                          arguments: RecommendationArgs(
+                            recommendations: _recommended,
+                            isFromApi: true,
+                          ),
+                        )
                       : null,
                 ),
               ),
@@ -595,19 +596,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _loadingRecommended
                     ? _buildSkeletonRow()
                     : _errorRecommended
-                        ? _buildOfflineState(
-                            onRetry: () {
-                              setState(() {
-                                _loadingRecommended = true;
-                                _errorRecommended = false;
-                              });
-                              _loadRecommended();
-                            },
-                          )
-                        : _recommended.isEmpty
-                            ? _buildEmptyRecommendations()
-                            : _buildCardRow(_recommended,
-                                showFindSimilar: true),
+                    ? _buildOfflineState(
+                        onRetry: () {
+                          setState(() {
+                            _loadingRecommended = true;
+                            _errorRecommended = false;
+                          });
+                          _loadRecommended();
+                        },
+                      )
+                    : _recommended.isEmpty
+                    ? _buildEmptyRecommendations()
+                    : _buildCardRow(_recommended, showFindSimilar: true),
               ),
 
               SliverToBoxAdapter(
@@ -618,13 +618,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   showSeeAll: true,
                   onSeeAll: _allPopular.isNotEmpty
                       ? () => Navigator.pushNamed(
-                            context,
-                            '/recommendation',
-                            arguments: RecommendationArgs(
-                              recommendations: _allPopular,
-                              isFromApi: false,
-                            ),
-                          )
+                          context,
+                          '/recommendation',
+                          arguments: RecommendationArgs(
+                            recommendations: _allPopular,
+                            isFromApi: false,
+                          ),
+                        )
                       : null,
                 ),
               ),
@@ -635,25 +635,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _loadingPopular
                     ? _buildSkeletonRow()
                     : _errorPopular
-                        ? _buildOfflineState(
-                            onRetry: () {
-                              setState(() {
-                                _loadingPopular = true;
-                                _errorPopular = false;
-                              });
-                              _loadPopular();
-                            },
-                          )
-                        : _popular.isEmpty
-                            ? _buildEmptyState(
-                                'No restaurants found for this filter')
-                            : _buildCardRow(_popular),
+                    ? _buildOfflineState(
+                        onRetry: () {
+                          setState(() {
+                            _loadingPopular = true;
+                            _errorPopular = false;
+                          });
+                          _loadPopular();
+                        },
+                      )
+                    : _popular.isEmpty
+                    ? _buildEmptyState('No restaurants found for this filter')
+                    : _buildCardRow(_popular),
               ),
 
               // FIX: Dynamic bottom clearance so the last section is
               // never hidden behind the floating nav bar.
-              SliverToBoxAdapter(
-                  child: SizedBox(height: bottomNavClearance)),
+              SliverToBoxAdapter(child: SizedBox(height: bottomNavClearance)),
             ],
           ),
         ),
@@ -714,8 +712,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         onTap: _locationLoading ? null : _loadLocation,
                         child: Row(
                           children: [
-                            const Icon(Icons.location_on_rounded,
-                                size: 13, color: Colors.white70),
+                            const Icon(
+                              Icons.location_on_rounded,
+                              size: 13,
+                              color: Colors.white70,
+                            ),
                             const SizedBox(width: 3),
                             if (_locationLoading)
                               const SizedBox(
@@ -736,8 +737,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ),
                             const SizedBox(width: 2),
-                            const Icon(Icons.keyboard_arrow_down_rounded,
-                                size: 14, color: Colors.white70),
+                            const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 14,
+                              color: Colors.white70,
+                            ),
                           ],
                         ),
                       ),
@@ -754,8 +758,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               color: Colors.white.withValues(alpha: 0.2),
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color:
-                                    Colors.white.withValues(alpha: 0.5),
+                                color: Colors.white.withValues(alpha: 0.5),
                                 width: 1.5,
                               ),
                             ),
@@ -810,26 +813,33 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Row(
                         children: [
                           const SizedBox(width: 14),
-                          const Icon(Icons.search_rounded,
-                              color: AppColors.primary, size: 22),
+                          const Icon(
+                            Icons.search_rounded,
+                            color: AppColors.primary,
+                            size: 22,
+                          ),
                           const SizedBox(width: 10),
                           const Expanded(
                             child: Text(
                               'Search restaurants, cuisine...',
                               style: TextStyle(
-                                  color: Color(0xFFAAAAAA), fontSize: 14),
+                                color: Color(0xFFAAAAAA),
+                                fontSize: 14,
+                              ),
                             ),
                           ),
                           Container(
                             margin: const EdgeInsets.only(right: 8),
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: AppColors.primary
-                                  .withValues(alpha: 0.12),
+                              color: AppColors.primary.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Icon(Icons.tune_rounded,
-                                size: 18, color: AppColors.primary),
+                            child: const Icon(
+                              Icons.tune_rounded,
+                              size: 18,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ],
                       ),
@@ -876,8 +886,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
                 color: active
                     ? AppColors.star.withValues(alpha: 0.15)
@@ -886,10 +895,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 border: Border.all(
                   color: active
                       ? AppColors.star
-                      : Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.12),
+                      : Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.12),
                   width: active ? 1.5 : 1,
                 ),
               ),
@@ -902,10 +910,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       size: 13,
                       color: active
                           ? AppColors.star
-                          : Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withValues(alpha: 0.4),
+                          : Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.4),
                     ),
                     const SizedBox(width: 3),
                   ],
@@ -949,22 +956,29 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.directions_walk_rounded,
-              color: Colors.white, size: 20),
+          const Icon(
+            Icons.directions_walk_rounded,
+            color: Colors.white,
+            size: 20,
+          ),
           const SizedBox(width: 10),
           const Expanded(
             child: Text(
               "You're on the move! Showing restaurants near you.",
               style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600),
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           GestureDetector(
             onTap: () => setState(() => _isWalking = false),
-            child: const Icon(Icons.close_rounded,
-                color: Colors.white70, size: 18),
+            child: const Icon(
+              Icons.close_rounded,
+              color: Colors.white70,
+              size: 18,
+            ),
           ),
         ],
       ),
@@ -974,7 +988,8 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── Nearby empty state ─────────────────────────────────────────────────────
 
   Widget _buildNearbyEmptyState() {
-    final outsideTerengganu = _userLat < 3.8 ||
+    final outsideTerengganu =
+        _userLat < 3.8 ||
         _userLat > 6.2 ||
         _userLon < 102.3 ||
         _userLon > 103.5;
@@ -986,16 +1001,17 @@ class _HomeScreenState extends State<HomeScreen> {
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: Theme.of(context)
-                .colorScheme
-                .onSurface
-                .withValues(alpha: 0.08),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.08),
           ),
         ),
         child: Row(
           children: [
-            Text(outsideTerengganu ? '✈️' : '📍',
-                style: const TextStyle(fontSize: 28)),
+            Text(
+              outsideTerengganu ? '✈️' : '📍',
+              style: const TextStyle(fontSize: 28),
+            ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -1006,9 +1022,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         ? "You're outside Terengganu"
                         : 'No restaurants nearby',
                     style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Theme.of(context).colorScheme.onSurface),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
                   const SizedBox(height: 3),
                   Text(
@@ -1018,10 +1035,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       height: 1.4,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.55),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.55),
                     ),
                   ),
                 ],
@@ -1046,16 +1062,17 @@ class _HomeScreenState extends State<HomeScreen> {
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: Theme.of(context)
-                .colorScheme
-                .onSurface
-                .withValues(alpha: 0.08),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.08),
           ),
         ),
         child: Row(
           children: [
-            Text(hasCuisine ? '🍽️' : '✨',
-                style: const TextStyle(fontSize: 28)),
+            Text(
+              hasCuisine ? '🍽️' : '✨',
+              style: const TextStyle(fontSize: 28),
+            ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -1066,9 +1083,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         ? 'No ${prefs!.cuisineTypes.join(" or ")} restaurants found'
                         : 'No recommendations yet',
                     style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Theme.of(context).colorScheme.onSurface),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
                   const SizedBox(height: 3),
                   Text(
@@ -1078,10 +1096,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       height: 1.4,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.55),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.55),
                     ),
                   ),
                 ],
@@ -1131,12 +1148,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         'See All',
                         style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600),
+                          fontSize: 13,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                      Icon(Icons.chevron_right_rounded,
-                          size: 18, color: AppColors.primary),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 18,
+                        color: AppColors.primary,
+                      ),
                     ],
                   ),
                 ),
@@ -1150,10 +1171,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 subtitle,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.5),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.5),
                 ),
               ),
             ),
@@ -1204,8 +1224,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ── Card row ───────────────────────────────────────────────────────────────
 
-  Widget _buildCardRow(List<Restaurant> list,
-      {bool showFindSimilar = false}) {
+  Widget _buildCardRow(List<Restaurant> list, {bool showFindSimilar = false}) {
     return SizedBox(
       height: showFindSimilar ? 280 : 220,
       child: ListView.builder(
@@ -1219,8 +1238,7 @@ class _HomeScreenState extends State<HomeScreen> {
           showFindSimilar: showFindSimilar,
           onTap: () => _openDetail(list[i]),
           onWishlist: () => _toggleWishlist(list[i]),
-          onFindSimilar:
-              showFindSimilar ? () => _findSimilar(list[i]) : null,
+          onFindSimilar: showFindSimilar ? () => _findSimilar(list[i]) : null,
         ),
       ),
     );
@@ -1240,8 +1258,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.wifi_off_rounded,
-                color: Colors.orange, size: 22),
+            const Icon(Icons.wifi_off_rounded, color: Colors.orange, size: 22),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -1250,19 +1267,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Text(
                     'Could not reach server',
                     style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        color: Colors.orange),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      color: Colors.orange,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     'The AI server may be waking up. Try again.',
                     style: TextStyle(
                       fontSize: 11,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.7),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                 ],
@@ -1273,7 +1290,9 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: onRetry,
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 6),
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.orange,
                   borderRadius: BorderRadius.circular(8),
@@ -1281,9 +1300,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Text(
                   'Retry',
                   style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700),
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -1315,10 +1335,9 @@ class _HomeScreenState extends State<HomeScreen> {
           msg,
           style: TextStyle(
             fontSize: 13,
-            color: Theme.of(context)
-                .colorScheme
-                .onSurface
-                .withValues(alpha: 0.4),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.4),
           ),
         ),
       ),
@@ -1357,9 +1376,12 @@ class _ConvexBottomCurvePainter extends CustomPainter {
       path.moveTo(0, size.height);
       path.lineTo(0, size.height * 0.55 + dy);
       path.cubicTo(
-        size.width * 0.20, size.height * 0.55 + dy - 6,
-        size.width * 0.80, size.height * 0.55 + dy - 6,
-        size.width, size.height * 0.55 + dy,
+        size.width * 0.20,
+        size.height * 0.55 + dy - 6,
+        size.width * 0.80,
+        size.height * 0.55 + dy - 6,
+        size.width,
+        size.height * 0.55 + dy,
       );
       path.lineTo(size.width, size.height);
       path.close();
@@ -1368,8 +1390,7 @@ class _ConvexBottomCurvePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_ConvexBottomCurvePainter old) =>
-      old.bgColor != bgColor;
+  bool shouldRepaint(_ConvexBottomCurvePainter old) => old.bgColor != bgColor;
 }
 
 // ─── Category Chip ────────────────────────────────────────────────────────────
@@ -1378,8 +1399,11 @@ class _CategoryChip extends StatelessWidget {
   final String label;
   final String emoji;
   final VoidCallback onTap;
-  const _CategoryChip(
-      {required this.label, required this.emoji, required this.onTap});
+  const _CategoryChip({
+    required this.label,
+    required this.emoji,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1405,16 +1429,17 @@ class _CategoryChip extends StatelessWidget {
                 ],
               ),
               child: Center(
-                  child: Text(emoji,
-                      style: const TextStyle(fontSize: 26))),
+                child: Text(emoji, style: const TextStyle(fontSize: 26)),
+              ),
             ),
             const SizedBox(height: 6),
             Text(
               label,
               style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -1448,35 +1473,35 @@ class _RestaurantCard extends StatelessWidget {
   });
 
   Widget _gradientFallback() => Container(
-        height: 108,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.secondary.withValues(alpha: 0.75),
-              AppColors.primary.withValues(alpha: 0.55),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    height: 108,
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          AppColors.secondary.withValues(alpha: 0.75),
+          AppColors.primary.withValues(alpha: 0.55),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+    ),
+    child: Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.restaurant_rounded, color: Colors.white, size: 30),
+          const SizedBox(height: 4),
+          Text(
+            restaurant.cuisineType,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.restaurant_rounded,
-                  color: Colors.white, size: 30),
-              const SizedBox(height: 4),
-              Text(
-                restaurant.cuisineType,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -1485,7 +1510,7 @@ class _RestaurantCard extends StatelessWidget {
         ? AppUtils.calculateDistance(userLat, userLon, r.lat!, r.lon!)
         : null;
     final attrs = r.activeAttributes;
-    final isSaved = context.watch<WishlistCubit>().isSaved(r.name);
+    final isSaved = context.watch<FavouriteCubit>().isSaved(r.name);
 
     return GestureDetector(
       onTap: onTap,
@@ -1511,7 +1536,8 @@ class _RestaurantCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(20)),
+                    top: Radius.circular(20),
+                  ),
                   child: CachedNetworkImage(
                     imageUrl: RestaurantImage.getUrl(
                       r.cuisineType.isNotEmpty ? r.cuisineType : 'Other',
@@ -1528,7 +1554,8 @@ class _RestaurantCard extends StatelessWidget {
                 Positioned.fill(
                   child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(20)),
+                      top: Radius.circular(20),
+                    ),
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -1548,7 +1575,9 @@ class _RestaurantCard extends StatelessWidget {
                   left: 8,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 7, vertical: 3),
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.45),
                       borderRadius: BorderRadius.circular(20),
@@ -1556,9 +1585,10 @@ class _RestaurantCard extends StatelessWidget {
                     child: Text(
                       r.cuisineType,
                       style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700),
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -1571,10 +1601,9 @@ class _RestaurantCard extends StatelessWidget {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surface
-                            .withValues(alpha: 0.9),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surface.withValues(alpha: 0.9),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -1584,10 +1613,9 @@ class _RestaurantCard extends StatelessWidget {
                         size: 16,
                         color: isSaved
                             ? Colors.red
-                            : Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withValues(alpha: 0.35),
+                            : Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.35),
                       ),
                     ),
                   ),
@@ -1597,22 +1625,28 @@ class _RestaurantCard extends StatelessWidget {
                   left: 8,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 7, vertical: 3),
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.55),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.star_rounded,
-                            size: 11, color: Color(0xFFFBBF24)),
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 11,
+                          color: Color(0xFFFBBF24),
+                        ),
                         const SizedBox(width: 3),
                         Text(
                           AppUtils.formatRating(r.rating),
                           style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700),
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ],
                     ),
@@ -1630,15 +1664,19 @@ class _RestaurantCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Theme.of(context).colorScheme.onSurface),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      Icon(Icons.location_on_rounded,
-                          size: 11, color: AppColors.secondary),
+                      Icon(
+                        Icons.location_on_rounded,
+                        size: 11,
+                        color: AppColors.secondary,
+                      ),
                       const SizedBox(width: 2),
                       Expanded(
                         child: Text(
@@ -1647,10 +1685,9 @@ class _RestaurantCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 11,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withValues(alpha: 0.5),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.5),
                           ),
                         ),
                       ),
@@ -1660,10 +1697,9 @@ class _RestaurantCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withValues(alpha: 0.4),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.4),
                           ),
                         ),
                     ],
@@ -1677,18 +1713,22 @@ class _RestaurantCard extends StatelessWidget {
                             (a) => Container(
                               margin: const EdgeInsets.only(right: 4),
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
-                                color: AppColors.secondary
-                                    .withValues(alpha: 0.08),
+                                color: AppColors.secondary.withValues(
+                                  alpha: 0.08,
+                                ),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 a,
                                 style: const TextStyle(
-                                    fontSize: 9,
-                                    color: AppColors.secondary,
-                                    fontWeight: FontWeight.w600),
+                                  fontSize: 9,
+                                  color: AppColors.secondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           )
@@ -1711,15 +1751,19 @@ class _RestaurantCard extends StatelessWidget {
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.auto_awesome_rounded,
-                                size: 12, color: Colors.white),
+                            Icon(
+                              Icons.auto_awesome_rounded,
+                              size: 12,
+                              color: Colors.white,
+                            ),
                             SizedBox(width: 4),
                             Text(
                               'Find Similar',
                               style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700),
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ],
                         ),
@@ -1755,8 +1799,10 @@ class _SkeletonCardState extends State<_SkeletonCard>
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     )..repeat(reverse: true);
-    _anim = Tween<double>(begin: 0.3, end: 0.7)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _anim = Tween<double>(
+      begin: 0.3,
+      end: 0.7,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -1784,7 +1830,8 @@ class _SkeletonCardState extends State<_SkeletonCard>
               decoration: BoxDecoration(
                 color: Colors.grey.withValues(alpha: _anim.value),
                 borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20)),
+                  top: Radius.circular(20),
+                ),
               ),
             ),
             Padding(
@@ -1807,11 +1854,11 @@ class _SkeletonCardState extends State<_SkeletonCard>
   }
 
   Widget _box(double w, double h) => Container(
-        width: w,
-        height: h,
-        decoration: BoxDecoration(
-          color: Colors.grey.withValues(alpha: _anim.value),
-          borderRadius: BorderRadius.circular(6),
-        ),
-      );
+    width: w,
+    height: h,
+    decoration: BoxDecoration(
+      color: Colors.grey.withValues(alpha: _anim.value),
+      borderRadius: BorderRadius.circular(6),
+    ),
+  );
 }

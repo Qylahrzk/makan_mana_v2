@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:async';
 import '../../core/app_colors.dart';
 import '../../core/app_utils.dart';
 import '../../core/app_constants.dart';
@@ -13,7 +14,7 @@ import '../../data/location_service.dart';
 import 'recommendation_screen.dart';
 import 'restaurant_detail_screen.dart';
 import '../../core/guest_guard.dart';
-import '../../logic/cubits/wishlist_cubit.dart';
+import '../../logic/cubits/favourite_cubit.dart';
 import '../../logic/cubits/auth_cubit.dart';
 import 'map_screen.dart';
 
@@ -52,6 +53,10 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   final List<String> _searchHistory = [];
   bool _isSearchFocused = false;
 
+  // ─── Debounce ─────────────────────────────────────────────────────────────
+  Timer? _searchDebounce;
+  static const Duration _debounceDuration = Duration(milliseconds: 300);
+
   // ─── Lifecycle ────────────────────────────────────────────────────────────
   @override
   void initState() {
@@ -63,9 +68,14 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     });
 
     _searchController.addListener(() {
-      setState(() {});
-      _applyFilters();
+      setState(() {}); // Update UI to show clear button
+      _debouncedSearch();
     });
+  }
+
+  void _debouncedSearch() {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(_debounceDuration, _applyFilters);
   }
 
   Future<void> _loadLocationThenRestaurants() async {
@@ -81,6 +91,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
     _listController.dispose();
@@ -146,6 +157,26 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     r.lon ?? userLon,
   );
 
+  // ─── IMPROVED: Query matching with proper text search ─────────────────────
+  bool _matchesQuery(Restaurant r, String query) {
+    if (query.isEmpty) return true;
+
+    final lowerQuery = query.toLowerCase().trim();
+
+    // Match restaurant name
+    if (r.name.toLowerCase().contains(lowerQuery)) return true;
+
+    // Match municipality (location)
+    if (r.municipality.toLowerCase().contains(lowerQuery)) return true;
+
+    // Match any individual cuisine type (not joined string)
+    for (final cuisine in r.cuisineTypes) {
+      if (cuisine.toLowerCase().contains(lowerQuery)) return true;
+    }
+
+    return false;
+  }
+
   // ─── Attribute matchers (UPDATED TO MATCH CONSTANTS) ──────────────────────
   bool _matchesDietary(Restaurant r, String label) {
     switch (label) {
@@ -194,17 +225,13 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     }
   }
 
-  // ─── Filter logic ──────────────────────────────────────────────────────────
+  // ─── Filter logic (IMPROVED) ──────────────────────────────────────────────
   void _applyFilters() {
     final q = _searchController.text.toLowerCase().trim();
 
     final results = _allRestaurants.where((r) {
-      final allCuisines = r.cuisineTypes.join(' ').toLowerCase();
-      final matchQuery =
-          q.isEmpty ||
-          r.name.toLowerCase().contains(q) ||
-          allCuisines.contains(q) ||
-          r.municipality.toLowerCase().contains(q);
+      // Use the improved query matching
+      final matchQuery = _matchesQuery(r, q);
 
       final matchCuisine =
           _activeCuisines.isEmpty ||
@@ -254,11 +281,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   }) {
     final q = _searchController.text.toLowerCase().trim();
     return _allRestaurants.where((r) {
-      final allCuisines = r.cuisineTypes.join(' ').toLowerCase();
-      final matchQuery =
-          q.isEmpty ||
-          r.name.toLowerCase().contains(q) ||
-          allCuisines.contains(q);
+      final matchQuery = _matchesQuery(r, q);
       final matchCuisine =
           cuisines.isEmpty || r.matchesAnyCuisine(cuisines.toList());
       final matchRating = r.rating >= minRating;
@@ -388,7 +411,10 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                                   child: _buildResultsHeader(),
                                 ),
                                 if (_filteredResults.isEmpty)
-                                  SliverFillRemaining(child: _buildEmptyState())
+                                  SliverFillRemaining(
+                                    child: _buildEmptyState(),
+                                    hasScrollBody: false,
+                                  )
                                 else
                                   SliverPadding(
                                     padding: const EdgeInsets.fromLTRB(
@@ -1259,8 +1285,9 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     ),
   );
 
-  // ─── Empty state ──────────────────────────────────────────────────────────
-  Widget _buildEmptyState() => Center(
+  // ─── Empty state (FIXED: added hasScrollBody) ──────────────────────────────
+  Widget _buildEmptyState() => SingleChildScrollView(
+    physics: const AlwaysScrollableScrollPhysics(),
     child: Padding(
       padding: const EdgeInsets.all(40),
       child: Column(
@@ -1727,9 +1754,9 @@ class _WishlistButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<WishlistCubit, WishlistState>(
+    return BlocBuilder<FavouriteCubit, FavouriteState>(
       builder: (context, state) {
-        final saved = state is WishlistLoaded
+        final saved = state is FavouriteLoaded
             ? state.isSaved(restaurant.name)
             : false;
         return GestureDetector(
@@ -1739,7 +1766,7 @@ class _WishlistButton extends StatelessWidget {
             onAllowed: () {
               final user = context.read<AuthCubit>().currentUser;
               if (user == null) return;
-              context.read<WishlistCubit>().toggleWishlist(
+              context.read<FavouriteCubit>().toggleFavourite(
                 userId: user.id,
                 restaurant: restaurant,
               );
