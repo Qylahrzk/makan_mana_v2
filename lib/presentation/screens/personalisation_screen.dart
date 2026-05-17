@@ -175,9 +175,9 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
                 style: TextStyle(
                   fontFamily: 'Montserrat',
                   fontWeight: FontWeight.w800,
+                  color: Colors.white,
                 ),
               ),
-              // CHANGE: teal AppBar
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               elevation: 0,
@@ -218,6 +218,7 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
           style: TextStyle(
             fontFamily: 'Montserrat',
             fontWeight: FontWeight.w800,
+            color: Colors.white,
           ),
         ),
         backgroundColor: AppColors.primary,
@@ -334,9 +335,9 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
           style: TextStyle(
             fontFamily: 'Montserrat',
             fontWeight: FontWeight.w800,
+            color: Colors.white,
           ),
         ),
-        // CHANGE: teal AppBar
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -704,7 +705,6 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
                       min: 5,
                       max: 500,
                       divisions: 19,
-                      // CHANGE: teal active slider
                       activeColor: AppColors.primary,
                       inactiveColor: AppColors.primaryTint,
                       onChanged: (v) => setState(
@@ -744,7 +744,7 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
 
           const SizedBox(height: 24),
 
-          // Save button — orange CTA
+          // Save button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -883,7 +883,6 @@ class _ToggleRow extends StatelessWidget {
         Switch.adaptive(
           value: value,
           onChanged: onChanged,
-          // CHANGE: teal active toggle (teal = identity/navigation)
           activeColor: AppColors.primary,
         ),
       ],

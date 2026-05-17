@@ -39,7 +39,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Restaurant> _recommended = [];
   List<Restaurant> _allPopular = [];
-  List<Restaurant> _popular = [];
   List<Restaurant> _nearby = [];
   bool _loadingRecommended = true;
   bool _loadingPopular = true;
@@ -47,9 +46,10 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _errorRecommended = false;
   bool _errorPopular = false;
 
-  double? _minRatingFilter;
+  // ── Nearby rating filter ───────────────────────────────────────────────────
+  double _nearbyMinRating = 0.0;
 
-  static const List<(String, double?)> _ratingOptions = [
+  static const List<(String, double?)> _nearbyRatingOptions = [
     ('All', null),
     ('3.0+', 3.0),
     ('4.0+', 4.0),
@@ -252,8 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (mounted) {
         setState(() {
-          _allPopular = sorted;
-          _popular = _applyRatingFilter(sorted);
+          _allPopular = sorted.take(20).toList();
           _loadingPopular = false;
         });
       }
@@ -299,77 +298,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Returns up to 20 restaurants for the active filter.
-  ///
-  /// "All" — diversified mix: 4 excellent (≥4.5), 3 very good (4.0–4.49),
-  ///          2 good (3.0–3.99), 1 below-avg (<3.0). Surplus from a sparse
-  ///          band is reallocated to the next-lower band.
-  ///
-  /// "3.0+" — show 3.0–3.99 restaurants FIRST (ascending rating so lowest
-  ///           come first and users can actually discover them), then
-  ///           append higher-rated restaurants to fill to 20.
-  ///
-  /// "4.0+" — show 4.0–4.49 first, then ≥4.5.
-  ///
-  /// "4.5+" — show ≥4.5 ascending so there's still some variety.
-  List<Restaurant> _applyRatingFilter(List<Restaurant> list) {
-    // ── Specific filter active ────────────────────────────────────────
-    if (_minRatingFilter != null) {
-      final min = _minRatingFilter!;
-
-      if (min == 3.0) {
-        // 3.0–3.99 ascending first, then 4.0+ descending
-        final band =
-            list.where((r) => r.rating >= 3.0 && r.rating < 4.0).toList()
-              ..sort((a, b) => a.rating.compareTo(b.rating));
-        final above = list.where((r) => r.rating >= 4.0).toList()
-          ..sort((a, b) => b.rating.compareTo(a.rating));
-        return [...band, ...above].take(20).toList();
-      }
-
-      if (min == 4.0) {
-        // 4.0–4.49 ascending first, then ≥4.5 descending
-        final band =
-            list.where((r) => r.rating >= 4.0 && r.rating < 4.5).toList()
-              ..sort((a, b) => a.rating.compareTo(b.rating));
-        final above = list.where((r) => r.rating >= 4.5).toList()
-          ..sort((a, b) => b.rating.compareTo(a.rating));
-        return [...band, ...above].take(20).toList();
-      }
-
-      if (min == 4.5) {
-        // ≥4.5 ascending so we see 4.5 restaurants, not just 5.0
-        return (list.where((r) => r.rating >= 4.5).toList()
-              ..sort((a, b) => a.rating.compareTo(b.rating)))
-            .take(20)
-            .toList();
-      }
-
-      // Generic fallback
-      return list.where((r) => r.rating >= min).take(20).toList();
+  /// Filters nearby restaurants by minimum rating
+  List<Restaurant> _applyNearbyRatingFilter(List<Restaurant> list) {
+    if (_nearbyMinRating == 0.0) {
+      return list;
     }
-
-    // ── "All" — diversified mix ───────────────────────────────────────
-    final excellent = list.where((r) => r.rating >= 4.5).toList();
-    final veryGood = list
-        .where((r) => r.rating >= 4.0 && r.rating < 4.5)
-        .toList();
-    final good = list.where((r) => r.rating >= 3.0 && r.rating < 4.0).toList();
-    final belowAvg = list.where((r) => r.rating < 3.0).toList();
-
-    const quotas = [4, 3, 2, 1];
-    final bands = [excellent, veryGood, good, belowAvg];
-    final result = <Restaurant>[];
-    int surplus = 0;
-
-    for (int i = 0; i < bands.length; i++) {
-      final wanted = quotas[i] + surplus;
-      final taken = bands[i].take(wanted).toList();
-      result.addAll(taken);
-      surplus = (wanted - taken.length).clamp(0, 5);
-    }
-
-    return result.take(10).toList();
+    return list.where((r) => r.rating >= _nearbyMinRating).toList();
   }
 
   void _switchToExploreTab() {
@@ -452,10 +386,10 @@ class _HomeScreenState extends State<HomeScreen> {
     context.read<RecommendationCubit>().getHybridRecommendations(r);
   }
 
-  void _toggleWishlist(Restaurant r) {
+  void _toggleFavourite(Restaurant r) {
     GuestGuard.check(
       context,
-      featureName: 'save restaurants to your wishlist',
+      featureName: 'save restaurants to your favourites',
       onAllowed: () {
         final user = context.read<AuthCubit>().currentUser;
         if (user == null) return;
@@ -469,7 +403,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ..showSnackBar(
             SnackBar(
               content: Text(
-                nowSaved ? '❤️ Saved to wishlist' : 'Removed from wishlist',
+                nowSaved ? 'Removed from favourites' : '❤️ Saved to favourites',
               ),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
@@ -548,11 +482,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               SliverToBoxAdapter(child: _buildCategoryRow()),
 
+              // ── NEARBY SECTION WITH RATING FILTER ──────────────────────
               SliverToBoxAdapter(
                 child: _buildSectionHeader(
-                  emoji: '📍',
+                  emoji: '',
                   title: 'Nearby Restaurants',
-                  subtitle: 'Within 30 km from you',
                   showSeeAll: _nearby.isNotEmpty,
                   onSeeAll: _nearby.isNotEmpty
                       ? () => Navigator.pushNamed(
@@ -566,19 +500,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       : null,
                 ),
               ),
+
               SliverToBoxAdapter(
                 child: _loadingNearby
                     ? _buildSkeletonRow()
                     : _nearby.isEmpty
                     ? _buildNearbyEmptyState()
-                    : _buildCardRow(_nearby),
+                    : _buildCardRow(_applyNearbyRatingFilter(_nearby)),
               ),
 
+              // ── RECOMMENDED SECTION ────────────────────────────────────
               SliverToBoxAdapter(
                 child: _buildSectionHeader(
-                  emoji: '✨',
+                  emoji: '',
                   title: 'Recommended For You',
-                  subtitle: 'Powered by AI · LDA + KBF',
                   showSeeAll: true,
                   onSeeAll: _recommended.isNotEmpty
                       ? () => Navigator.pushNamed(
@@ -610,11 +545,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     : _buildCardRow(_recommended, showFindSimilar: true),
               ),
 
+              // ── MOST POPULAR SECTION (NO RATING FILTER) ────────────────
               SliverToBoxAdapter(
                 child: _buildSectionHeader(
-                  emoji: '🔥',
+                  emoji: '',
                   title: 'Most Popular',
-                  subtitle: _popularSubtitle(),
                   showSeeAll: true,
                   onSeeAll: _allPopular.isNotEmpty
                       ? () => Navigator.pushNamed(
@@ -629,8 +564,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              SliverToBoxAdapter(child: _buildRatingFilterRow()),
-
               SliverToBoxAdapter(
                 child: _loadingPopular
                     ? _buildSkeletonRow()
@@ -644,9 +577,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           _loadPopular();
                         },
                       )
-                    : _popular.isEmpty
-                    ? _buildEmptyState('No restaurants found for this filter')
-                    : _buildCardRow(_popular),
+                    : _allPopular.isEmpty
+                    ? _buildEmptyState('No popular restaurants found')
+                    : _buildCardRow(_allPopular),
               ),
 
               // FIX: Dynamic bottom clearance so the last section is
@@ -657,25 +590,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
-  }
-
-  // ── Subtitle helper ────────────────────────────────────────────────────────
-
-  String _popularSubtitle() {
-    if (_minRatingFilter == null) {
-      return 'A mix of picks across Terengganu';
-    }
-    if (_minRatingFilter == 3.0) {
-      return 'Showing 3.0–3.99 ⭐ restaurants first';
-    }
-    if (_minRatingFilter == 4.0) {
-      return 'Showing 4.0–4.49 ⭐ restaurants first';
-    }
-    if (_minRatingFilter == 4.5) {
-      return 'Showing 4.5+ ⭐ restaurants (lowest first)';
-    }
-    return '${_popular.length} restaurants rated '
-        '${_minRatingFilter!.toStringAsFixed(1)}+';
   }
 
   // ── Header ────────────────────────────────────────────────────────────────
@@ -860,78 +774,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  // ── Rating filter row ──────────────────────────────────────────────────────
-
-  Widget _buildRatingFilterRow() {
-    return SizedBox(
-      height: 42,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-        itemCount: _ratingOptions.length,
-        itemBuilder: (_, i) {
-          final (label, value) = _ratingOptions[i];
-          final active = _minRatingFilter == value;
-          return GestureDetector(
-            onTap: () {
-              if (_minRatingFilter == value) return;
-              setState(() {
-                _minRatingFilter = value;
-                _popular = _applyRatingFilter(_allPopular);
-              });
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: active
-                    ? AppColors.star.withValues(alpha: 0.15)
-                    : Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: active
-                      ? AppColors.star
-                      : Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.12),
-                  width: active ? 1.5 : 1,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (value != null) ...[
-                    Icon(
-                      Icons.star_rounded,
-                      size: 13,
-                      color: active
-                          ? AppColors.star
-                          : Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.4),
-                    ),
-                    const SizedBox(width: 3),
-                  ],
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: active
-                          ? AppColors.star
-                          : Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
     );
   }
 
@@ -1237,7 +1079,7 @@ class _HomeScreenState extends State<HomeScreen> {
           userLon: _userLon,
           showFindSimilar: showFindSimilar,
           onTap: () => _openDetail(list[i]),
-          onWishlist: () => _toggleWishlist(list[i]),
+          onFavourite: () => _toggleFavourite(list[i]),
           onFindSimilar: showFindSimilar ? () => _findSimilar(list[i]) : null,
         ),
       ),
@@ -1459,7 +1301,7 @@ class _RestaurantCard extends StatelessWidget {
   final double userLon;
   final bool showFindSimilar;
   final VoidCallback onTap;
-  final VoidCallback onWishlist;
+  final VoidCallback onFavourite;
   final VoidCallback? onFindSimilar;
 
   const _RestaurantCard({
@@ -1468,7 +1310,7 @@ class _RestaurantCard extends StatelessWidget {
     required this.userLon,
     required this.showFindSimilar,
     required this.onTap,
-    required this.onWishlist,
+    required this.onFavourite,
     this.onFindSimilar,
   });
 
@@ -1562,8 +1404,8 @@ class _RestaurantCard extends StatelessWidget {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.3),
+                            Colors.black.withValues(alpha: 0.15),
+                            Colors.black.withValues(alpha: 0.15),
                           ],
                         ),
                       ),
@@ -1596,7 +1438,7 @@ class _RestaurantCard extends StatelessWidget {
                   top: 8,
                   right: 8,
                   child: GestureDetector(
-                    onTap: onWishlist,
+                    onTap: onFavourite,
                     child: Container(
                       width: 32,
                       height: 32,

@@ -109,7 +109,7 @@ class MyApp extends StatelessWidget {
                 tertiary: AppColors.tertiary,
                 onTertiary: Colors.white,
                 surface: AppColors.surface,
-                surfaceContainer: AppColors.surfaceContainer,
+                surfaceContainer: const Color.fromARGB(255, 221, 221, 221),
                 onSurface: AppColors.onSurface,
                 error: AppColors.error,
               ),

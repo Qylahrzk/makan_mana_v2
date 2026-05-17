@@ -562,18 +562,17 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
             children: [
               Expanded(
                 child: Container(
-                  height: 46,
+                  height: 48,
                   decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainer.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: _isSearchFocused
-                          ? AppColors.primary.withValues(alpha: 0.45)
-                          : Colors.transparent,
-                      width: 1.8,
-                    ),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.10),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: TextField(
                     controller: _searchController,
@@ -587,27 +586,22 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                       hintText: 'Search restaurants, cuisine...',
                       hintStyle: TextStyle(
                         fontSize: 14,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.35),
+                        color: Colors.grey[500],
                       ),
-                      prefixIcon: Icon(
-                        Icons.search_rounded,
-                        size: 20,
-                        color: _isSearchFocused
-                            ? AppColors.primary
-                            : Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.38),
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: Icon(
+                          Icons.search_rounded,
+                          size: 20,
+                          color: Colors.grey[500],
+                        ),
                       ),
                       suffixIcon: _searchController.text.isNotEmpty
                           ? IconButton(
                               icon: Icon(
                                 Icons.close_rounded,
                                 size: 16,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurface.withValues(alpha: 0.4),
+                                color: Colors.grey[400],
                               ),
                               onPressed: () {
                                 _searchController.clear();
@@ -626,14 +620,18 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
               GestureDetector(
                 onTap: _showFilterSheet,
                 child: Container(
-                  width: 46,
-                  height: 46,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
-                    color: _hasActiveFilters
-                        ? AppColors.primary
-                        : Theme.of(context).colorScheme.surfaceContainer
-                              .withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(23),
+                    color: _hasActiveFilters ? AppColors.primary : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.10),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Stack(
                     alignment: Alignment.center,
@@ -643,9 +641,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                         size: 20,
                         color: _hasActiveFilters
                             ? Colors.white
-                            : Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.5),
+                            : AppColors.primary,
                       ),
                       if (_hasActiveFilters)
                         Positioned(
@@ -776,10 +772,10 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   // ─── Cuisine chips ─────────────────────────────────────────────────────────
   Widget _buildCuisineChips() {
     return SizedBox(
-      height: 44,
+      height: 36,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
         itemCount: CuisineOptions.all.length,
         itemBuilder: (_, i) {
           final cuisine = CuisineOptions.all[i];
@@ -811,16 +807,18 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                       ).colorScheme.surfaceContainer.withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(
-                cuisine,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: active
-                      ? Colors.white
-                      : Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.65),
+              child: Center(
+                child: Text(
+                  cuisine,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: active
+                        ? Colors.white
+                        : Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.65),
+                  ),
                 ),
               ),
             ),
@@ -1296,34 +1294,30 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
           // Try to load the no_results image asset
           Image.asset(
             'assets/images/no_results.png',
-            width: 200,
-            height: 200,
+            width: 120,
+            height: 120,
             fit: BoxFit.contain,
-            errorBuilder: (_, _, _) => _buildFallbackEmptyIcon(),
+            errorBuilder: (_, __, ___) => _buildFallbackEmptyIcon(),
           ),
-          const SizedBox(height: 3),
-          Text(
+          const SizedBox(height: 20),
+          const Text(
             'No restaurants found',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: Theme.of(context).colorScheme.onSurface,
-              letterSpacing: -0.3,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
             'Try a different search or adjust your filters.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 13,
               color: Theme.of(
                 context,
-              ).colorScheme.onSurface.withValues(alpha: 0.5),
-              height: 1.6,
+              ).colorScheme.onSurface.withValues(alpha: 0.45),
+              height: 1.5,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           OutlinedButton(
             onPressed: _resetFilters,
             style: OutlinedButton.styleFrom(

@@ -122,7 +122,7 @@ class AppColors {
   static const Color error = Color(0xFFEF4444);
   static const Color warning = Color(0xFFFACC15);
   static const Color star = Color(0xFFFBBF24);
-  static const Color wishlist = Color(0xFFEF4444);
+  static const Color favourite = Color(0xFFEF4444);
   static const Color divider = Color(0xFFE5E7EB);
   static const Color disabled = Color(0xFFD1D5DB);
   static const Color scrim = Color(0x80000000);
@@ -158,19 +158,15 @@ class AppColors {
 
   /// Returns light or dark primary (orange) based on brightness.
   static Color adaptivePrimary(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
-          ? darkPrimary
-          : primary;
+      Theme.of(context).brightness == Brightness.dark ? darkPrimary : primary;
 
   /// Returns light or dark secondary (teal) based on brightness.
   static Color adaptiveSecondary(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark
-          ? darkSecondary
-          : secondary;
+      ? darkSecondary
+      : secondary;
 
   /// Returns tertiary based on brightness.
   static Color adaptiveTertiary(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
-          ? darkTertiary
-          : tertiary;
+      Theme.of(context).brightness == Brightness.dark ? darkTertiary : tertiary;
 }

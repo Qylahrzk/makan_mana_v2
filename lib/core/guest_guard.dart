@@ -28,10 +28,7 @@ class GuestGuard {
     }
   }
 
-  static void _showGuestSheet(
-    BuildContext context, {
-    String? featureName,
-  }) {
+  static void _showGuestSheet(BuildContext context, {String? featureName}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -54,7 +51,9 @@ class _GuestBottomSheet extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.fromLTRB(
-        28, 12, 28,
+        28,
+        12,
+        28,
         MediaQuery.of(context).padding.bottom + 28,
       ),
       decoration: BoxDecoration(
@@ -65,10 +64,10 @@ class _GuestBottomSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-
           // ── Handle bar ─────────────────────────────────────────────
           Container(
-            width: 40, height: 4,
+            width: 40,
+            height: 4,
             decoration: BoxDecoration(
               // ✅ FIX: Use theme color instead of hardcoded grey[200]
               color: Theme.of(context).colorScheme.surfaceContainer,
@@ -79,7 +78,8 @@ class _GuestBottomSheet extends StatelessWidget {
 
           // ── Lock icon ──────────────────────────────────────────────
           Container(
-            width: 68, height: 68,
+            width: 68,
+            height: 68,
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
@@ -112,7 +112,9 @@ class _GuestBottomSheet extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               // ✅ FIX: Use theme color instead of hardcoded grey[500]
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
               height: 1.6,
             ),
           ),
@@ -158,7 +160,8 @@ class _GuestBottomSheet extends StatelessWidget {
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
               child: const Text(
                 'Create Free Account',
@@ -181,12 +184,22 @@ class _GuestBottomSheet extends StatelessWidget {
                 );
               },
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.secondary,
+                // ✅ FIX: Brighter color for Sign In text in dark mode
+                foregroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors
+                          .darkSecondary // Bright cyan for dark mode
+                    : AppColors.secondary, // Regular teal for light mode
                 side: BorderSide(
-                    color: AppColors.secondary.withValues(alpha: 0.35),
-                    width: 1.5),
+                  color:
+                      (Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.darkSecondary
+                              : AppColors.secondary)
+                          .withValues(alpha: 0.35),
+                  width: 1.5,
+                ),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
               child: const Text(
                 'Sign In',
@@ -207,7 +220,9 @@ class _GuestBottomSheet extends StatelessWidget {
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   // ✅ FIX: Use theme color instead of hardcoded grey[400]
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.35),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.35),
                 ),
               ),
             ),
@@ -236,7 +251,8 @@ class _FeatureChip extends StatelessWidget {
     return Column(
       children: [
         Container(
-          width: 48, height: 48,
+          width: 48,
+          height: 48,
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(14),
@@ -250,7 +266,9 @@ class _FeatureChip extends StatelessWidget {
             fontSize: 11,
             fontWeight: FontWeight.w600,
             // ✅ FIX: Use theme color instead of hardcoded grey[600]
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.55),
           ),
         ),
       ],
