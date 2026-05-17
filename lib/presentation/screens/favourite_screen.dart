@@ -615,11 +615,11 @@ class _EmptyState extends StatelessWidget {
             // Favourite logo image from assets
             Image.asset(
               'assets/images/favourite_logo.png',
-              width: 100,
-              height: 100,
+              width: 190,
+              height: 190,
               fit: BoxFit.contain,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 3),
             Text(
               'No Saved Favourites',
               style: TextStyle(

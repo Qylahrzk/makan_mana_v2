@@ -74,7 +74,7 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
       if (authState is! AuthAuthenticated) {
         GuestGuard.check(
           context,
-          featureName: 'save restaurants to your wishlist',
+          featureName: 'save restaurants to your favourites',
           onAllowed: () {},
         );
         return;
@@ -131,11 +131,12 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
 
 // ─── Floating Nav Bar ────────────────────────────────────────────────────
 //
-// Refined Design 1:
+// Refined Design:
 //   - Center button: Green circle only (no label, no line)
 //   - Side buttons: Icon + compact label + indicator line
 //   - Reduced spacing between icon and label
 //   - Clean, minimal aesthetic
+//   - NO BADGE on Saved button (removed for consistency)
 
 class _FloatingNavBar extends StatelessWidget {
   final int currentIndex;
@@ -201,7 +202,7 @@ class _FloatingNavBar extends StatelessWidget {
                   // Search / Explore
                   _NavButtonWithLabel(
                     icon: Icons.search_rounded,
-                    label: 'Explore',
+                    label: 'Search',
                     isActive: currentIndex == 1,
                     animation: activeAnims[1],
                     onTap: () => onTap(1),
@@ -217,7 +218,7 @@ class _FloatingNavBar extends StatelessWidget {
                     activePrimary: activePrimary,
                   ),
 
-                  // Wishlist / Saved
+                  // Saved / Favourite - FIXED: NO BADGE (removed for consistency)
                   _NavButtonWithLabel(
                     icon: Icons.favorite_rounded,
                     label: 'Saved',
@@ -225,19 +226,7 @@ class _FloatingNavBar extends StatelessWidget {
                     animation: activeAnims[3],
                     onTap: () => onTap(3),
                     activePrimary: activePrimary,
-                    badgeBuilder: () =>
-                        BlocBuilder<FavouriteCubit, FavouriteState>(
-                          builder: (ctx, state) {
-                            final authState = ctx.read<AuthCubit>().state;
-                            if (authState is! AuthAuthenticated) {
-                              return const SizedBox.shrink();
-                            }
-                            return (state is FavouriteLoaded &&
-                                    state.items.isNotEmpty)
-                                ? _Badge(count: state.items.length)
-                                : const SizedBox.shrink();
-                          },
-                        ),
+                    // badgeBuilder: null - no badge shown
                   ),
 
                   // Profile
@@ -387,22 +376,23 @@ class _NavButtonWithLabel extends StatelessWidget {
           )!;
 
           // Indicator line animation
-          final lineWidth = t > 0.1 ? 24.0 : 0.0;
+          final lineWidth = t > 0.1 ? 38.0 : 0.0;
 
           return SizedBox(
-            width: 56,
+            width: 58,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Icon with badge
+                // Icon with badge (if provided)
                 Stack(
                   alignment: Alignment.center,
                   children: [
                     // Icon
                     Icon(icon, size: 26, color: iconColor),
 
-                    // Badge (for wishlist)
+                    // Badge (only if badgeBuilder provided)
+                    // For Saved button: badgeBuilder is null, so no badge shown
                     if (badgeBuilder != null)
                       Positioned(top: -2, right: -2, child: badgeBuilder!()),
                   ],
@@ -420,7 +410,7 @@ class _NavButtonWithLabel extends StatelessWidget {
                     color: labelColor,
                     height: 1.0,
                   ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
 
@@ -441,36 +431,6 @@ class _NavButtonWithLabel extends StatelessWidget {
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-// ─── Badge (Wishlist Count) ──────────────────────────────────────────────
-
-class _Badge extends StatelessWidget {
-  final int count;
-  const _Badge({required this.count});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 18,
-      height: 18,
-      decoration: BoxDecoration(
-        color: AppColors.error,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 2),
-      ),
-      child: Center(
-        child: Text(
-          count > 9 ? '9+' : '$count',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 9,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
       ),
     );
   }

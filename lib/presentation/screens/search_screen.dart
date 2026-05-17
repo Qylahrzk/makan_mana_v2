@@ -412,8 +412,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                                 ),
                                 if (_filteredResults.isEmpty)
                                   SliverFillRemaining(
-                                    child: _buildEmptyState(),
                                     hasScrollBody: false,
+                                    child: _buildEmptyState(),
                                   )
                                 else
                                   SliverPadding(
@@ -566,13 +566,13 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                   decoration: BoxDecoration(
                     color: Theme.of(
                       context,
-                    ).colorScheme.surfaceContainer.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(23),
+                    ).colorScheme.surfaceContainer.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: _isSearchFocused
                           ? AppColors.primary.withValues(alpha: 0.45)
                           : Colors.transparent,
-                      width: 1.5,
+                      width: 1.8,
                     ),
                   ),
                   child: TextField(
@@ -1244,7 +1244,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  _WishlistButton(restaurant: r),
+                  _FavouriteButton(restaurant: r),
                 ],
               ),
             ),
@@ -1285,41 +1285,42 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     ),
   );
 
-  // ─── Empty state (FIXED: added hasScrollBody) ──────────────────────────────
+  // ─── Empty state with asset image ──────────────────────────────────────────
   Widget _buildEmptyState() => SingleChildScrollView(
     physics: const AlwaysScrollableScrollPhysics(),
     child: Padding(
-      padding: const EdgeInsets.all(40),
+      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 40),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.07),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.search_off_rounded,
-              size: 34,
-              color: AppColors.primary.withValues(alpha: 0.4),
-            ),
+          // Try to load the no_results image asset
+          Image.asset(
+            'assets/images/no_results.png',
+            width: 200,
+            height: 200,
+            fit: BoxFit.contain,
+            errorBuilder: (_, _, _) => _buildFallbackEmptyIcon(),
           ),
-          const SizedBox(height: 16),
-          const Text(
+          const SizedBox(height: 3),
+          Text(
             'No restaurants found',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: Theme.of(context).colorScheme.onSurface,
+              letterSpacing: -0.3,
+            ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             'Try a different search or adjust your filters.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 14,
               color: Theme.of(
                 context,
-              ).colorScheme.onSurface.withValues(alpha: 0.45),
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
+              height: 1.6,
             ),
           ),
           const SizedBox(height: 20),
@@ -1340,6 +1341,20 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
           ),
         ],
       ),
+    ),
+  );
+
+  Widget _buildFallbackEmptyIcon() => Container(
+    width: 120,
+    height: 120,
+    decoration: BoxDecoration(
+      color: AppColors.primary.withValues(alpha: 0.07),
+      shape: BoxShape.circle,
+    ),
+    child: Icon(
+      Icons.search_off_rounded,
+      size: 48,
+      color: AppColors.primary.withValues(alpha: 0.4),
     ),
   );
 
@@ -1746,11 +1761,11 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   );
 }
 
-// ─── Wishlist Button ──────────────────────────────────────────────────────────
+// ─── Favourite Button ──────────────────────────────────────────────────────────
 
-class _WishlistButton extends StatelessWidget {
+class _FavouriteButton extends StatelessWidget {
   final Restaurant restaurant;
-  const _WishlistButton({required this.restaurant});
+  const _FavouriteButton({required this.restaurant});
 
   @override
   Widget build(BuildContext context) {
@@ -1762,7 +1777,7 @@ class _WishlistButton extends StatelessWidget {
         return GestureDetector(
           onTap: () => GuestGuard.check(
             context,
-            featureName: 'save restaurants to your wishlist',
+            featureName: 'save restaurants to your favourites',
             onAllowed: () {
               final user = context.read<AuthCubit>().currentUser;
               if (user == null) return;
@@ -1775,7 +1790,9 @@ class _WishlistButton extends StatelessWidget {
                 ..showSnackBar(
                   SnackBar(
                     content: Text(
-                      saved ? 'Removed from wishlist' : '❤️ Saved to wishlist',
+                      saved
+                          ? 'Removed from favourites'
+                          : '❤️ Saved to favourites',
                     ),
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(

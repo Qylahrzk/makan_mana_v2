@@ -447,7 +447,7 @@ class _RestaurantDetailView extends StatelessWidget {
                     ),
                   ),
 
-                  // Back + share + wishlist buttons
+                  // Back + share + favourite buttons
                   Positioned(
                     top: MediaQuery.of(context).padding.top + 10,
                     left: 16,
@@ -476,13 +476,12 @@ class _RestaurantDetailView extends StatelessWidget {
                                       ? Icons.favorite_rounded
                                       : Icons.favorite_border_rounded,
                                   iconColor: saved
-                                      ? AppColors.wishlist
-                                      : Theme.of(context).colorScheme.onSurface
-                                            .withValues(alpha: 0.65),
+                                      ? AppColors.favourite
+                                      : Colors.black87,
                                   onTap: () => GuestGuard.check(
                                     context,
                                     featureName:
-                                        'save restaurants to your wishlist',
+                                        'save restaurants to your favourites',
                                     onAllowed: () {
                                       final user = context
                                           .read<AuthCubit>()
@@ -500,8 +499,8 @@ class _RestaurantDetailView extends StatelessWidget {
                                           SnackBar(
                                             content: Text(
                                               saved
-                                                  ? 'Removed from wishlist'
-                                                  : '❤️ Saved to wishlist',
+                                                  ? 'Removed from favourites'
+                                                  : '❤️ Saved to favourites',
                                             ),
                                             behavior: SnackBarBehavior.floating,
                                             shape: RoundedRectangleBorder(
@@ -510,7 +509,7 @@ class _RestaurantDetailView extends StatelessWidget {
                                             ),
                                             margin: const EdgeInsets.all(16),
                                             duration: const Duration(
-                                              seconds: 2,
+                                              seconds: 1,
                                             ),
                                           ),
                                         );
