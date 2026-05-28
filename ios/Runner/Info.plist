@@ -66,5 +66,31 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs access to your location to recommend nearby restaurants in Terengganu.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app needs access to your location to recommend nearby restaurants in Terengganu.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>This app needs access to your location to recommend nearby restaurants in Terengganu.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>This app uses the compass and motion sensors to orient the map and show your direction.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.example.makan_mana_v2</string>
+				<string>com.googleusercontent.apps.520517959373-b5jaiplbu2h4m77jesflrt1e36177a0r</string>
+			</array>
+		</dict>
+	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>https</string>
+		<string>waze</string>
+		<string>googlemaps</string>
+	</array>
 </dict>
 </plist>
