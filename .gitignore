@@ -54,3 +54,6 @@ google-services.json
 #Firebase/ Google Services
 android/app/google-services.jdon
 ios/Runner/GoogleService-Info.plist
+
+# Flutter metadata
+.metadata

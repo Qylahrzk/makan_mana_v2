@@ -1,8 +1,7 @@
 name: makan_mana_v2
-description: "A new Flutter project."
+description: "Makan Mana — Terengganu Restaurant Recommender"
 publish_to: 'none'
-
-version: 1.0.0+1
+version: 2.0.0
 
 environment:
   sdk: ^3.11.0
@@ -11,44 +10,52 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # ── UI ────────────────────────────────────────────────────────────────────
+  # ── UI ──────────────────────────────────────────────────────────────────
   cupertino_icons: ^1.0.8
 
-  # ── State Management ──────────────────────────────────────────────────────
+  # ── State Management ────────────────────────────────────────────────────
   flutter_bloc: ^9.1.1
   equatable: ^2.0.8
 
-  # ── Supabase & Auth ───────────────────────────────────────────────────────
+  # ── Supabase & Auth ─────────────────────────────────────────────────────
   supabase_flutter: ^2.12.0
   google_sign_in: ^7.2.0
 
-  # ── Environment ───────────────────────────────────────────────────────────
+  # ── Environment ─────────────────────────────────────────────────────────
   flutter_dotenv: ^6.0.0
 
-  # ── Location ──────────────────────────────────────────────────────────────
+  # ── Location ────────────────────────────────────────────────────────────
   geolocator: ^14.0.2
 
-  # ── Maps ──────────────────────────────────────────────────────────────────
+  # ── Maps ────────────────────────────────────────────────────────────────
   google_maps_flutter: ^2.10.0
 
-  # ── Networking ────────────────────────────────────────────────────────────
+  # ── Networking ──────────────────────────────────────────────────────────
   http: ^1.2.1
 
-  # ── Notifications ─────────────────────────────────────────────────────────
+  # ── Notifications ───────────────────────────────────────────────────────
   onesignal_flutter: ^5.2.5
 
-  # ── URL Launcher (for directions) ─────────────────────────────────────────
+  # ── URL Launcher ────────────────────────────────────────────────────────
   url_launcher: ^6.3.1
 
-  # ── Shared Preferences (for theme persistence) ────────────────────────────
+  # ── Shared Preferences ──────────────────────────────────────────────────
   shared_preferences: ^2.3.3
 
-  # ── Image Caching ─────────────────────────────────────────────────────────
+  # ── Image Caching ───────────────────────────────────────────────────────
   cached_network_image: ^3.4.1
+
+  # ── Sensors ─────────────────────────────────────────────────────────────
   sensors_plus: ^7.0.0
   flutter_compass: ^0.8.1
+
+  # ── Sharing ─────────────────────────────────────────────────────────────
   share_plus: ^12.0.2
+
+  # ── Geocoding ───────────────────────────────────────────────────────────
   geocoding: ^4.0.0
+
+  # ── Package Info ────────────────────────────────────────────────────────
   package_info_plus: ^9.0.1
 
 dev_dependencies:
@@ -65,3 +72,48 @@ flutter:
     - assets/images/onboard_1.png
     - assets/images/onboard_2.png
     - assets/images/onboard_3.png
+    - assets/images/favourite_logo.png
+    - assets/images/no_results.png
+
+  fonts:
+    # ── Montserrat — Headlines & Restaurant Names ──────────────────────────
+    - family: Montserrat
+      fonts:
+        - asset: assets/fonts/Montserrat-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Montserrat-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Montserrat-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Montserrat-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Montserrat-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Montserrat-ExtraBold.ttf
+          weight: 800
+
+    # ── Open Sans — Body Text & Descriptions ──────────────────────────────
+    - family: OpenSans
+      fonts:
+        - asset: assets/fonts/OpenSans-Light.ttf
+          weight: 300
+        - asset: assets/fonts/OpenSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/OpenSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/OpenSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/OpenSans-Bold.ttf
+          weight: 700
+
+    # ── JetBrains Mono — Data Labels & AI Match Scores ────────────────────
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/JetBrainsMono-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/JetBrainsMono-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/JetBrainsMono-Bold.ttf
+          weight: 700
