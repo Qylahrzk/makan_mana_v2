@@ -329,7 +329,7 @@ class _ChatButton extends StatelessWidget {
 
 // ─── Navigation Button with Label ────────────────────────────────────────
 //
-// Home, Explore, Saved, Profile buttons
+// Home, Search, Saved, Profile buttons
 // Icon + compact label + indicator line
 // Reduced gap between icon and label
 
@@ -340,6 +340,7 @@ class _NavButtonWithLabel extends StatelessWidget {
   final Animation<double> animation;
   final VoidCallback onTap;
   final Color activePrimary;
+  // ✅ FIX: Added default value (null) for badgeBuilder parameter
   final Widget Function()? badgeBuilder;
 
   const _NavButtonWithLabel({
@@ -349,7 +350,7 @@ class _NavButtonWithLabel extends StatelessWidget {
     required this.animation,
     required this.onTap,
     required this.activePrimary,
-    this.badgeBuilder,
+    this.badgeBuilder = null, // ✅ FIX: Initialize with default value null
   });
 
   @override

@@ -278,7 +278,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                         Text(
                           // FIX: accurate subtitle — reflects multi-LLM + LDA
-                          'Groq · Gemini · Mistral + LDA',
+                          'Groq · Gemini · + LDA',
                           style: TextStyle(
                             fontFamily: 'OpenSans',
                             fontSize: 10,

@@ -1,10 +1,10 @@
 // ============================================================
 // FILE: lib/logic/cubits/chat_cubit.dart
 //
-// v3.1 CHANGES:
-//   - Extracts relaxed_criteria + has_partial_match from API response
-//   - Passes both into ChatMessageModel.ai() so the screen can render
-//     'Partial match' banners and explainability chips per message.
+// v4.0 ENHANCED - Full compatibility with Flask v4.0 API
+//   - Extracts all response fields: relaxed_criteria, has_partial_match,
+//     is_on_topic, scope_confidence, detected_keywords, validation
+//   - Passes everything to ChatMessageModel for UI rendering
 // ============================================================
 
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -104,16 +104,31 @@ class ChatCubit extends Cubit<ChatState> {
           (response['reply'] as String?)?.trim() ??
           'Sorry, I could not understand that. Please try again.';
 
-      // Restaurant list — each item may include matched_filters
+      // ── v3.1: Restaurant list with matched_filters ─────────────────────────
       final rawList = response['restaurants'] as List<dynamic>? ?? [];
       final restaurants = rawList.whereType<Map<String, dynamic>>().toList();
 
-      // NEW: explainability fields from v3.1 API
+      // ── v3.1: Explainability fields ───────────────────────────────────────
       final rawRelaxed = response['relaxed_criteria'] as List<dynamic>? ?? [];
       final relaxedCriteria = rawRelaxed.map((e) => e.toString()).toList();
       final hasPartialMatch = response['has_partial_match'] as bool? ?? false;
       final modelUsed = response['model_used'] as String? ?? '';
       final searchUsed = response['search_used'] as bool? ?? false;
+
+      // ── v4.0 NEW: Scope & Intent fields ──────────────────────────────────
+      final isOnTopic = response['is_on_topic'] as bool? ?? true;
+      final scopeConfidence =
+          (response['scope_confidence'] as num?)?.toDouble() ?? 1.0;
+
+      final rawKeywords = response['detected_keywords'] as List<dynamic>? ?? [];
+      final detectedKeywords = rawKeywords.map((e) => e.toString()).toList();
+
+      // ── v4.0 NEW: Validation fields ──────────────────────────────────────
+      final validation = response['validation'] as Map<String, dynamic>? ?? {};
+      final hadHallucinations =
+          validation['had_hallucinations'] as bool? ?? false;
+      final halluccinationRate =
+          (validation['hallucination_rate'] as num?)?.toDouble() ?? 0.0;
 
       _messages.add(
         ChatMessageModel.ai(
@@ -123,6 +138,11 @@ class ChatCubit extends Cubit<ChatState> {
           hasPartialMatch: hasPartialMatch,
           modelUsed: modelUsed,
           searchUsed: searchUsed,
+          isOnTopic: isOnTopic,
+          scopeConfidence: scopeConfidence,
+          detectedKeywords: detectedKeywords,
+          hadHallucinations: hadHallucinations,
+          halluccinationRate: halluccinationRate,
         ),
       );
       emit(ChatLoaded(List.from(_messages)));

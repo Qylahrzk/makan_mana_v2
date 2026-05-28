@@ -40,6 +40,8 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Restaurant> _recommended = [];
   List<Restaurant> _allPopular = [];
   List<Restaurant> _nearby = [];
+  List<Restaurant> _allRestaurants =
+      []; // ✅ FIX: Store all restaurants for category filtering
   bool _loadingRecommended = true;
   bool _loadingPopular = true;
   bool _loadingNearby = true;
@@ -47,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _errorPopular = false;
 
   // ── Nearby rating filter ───────────────────────────────────────────────────
-  double _nearbyMinRating = 0.0;
+  final double _nearbyMinRating = 0.0;
 
   static const List<(String, double?)> _nearbyRatingOptions = [
     ('All', null),
@@ -168,11 +170,28 @@ class _HomeScreenState extends State<HomeScreen> {
       context.read<RestaurantRepository>().clearCache();
     }
     await _loadLocation();
+
+    // ✅ FIX: Load all restaurants first for category filtering
+    await _loadAllRestaurants();
+
     await Future.wait([
       _loadRecommended(preloadedPrefs: preloadedPrefs),
       _loadPopular(),
       _loadNearby(),
     ]);
+  }
+
+  // ✅ NEW: Load all restaurants for category filtering
+  Future<void> _loadAllRestaurants() async {
+    try {
+      final repo = context.read<RestaurantRepository>();
+      final all = await repo.getAllRestaurants();
+      if (mounted) {
+        setState(() => _allRestaurants = all);
+      }
+    } catch (e) {
+      debugPrint('HomeScreen._loadAllRestaurants error: $e');
+    }
   }
 
   Future<void> _loadRecommended({UserPreferencesModel? preloadedPrefs}) async {
@@ -315,7 +334,43 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // ✅ FIX: Completely rewritten category tap logic
   Future<void> _onCategoryTap(String cuisine) async {
+    // If "All" is selected, show top rated
+    if (cuisine == 'All') {
+      final topRated = [..._allRestaurants]
+        ..sort((a, b) => b.rating.compareTo(a.rating));
+      final top10 = topRated.take(10).toList();
+
+      if (!mounted) return;
+      if (top10.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('No restaurants available'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+        return;
+      }
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RecommendationScreen(
+            recommendations: top10,
+            isFromApi: false,
+            relaxedFilters: const [],
+          ),
+        ),
+      );
+      return;
+    }
+
+    // For specific cuisines, try API first
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -323,17 +378,45 @@ class _HomeScreenState extends State<HomeScreen> {
         child: CircularProgressIndicator(color: AppColors.primary),
       ),
     );
+
     try {
+      // ✅ FIX: Try API call first
       final result = await ApiService.instance.getRecommendations(
-        cuisineType: cuisine == 'All' ? null : cuisine,
+        cuisineType: cuisine,
         userLat: _userLat,
         userLon: _userLon,
         distanceKm: 500.0,
       );
+
       if (!mounted) return;
-      Navigator.pop(context);
-      final restaurants = result?.restaurants ?? [];
-      if (restaurants.isEmpty) {
+      Navigator.pop(context); // Close loading dialog
+
+      var restaurants = result?.restaurants ?? [];
+
+      // ✅ FIX: If API returns results, use them and sort by rating
+      if (restaurants.isNotEmpty) {
+        restaurants.sort((a, b) => b.rating.compareTo(a.rating));
+        final top10 = restaurants.take(10).toList();
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RecommendationScreen(
+              recommendations: top10,
+              isFromApi: true,
+              relaxedFilters: result?.filtersRelaxed ?? [],
+            ),
+          ),
+        );
+        return;
+      }
+
+      // ✅ FIX: Fallback to local database filtering
+      final filtered =
+          _allRestaurants.where((r) => r.matchesAnyCuisine([cuisine])).toList()
+            ..sort((a, b) => b.rating.compareTo(a.rating));
+
+      if (filtered.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('No $cuisine restaurants found nearby'),
@@ -346,23 +429,55 @@ class _HomeScreenState extends State<HomeScreen> {
         );
         return;
       }
+
+      final top10 = filtered.take(10).toList();
+
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => RecommendationScreen(
-            recommendations: restaurants,
-            isFromApi: true,
-            relaxedFilters: result?.filtersRelaxed ?? [],
+            recommendations: top10,
+            isFromApi: false,
+            relaxedFilters: const [],
           ),
         ),
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Category tap error: $e');
       if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not load restaurants. Please try again.'),
-            behavior: SnackBarBehavior.floating,
+        Navigator.pop(context); // Close loading dialog
+
+        // ✅ FIX: Fallback to local database on API error
+        final filtered =
+            _allRestaurants
+                .where((r) => r.matchesAnyCuisine([cuisine]))
+                .toList()
+              ..sort((a, b) => b.rating.compareTo(a.rating));
+
+        if (filtered.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('No $cuisine restaurants found'),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              margin: const EdgeInsets.all(16),
+            ),
+          );
+          return;
+        }
+
+        final top10 = filtered.take(10).toList();
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RecommendationScreen(
+              recommendations: top10,
+              isFromApi: false,
+              relaxedFilters: const [],
+            ),
           ),
         );
       }
@@ -403,7 +518,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ..showSnackBar(
             SnackBar(
               content: Text(
-                nowSaved ? 'Removed from favourites' : '❤️ Saved to favourites',
+                nowSaved ? '❤️ Saved to favourites' : 'Removed from favourites',
               ),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
@@ -1393,6 +1508,7 @@ class _RestaurantCard extends StatelessWidget {
                     errorWidget: (_, _, _) => _gradientFallback(),
                   ),
                 ),
+                // ✅ FIX: Reduced overlay opacity from 0.3 to 0.15 for lighter effect
                 Positioned.fill(
                   child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(

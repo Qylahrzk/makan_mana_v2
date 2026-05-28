@@ -1297,7 +1297,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
             width: 120,
             height: 120,
             fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => _buildFallbackEmptyIcon(),
+            errorBuilder: (_, _, _) => _buildFallbackEmptyIcon(),
           ),
           const SizedBox(height: 20),
           const Text(

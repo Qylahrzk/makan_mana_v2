@@ -1,12 +1,12 @@
 // ============================================================
 // FILE: lib/data/chat_service.dart
 //
-// HTTP service for the /chat endpoint on your Flask API.
+// HTTP service for the /chat endpoint on Flask API.
 //
-// v3.1 CHANGES:
-//   - Returns full response map including relaxed_criteria,
-//     has_partial_match, and matched_filters per restaurant
-//     so ChatCubit + ChatScreen can render explainability chips.
+// STATUS: ✓ Compatible with v4.0 API as-is
+// - No changes needed
+// - Service is request-agnostic, returns full response map
+// - Cubit extracts fields from response
 // ============================================================
 
 import 'dart:convert';
@@ -20,16 +20,23 @@ class ChatService {
 
   /// POSTs the user's message + all preference flags to Flask /chat.
   ///
-  /// Returns the full decoded response map:
+  /// Returns the full decoded response map from v4.0 API:
   ///   {
-  ///     "reply":             String,
-  ///     "restaurants":       List<Map>,   ← now includes matched_filters
-  ///     "model_used":        String,
-  ///     "search_used":       bool,
-  ///     "search_query":      String,
-  ///     "intent":            String,
-  ///     "relaxed_criteria":  List<String>,
-  ///     "has_partial_match": bool,
+  ///     "reply":               String,
+  ///     "restaurants":         List<Map>,
+  ///     "model_used":          String,
+  ///     "search_used":         bool,
+  ///     "search_query":        String,
+  ///     "intent":              String,
+  ///     "relaxed_criteria":    List<String>,
+  ///     "has_partial_match":   bool,
+  ///     "is_on_topic":         bool,              ← v4.0 NEW
+  ///     "scope_confidence":    double,             ← v4.0 NEW
+  ///     "detected_keywords":   List<String>,      ← v4.0 NEW
+  ///     "validation": {                            ← v4.0 NEW
+  ///       "had_hallucinations": bool,
+  ///       "hallucination_rate": double,
+  ///     }
   ///   }
   Future<Map<String, dynamic>> sendMessage({
     required String message,

@@ -1,12 +1,10 @@
 // ============================================================
 // FILE: lib/models/chat_message_model.dart
 //
-// v3.1 CHANGES:
-//   - Added relaxedCriteria, hasPartialMatch, modelUsed, searchUsed
-//     so ChatScreen can render:
-//       • 'Partial match — scenic view relaxed' banner
-//       • 'Answered by Groq · Searched online' badge
-//       • Per-restaurant 'Matched: Halal + LDA: Romantic Vibe' chips
+// v4.0 ENHANCED - Full compatibility with Flask v4.0 API
+//   - Added isOnTopic, scopeConfidence, detectedKeywords
+//   - Added validation (hallucination detection)
+//   - Fully compatible with all API response fields
 // ============================================================
 
 import 'package:equatable/equatable.dart';
@@ -19,11 +17,11 @@ class ChatMessageModel extends Equatable {
   final DateTime timestamp;
 
   /// Restaurant preview cards shown below a bot message.
-  /// Each map may contain a 'matched_filters' key (List<String>).
+  /// Each map contains: name, rating, municipality, matched_filters, etc.
   final List<Map<String, dynamic>> restaurants;
 
-  // ── NEW explainability fields (v3.1) ──────────────────────────────────────
-  /// Criteria that were relaxed to produce these results, e.g. ['scenic_view']
+  // ── v3.1 explainability fields ────────────────────────────────────────────
+  /// Criteria that were relaxed to produce results, e.g. ['scenic_view']
   final List<String> relaxedCriteria;
 
   /// True when at least one criterion was relaxed (partial match)
@@ -34,6 +32,23 @@ class ChatMessageModel extends Equatable {
 
   /// Whether a web search was performed for this reply
   final bool searchUsed;
+
+  // ── v4.0 NEW: Scope & Intent fields ───────────────────────────────────────
+  /// Whether the query was detected as on-topic (restaurant-related)
+  final bool isOnTopic;
+
+  /// Confidence score for on-topic detection (0.0-1.0)
+  final double scopeConfidence;
+
+  /// Keywords detected in the user's message for transparency
+  final List<String> detectedKeywords;
+
+  // ── v4.0 NEW: Validation fields ───────────────────────────────────────────
+  /// Whether hallucinations were attempted/detected in LLM response
+  final bool hadHallucinations;
+
+  /// Rate of hallucination attempts (0.0-1.0)
+  final double halluccinationRate;
 
   const ChatMessageModel._({
     required this.text,
@@ -46,6 +61,11 @@ class ChatMessageModel extends Equatable {
     required this.hasPartialMatch,
     required this.modelUsed,
     required this.searchUsed,
+    required this.isOnTopic,
+    required this.scopeConfidence,
+    required this.detectedKeywords,
+    required this.hadHallucinations,
+    required this.halluccinationRate,
   });
 
   // ── Factories ──────────────────────────────────────────────────────────────
@@ -61,6 +81,11 @@ class ChatMessageModel extends Equatable {
     hasPartialMatch: false,
     modelUsed: '',
     searchUsed: false,
+    isOnTopic: true,
+    scopeConfidence: 1.0,
+    detectedKeywords: const [],
+    hadHallucinations: false,
+    halluccinationRate: 0.0,
   );
 
   factory ChatMessageModel.typing() => ChatMessageModel._(
@@ -74,6 +99,11 @@ class ChatMessageModel extends Equatable {
     hasPartialMatch: false,
     modelUsed: '',
     searchUsed: false,
+    isOnTopic: true,
+    scopeConfidence: 1.0,
+    detectedKeywords: const [],
+    hadHallucinations: false,
+    halluccinationRate: 0.0,
   );
 
   factory ChatMessageModel.ai(
@@ -83,6 +113,11 @@ class ChatMessageModel extends Equatable {
     bool hasPartialMatch = false,
     String modelUsed = '',
     bool searchUsed = false,
+    bool isOnTopic = true,
+    double scopeConfidence = 1.0,
+    List<String> detectedKeywords = const [],
+    bool hadHallucinations = false,
+    double halluccinationRate = 0.0,
   }) => ChatMessageModel._(
     text: text,
     isUser: false,
@@ -94,6 +129,11 @@ class ChatMessageModel extends Equatable {
     hasPartialMatch: hasPartialMatch,
     modelUsed: modelUsed,
     searchUsed: searchUsed,
+    isOnTopic: isOnTopic,
+    scopeConfidence: scopeConfidence,
+    detectedKeywords: detectedKeywords,
+    hadHallucinations: hadHallucinations,
+    halluccinationRate: halluccinationRate,
   );
 
   factory ChatMessageModel.error(String message) => ChatMessageModel._(
@@ -107,6 +147,11 @@ class ChatMessageModel extends Equatable {
     hasPartialMatch: false,
     modelUsed: '',
     searchUsed: false,
+    isOnTopic: false,
+    scopeConfidence: 0.0,
+    detectedKeywords: const [],
+    hadHallucinations: false,
+    halluccinationRate: 0.0,
   );
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -115,6 +160,22 @@ class ChatMessageModel extends Equatable {
     final h = timestamp.hour.toString().padLeft(2, '0');
     final m = timestamp.minute.toString().padLeft(2, '0');
     return '$h:$m';
+  }
+
+  /// Returns a confidence percentage string, e.g. "95%"
+  String get confidencePercentage =>
+      '${(scopeConfidence * 100).toStringAsFixed(0)}%';
+
+  /// Returns true if the LLM attempted hallucinations (security flag)
+  bool get hasSecurityConcern => hadHallucinations || halluccinationRate > 0.0;
+
+  /// Returns a security message if hallucinations were detected
+  String? get securityMessage {
+    if (!hasSecurityConcern) return null;
+    if (halluccinationRate > 0.1) {
+      return 'Hallucination risk detected ($halluccinationRate)';
+    }
+    return 'Minor hallucination attempt detected';
   }
 
   @override
@@ -129,5 +190,10 @@ class ChatMessageModel extends Equatable {
     hasPartialMatch,
     modelUsed,
     searchUsed,
+    isOnTopic,
+    scopeConfidence,
+    detectedKeywords,
+    hadHallucinations,
+    halluccinationRate,
   ];
 }
