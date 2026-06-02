@@ -350,7 +350,7 @@ class _NavButtonWithLabel extends StatelessWidget {
     required this.animation,
     required this.onTap,
     required this.activePrimary,
-    this.badgeBuilder = null, // ✅ FIX: Initialize with default value null
+    this.badgeBuilder,
   });
 
   @override
