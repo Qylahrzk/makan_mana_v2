@@ -222,10 +222,11 @@ class _MapScreenState extends State<MapScreen>
     required String rating,
     required bool isSelected,
   }) async {
-    final double pixelRatio = 3.0; // High resolution for crisp displays
+    const double pixelRatio =
+        1.0; // Draw at exact logical size to avoid giant markers on Google Maps
 
-    final double baseWidth = 85.0;
-    final double baseHeight = 38.0;
+    const double baseWidth = 55.0;
+    const double baseHeight = 26.0;
 
     final int width = (baseWidth * pixelRatio).toInt();
     final int height = (baseHeight * pixelRatio).toInt();
@@ -241,12 +242,12 @@ class _MapScreenState extends State<MapScreen>
     const Color bubbleBgColor = Colors.white;
     final Color borderColor = isSelected
         ? const Color(0xFFDC2626)
-        : const Color(0xFFE2E8F0);
+        : const Color(0xFFCBD5E1);
 
     final Path bubblePath = Path();
-    const double r = 8.0;
-    const double bubbleW = 82.0;
-    const double bubbleH = 28.0;
+    const double r = 5.0;
+    const double bubbleW = 52.0;
+    const double bubbleH = 20.0;
     const double bubbleX = 1.5;
     const double bubbleY = 1.5;
 
@@ -261,16 +262,17 @@ class _MapScreenState extends State<MapScreen>
     bubblePath.addRRect(rrect);
 
     final Path tailPath = Path();
-    tailPath.moveTo(tailX - 6, tailY);
-    tailPath.lineTo(tailX, tailY + 6);
-    tailPath.lineTo(tailX + 6, tailY);
+    tailPath.moveTo(tailX - 4, tailY);
+    tailPath.lineTo(tailX, tailY + 4);
+    tailPath.lineTo(tailX + 4, tailY);
     tailPath.close();
 
     bubblePath.addPath(tailPath, Offset.zero);
 
+    // Subtle drop shadow
     final Paint shadowPaint = Paint()
       ..color = Colors.black.withValues(alpha: 0.15)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5);
     canvas.drawPath(bubblePath, shadowPaint);
 
     final Paint bgPaint = Paint()
@@ -281,11 +283,11 @@ class _MapScreenState extends State<MapScreen>
     final Paint borderPaint = Paint()
       ..color = borderColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = isSelected ? 2.0 : 1.0;
+      ..strokeWidth = isSelected ? 1.5 : 1.0;
     canvas.drawPath(bubblePath, borderPaint);
 
-    const double circleR = 9.0;
-    const double circleX = bubbleX + 11.0;
+    const double circleR = 6.5;
+    const double circleX = bubbleX + 7.5;
     const double circleY = bubbleY + (bubbleH / 2);
 
     final Paint circlePaint = Paint()
@@ -296,40 +298,40 @@ class _MapScreenState extends State<MapScreen>
     final Paint iconPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2
+      ..strokeWidth = 0.8
       ..strokeCap = StrokeCap.round;
 
-    // Draw fork icon
+    // Draw tiny fork icon
     canvas.drawLine(
-      const Offset(circleX - 3, circleY - 1),
-      const Offset(circleX - 3, circleY + 4),
+      const Offset(circleX - 2, circleY - 1),
+      const Offset(circleX - 2, circleY + 3),
       iconPaint,
     );
     canvas.drawLine(
-      const Offset(circleX - 5, circleY - 4),
-      const Offset(circleX - 1, circleY - 4),
+      const Offset(circleX - 3.5, circleY - 3),
+      const Offset(circleX - 0.5, circleY - 3),
       iconPaint,
     );
     canvas.drawLine(
-      const Offset(circleX - 5, circleY - 4),
-      const Offset(circleX - 5, circleY - 1),
+      const Offset(circleX - 3.5, circleY - 3),
+      const Offset(circleX - 3.5, circleY - 1),
       iconPaint,
     );
     canvas.drawLine(
-      const Offset(circleX - 1, circleY - 4),
-      const Offset(circleX - 1, circleY - 1),
+      const Offset(circleX - 0.5, circleY - 3),
+      const Offset(circleX - 0.5, circleY - 1),
       iconPaint,
     );
     canvas.drawLine(
-      const Offset(circleX - 3, circleY - 4),
-      const Offset(circleX - 3, circleY - 1),
+      const Offset(circleX - 2, circleY - 3),
+      const Offset(circleX - 2, circleY - 1),
       iconPaint,
     );
 
-    // Draw spoon icon
+    // Draw tiny spoon icon
     canvas.drawLine(
-      const Offset(circleX + 3, circleY - 1),
-      const Offset(circleX + 3, circleY + 4),
+      const Offset(circleX + 2, circleY - 1),
+      const Offset(circleX + 2, circleY + 3),
       iconPaint,
     );
     final Paint spoonHeadPaint = Paint()
@@ -337,9 +339,9 @@ class _MapScreenState extends State<MapScreen>
       ..style = PaintingStyle.fill;
     canvas.drawOval(
       const Rect.fromLTRB(
-        circleX + 1.5,
-        circleY - 4,
-        circleX + 4.5,
+        circleX + 1.0,
+        circleY - 3,
+        circleX + 3.0,
         circleY - 1,
       ),
       spoonHeadPaint,
@@ -352,15 +354,15 @@ class _MapScreenState extends State<MapScreen>
     textPainter.text = TextSpan(
       text: rating,
       style: const TextStyle(
-        fontSize: 12,
+        fontSize: 10,
         fontWeight: FontWeight.w800,
-        color: Color(0xFF334155), // Slate 700
+        color: Color(0xFF1E293B), // Slate 800
       ),
     );
 
     textPainter.layout();
 
-    const double textX = circleX + circleR + 6.0;
+    const double textX = circleX + circleR + 4.0;
     final double textY = circleY - (textPainter.height / 2);
 
     textPainter.paint(canvas, Offset(textX, textY));
