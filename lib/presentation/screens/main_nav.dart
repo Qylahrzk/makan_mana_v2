@@ -155,7 +155,7 @@ class _FloatingNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomPad = MediaQuery.of(context).padding.bottom;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final activePrimary = isDark ? AppColors.darkPrimary : AppColors.primary;
+    final activePrimary = isDark ? AppColors.primary : AppColors.primary;
 
     const double barHeight = 68.0;
     const double btnSize = 56.0;

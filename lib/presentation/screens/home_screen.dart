@@ -656,7 +656,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
               SliverToBoxAdapter(
                 child: _buildSectionHeader(
-                  emoji: '🍽️',
+                  emoji: '',
                   title: 'Browse by Category',
                 ),
               ),
@@ -1022,15 +1022,16 @@ class _HomeScreenState extends State<HomeScreen> {
           borderRadius: BorderRadius.circular(20),
           gradient: LinearGradient(
             colors: isDark
-                ? const [Color(0xFFD07E50), Color(0xFFEAA678)]
+                ? const [Color(0xFFFF8A00), Color(0xFFEAA678)]
                 : AppColors.freshMakanGradient,
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           boxShadow: [
             BoxShadow(
-              color: (isDark ? const Color(0xFFD07E50) : AppColors.primary)
-                  .withValues(alpha: isDark ? 0.12 : 0.2),
+              color:
+                  (isDark ? const Color(0xFFD07E50) : const Color(0xFFFF7A00))
+                      .withValues(alpha: isDark ? 0.12 : 0.2),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
