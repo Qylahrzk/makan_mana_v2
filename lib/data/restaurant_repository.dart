@@ -174,10 +174,12 @@ class RestaurantRepository {
     bool? isCasual,
     bool? isRomantic,
     bool? hasScenicView,
+    bool? isCrowded,
     // Service
     bool? isWorthIt,
     bool? isFastService,
     double? minRating,
+    int? maxPriceLevel,
     int limit = 100,
   }) async {
     try {
@@ -208,30 +210,46 @@ class RestaurantRepository {
       if (hasWifi == true) {
         request = request.eq(RestaurantColumns.hasWifi, true);
       }
-      if (hasAc == true) request = request.eq('has_ac', true);
+      if (hasAc == true) {
+        request = request.eq(RestaurantColumns.hasAc, true);
+      }
       if (hasOutdoor == true) {
         request = request.eq(RestaurantColumns.hasOutdoor, true);
       }
-      if (isAccessible == true) request = request.eq('is_accessible', true);
+      if (isAccessible == true) {
+        request = request.eq(RestaurantColumns.isAccessible, true);
+      }
       // Vibes
       if (isFamilyFriendly == true) {
         request = request.eq(RestaurantColumns.isFamilyFriendly, true);
       }
       if (isGroupFriendly == true) {
-        request = request.eq('is_group_friendly', true);
+        request = request.eq(RestaurantColumns.isGroupFriendly, true);
       }
-      if (isCasual == true) request = request.eq('is_casual', true);
+      if (isCasual == true) {
+        request = request.eq(RestaurantColumns.isCasual, true);
+      }
       if (isRomantic == true) {
         request = request.eq(RestaurantColumns.isRomantic, true);
       }
       if (hasScenicView == true) {
         request = request.eq(RestaurantColumns.hasScenicView, true);
       }
+      if (isCrowded == true) {
+        request = request.eq(RestaurantColumns.isCrowded, true);
+      }
       // Service
-      if (isWorthIt == true) request = request.eq('is_worth_it', true);
-      if (isFastService == true) request = request.eq('is_fast_service', true);
+      if (isWorthIt == true) {
+        request = request.eq(RestaurantColumns.isWorthIt, true);
+      }
+      if (isFastService == true) {
+        request = request.eq(RestaurantColumns.isFastService, true);
+      }
       if (minRating != null) {
         request = request.gte(RestaurantColumns.rating, minRating);
+      }
+      if (maxPriceLevel != null) {
+        request = request.lte(RestaurantColumns.priceLevel, maxPriceLevel);
       }
 
       final response = await request
@@ -268,9 +286,14 @@ class RestaurantRepository {
             if (isCasual == true && !r.isCasual) return false;
             if (isRomantic == true && !r.isRomantic) return false;
             if (hasScenicView == true && !r.hasScenicView) return false;
+            if (isCrowded == true && !r.isCrowded) return false;
             if (isWorthIt == true && !r.isWorthIt) return false;
             if (isFastService == true && !r.isFastService) return false;
             if (minRating != null && r.rating < minRating) return false;
+            if (maxPriceLevel != null &&
+                (r.priceLevel == null || r.priceLevel! > maxPriceLevel)) {
+              return false;
+            }
             return true;
           })
           .take(limit)

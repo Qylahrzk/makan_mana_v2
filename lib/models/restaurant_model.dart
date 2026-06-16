@@ -27,20 +27,21 @@ class Restaurant extends Equatable {
   // ── Facilities ────────────────────────────────────────────────────────────
   final bool hasParking;
   final bool hasWifi;
-  final bool hasAc;          // NEW
+  final bool hasAc; // NEW
   final bool hasOutdoor;
-  final bool isAccessible;   // NEW
+  final bool isAccessible; // NEW
 
   // ── Vibes ─────────────────────────────────────────────────────────────────
   final bool isFamilyFriendly;
   final bool isGroupFriendly; // NEW
-  final bool isCasual;        // NEW
+  final bool isCasual; // NEW
   final bool isRomantic;
   final bool hasScenicView;
+  final bool isCrowded;
 
   // ── Service / Value ───────────────────────────────────────────────────────
-  final bool isWorthIt;       // NEW
-  final bool isFastService;   // NEW
+  final bool isWorthIt; // NEW
+  final bool isFastService; // NEW
 
   // ── Topics ────────────────────────────────────────────────────────────────
   final int dominantTopic;
@@ -76,6 +77,7 @@ class Restaurant extends Equatable {
     required this.isCasual,
     required this.isRomantic,
     required this.hasScenicView,
+    required this.isCrowded,
     required this.isWorthIt,
     required this.isFastService,
     required this.dominantTopic,
@@ -126,45 +128,48 @@ class Restaurant extends Equatable {
 
   factory Restaurant.fromJson(Map<String, dynamic> json) {
     return Restaurant(
-      id:           (json['id'] as num?)?.toInt() ?? 0,
-      name:         json['name']?.toString() ?? 'Unknown Restaurant',
-      address:      json['address']?.toString() ?? '',
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      name: json['name']?.toString() ?? 'Unknown Restaurant',
+      address: json['address']?.toString() ?? '',
       municipality: json['municipality']?.toString() ?? 'Terengganu',
-      categories:   json['categories']?.toString() ?? 'General',
+      categories: json['categories']?.toString() ?? 'General',
       cuisineTypes: _parseCuisineType(json['cuisine_type']),
-      rating:           (json['rating'] as num?)?.toDouble() ?? 0.0,
-      ratingBand:       json['rating_band']?.toString() ?? '',
-      lat:              (json['latitude'] as num?)?.toDouble()
-                        ?? double.tryParse(json['latitude']?.toString() ?? ''),
-      lon:              (json['longitude'] as num?)?.toDouble()
-                        ?? double.tryParse(json['longitude']?.toString() ?? ''),
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+      ratingBand: json['rating_band']?.toString() ?? '',
+      lat:
+          (json['latitude'] as num?)?.toDouble() ??
+          double.tryParse(json['latitude']?.toString() ?? ''),
+      lon:
+          (json['longitude'] as num?)?.toDouble() ??
+          double.tryParse(json['longitude']?.toString() ?? ''),
       coordinateSource: json['coordinate_source']?.toString() ?? '',
       // Dietary
-      isHalal:          json['is_halal']          as bool? ?? false,
-      isVegetarian:     json['is_vegetarian']     as bool? ?? false,
-      isVegan:          json['is_vegan']           as bool? ?? false,
+      isHalal: json['is_halal'] as bool? ?? false,
+      isVegetarian: json['is_vegetarian'] as bool? ?? false,
+      isVegan: json['is_vegan'] as bool? ?? false,
       // Facilities
-      hasParking:       json['has_parking']        as bool? ?? false,
-      hasWifi:          json['has_wifi']           as bool? ?? false,
-      hasAc:            json['has_ac']             as bool? ?? false,
-      hasOutdoor:       json['has_outdoor']        as bool? ?? false,
-      isAccessible:     json['is_accessible']      as bool? ?? false,
+      hasParking: json['has_parking'] as bool? ?? false,
+      hasWifi: json['has_wifi'] as bool? ?? false,
+      hasAc: json['has_ac'] as bool? ?? false,
+      hasOutdoor: json['has_outdoor'] as bool? ?? false,
+      isAccessible: json['is_accessible'] as bool? ?? false,
       // Vibes
       isFamilyFriendly: json['is_family_friendly'] as bool? ?? false,
-      isGroupFriendly:  json['is_group_friendly']  as bool? ?? false,
-      isCasual:         json['is_casual']           as bool? ?? false,
-      isRomantic:       json['is_romantic']         as bool? ?? false,
-      hasScenicView:    json['has_scenic_view']     as bool? ?? false,
+      isGroupFriendly: json['is_group_friendly'] as bool? ?? false,
+      isCasual: json['is_casual'] as bool? ?? false,
+      isRomantic: json['is_romantic'] as bool? ?? false,
+      hasScenicView: json['has_scenic_view'] as bool? ?? false,
+      isCrowded: json['is_crowded'] as bool? ?? false,
       // Service
-      isWorthIt:        json['is_worth_it']         as bool? ?? false,
-      isFastService:    json['is_fast_service']     as bool? ?? false,
+      isWorthIt: json['is_worth_it'] as bool? ?? false,
+      isFastService: json['is_fast_service'] as bool? ?? false,
       // Topics
       dominantTopic: (json['dominant_topic'] as num?)?.toInt() ?? 0,
-      topicLabel:    json['topic_label']?.toString() ?? 'No Reviews',
-      topic1Pct:     (json['topic_1_pct'] as num?)?.toDouble() ?? 0.0,
-      topic2Pct:     (json['topic_2_pct'] as num?)?.toDouble() ?? 0.0,
-      topic3Pct:     (json['topic_3_pct'] as num?)?.toDouble() ?? 0.0,
-      priceLevel:    (json['price_level'] as num?)?.toInt(),
+      topicLabel: json['topic_label']?.toString() ?? 'No Reviews',
+      topic1Pct: (json['topic_1_pct'] as num?)?.toDouble() ?? 0.0,
+      topic2Pct: (json['topic_2_pct'] as num?)?.toDouble() ?? 0.0,
+      topic3Pct: (json['topic_3_pct'] as num?)?.toDouble() ?? 0.0,
+      priceLevel: (json['price_level'] as num?)?.toInt(),
     );
   }
 
@@ -183,64 +188,105 @@ class Restaurant extends Equatable {
 
   String? get priceLevelLabel {
     switch (priceLevel) {
-      case 1: return 'Budget';
-      case 2: return 'Moderate';
-      case 3: return 'Upscale';
-      case 4: return 'Fine Dining';
-      default: return null;
+      case 1:
+        return 'Budget';
+      case 2:
+        return 'Moderate';
+      case 3:
+        return 'Upscale';
+      case 4:
+        return 'Fine Dining';
+      default:
+        return null;
     }
   }
 
   String? get priceLevelRange {
     switch (priceLevel) {
-      case 1: return '< RM15 per person';
-      case 2: return 'RM15 – RM40 per person';
-      case 3: return 'RM40 – RM100 per person';
-      case 4: return 'RM100+ per person';
-      default: return null;
+      case 1:
+        return '< RM15 per person';
+      case 2:
+        return 'RM15 – RM40 per person';
+      case 3:
+        return 'RM40 – RM100 per person';
+      case 4:
+        return 'RM100+ per person';
+      default:
+        return null;
     }
   }
 
   Color get priceLevelColor {
     switch (priceLevel) {
-      case 1: return const Color(0xFF16A34A);
-      case 2: return const Color(0xFF2563EB);
-      case 3: return const Color(0xFFD97706);
-      case 4: return const Color(0xFFDC2626);
-      default: return const Color(0xFF9CA3AF);
+      case 1:
+        return const Color(0xFF16A34A);
+      case 2:
+        return const Color(0xFF2563EB);
+      case 3:
+        return const Color(0xFFD97706);
+      case 4:
+        return const Color(0xFFDC2626);
+      default:
+        return const Color(0xFF9CA3AF);
     }
   }
 
   /// All active attribute labels — used by UI chips
   List<String> get activeAttributes {
     return [
-      if (isHalal)          'Halal',
-      if (isVegetarian)     'Vegetarian',
-      if (isVegan)          'Vegan',
-      if (hasParking)       'Parking',
-      if (hasWifi)          'WiFi',
-      if (hasAc)            'Air-Cond',
-      if (hasOutdoor)       'Outdoor',
-      if (isAccessible)     'Accessible',
+      if (isHalal) 'Halal',
+      if (isVegetarian) 'Vegetarian',
+      if (isVegan) 'Vegan',
+      if (hasParking) 'Parking',
+      if (hasWifi) 'WiFi',
+      if (hasAc) 'Air-Cond',
+      if (hasOutdoor) 'Outdoor',
+      if (isAccessible) 'Accessible',
       if (isFamilyFriendly) 'Family Friendly',
-      if (isGroupFriendly)  'Group Friendly',
-      if (isCasual)         'Casual',
-      if (isRomantic)       'Romantic',
-      if (hasScenicView)    'Scenic View',
-      if (isWorthIt)        'Worth It',
-      if (isFastService)    'Fast Service',
+      if (isGroupFriendly) 'Group Friendly',
+      if (isCasual) 'Casual',
+      if (isRomantic) 'Romantic',
+      if (hasScenicView) 'Scenic View',
+      if (isCrowded) 'Crowded',
+      if (isWorthIt) 'Worth It',
+      if (isFastService) 'Fast Service',
     ];
   }
 
   @override
   List<Object?> get props => [
-    id, name, address, municipality, categories, cuisineTypes,
-    rating, ratingBand, lat, lon, coordinateSource,
-    isHalal, isVegetarian, isVegan,
-    hasParking, hasWifi, hasAc, hasOutdoor, isAccessible,
-    isFamilyFriendly, isGroupFriendly, isCasual, isRomantic, hasScenicView,
-    isWorthIt, isFastService,
-    dominantTopic, topicLabel, topic1Pct, topic2Pct, topic3Pct,
+    id,
+    name,
+    address,
+    municipality,
+    categories,
+    cuisineTypes,
+    rating,
+    ratingBand,
+    lat,
+    lon,
+    coordinateSource,
+    isHalal,
+    isVegetarian,
+    isVegan,
+    hasParking,
+    hasWifi,
+    hasAc,
+    hasOutdoor,
+    isAccessible,
+    isFamilyFriendly,
+    isGroupFriendly,
+    isCasual,
+    isRomantic,
+    hasScenicView,
+    isCrowded,
+    isWorthIt,
+    isFastService,
+    dominantTopic,
+    topicLabel,
+    topic1Pct,
+    topic2Pct,
+    topic3Pct,
     priceLevel,
   ];
 }

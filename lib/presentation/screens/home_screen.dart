@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:makan_mana_v2/core/app_router.dart';
+import '../../core/app_constants.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_utils.dart';
 import '../../core/nav_tab_proxy.dart';
@@ -31,8 +32,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  double _userLat = LocationService.fallbackLat;
-  double _userLon = LocationService.fallbackLon;
+  double _userLat = LocationService.instance.cachedLat;
+  double _userLon = LocationService.instance.cachedLon;
+
+  bool get _isGuest => !context.read<AuthCubit>().isAuthenticated;
 
   String _locationLabel = 'Terengganu, MY';
   bool _locationLoading = false;
@@ -50,13 +53,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ── Nearby rating filter ───────────────────────────────────────────────────
   final double _nearbyMinRating = 0.0;
-
-  static const List<(String, double?)> _nearbyRatingOptions = [
-    ('All', null),
-    ('3.0+', 3.0),
-    ('4.0+', 4.0),
-    ('4.5+', 4.5),
-  ];
 
   bool _isWalking = false;
   StreamSubscription<bool>? _motionSub;
@@ -93,20 +89,57 @@ class _HomeScreenState extends State<HomeScreen> {
     await _loadSections(preloadedPrefs: loadedPrefs);
   }
 
-  Future<void> _loadLocation() async {
+  Future<void> _loadLocation({
+    bool forceRefresh = false,
+    UserPreferencesModel? preloadedPrefs,
+  }) async {
+    if (!mounted) return;
     setState(() => _locationLoading = true);
     try {
-      final pos = await LocationService.instance.getPosition();
+      final pos = await LocationService.instance.getPosition(
+        forceRefresh: forceRefresh,
+      );
       if (mounted) {
+        final double oldLat = _userLat;
+        final double oldLon = _userLon;
+
         setState(() {
           _userLat = pos.latitude;
           _userLon = pos.longitude;
         });
+
         await _reverseGeocode(pos.latitude, pos.longitude);
+
+        if (!mounted) return;
+
+        // If real GPS coordinates were resolved (different from fallback or previous ones),
+        // refresh recommended and nearby sections.
+        final resolvedRealLocation =
+            pos.latitude != LocationService.fallbackLat ||
+            pos.longitude != LocationService.fallbackLon;
+        final locationChanged =
+            pos.latitude != oldLat || pos.longitude != oldLon;
+
+        if (resolvedRealLocation && locationChanged) {
+          final tasks = <Future<void>>[_loadNearby()];
+          if (!_isGuest) {
+            setState(() {
+              _loadingRecommended = true;
+            });
+            tasks.add(_loadRecommended(preloadedPrefs: preloadedPrefs));
+          }
+          setState(() {
+            _loadingNearby = true;
+          });
+          await Future.wait(tasks);
+        }
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('HomeScreen._loadLocation error: $e');
     } finally {
-      if (mounted) setState(() => _locationLoading = false);
+      if (mounted) {
+        setState(() => _locationLoading = false);
+      }
     }
   }
 
@@ -159,26 +192,34 @@ class _HomeScreenState extends State<HomeScreen> {
     UserPreferencesModel? preloadedPrefs,
   }) async {
     if (!mounted) return;
+
+    final isGuestUser = _isGuest;
+
     setState(() {
-      _loadingRecommended = true;
+      _loadingRecommended = !isGuestUser;
       _loadingPopular = true;
       _loadingNearby = true;
       _errorRecommended = false;
       _errorPopular = false;
     });
+
     if (isRefresh) {
       context.read<RestaurantRepository>().clearCache();
+      LocationService.instance.clearCache();
     }
-    await _loadLocation();
 
-    // ✅ FIX: Load all restaurants first for category filtering
+    // Load data synchronously with whatever coordinates we currently have (fallback or cached)
     await _loadAllRestaurants();
 
-    await Future.wait([
-      _loadRecommended(preloadedPrefs: preloadedPrefs),
-      _loadPopular(),
-      _loadNearby(),
-    ]);
+    final tasks = <Future<void>>[_loadPopular(), _loadNearby()];
+    if (!isGuestUser) {
+      tasks.add(_loadRecommended(preloadedPrefs: preloadedPrefs));
+    }
+
+    await Future.wait(tasks);
+
+    // Kick off location retrieval asynchronously in the background so it doesn't block startup
+    _loadLocation(forceRefresh: isRefresh, preloadedPrefs: preloadedPrefs);
   }
 
   // ✅ NEW: Load all restaurants for category filtering
@@ -195,9 +236,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadRecommended({UserPreferencesModel? preloadedPrefs}) async {
+    final prefsCubit = context.read<UserPreferencesCubit>();
+    final restaurantRepo = context.read<RestaurantRepository>();
     try {
-      final prefs =
-          preloadedPrefs ?? context.read<UserPreferencesCubit>().current;
+      final prefs = preloadedPrefs ?? prefsCubit.current;
       final selectedCuisines = prefs?.cuisineTypes ?? [];
       final singleCuisine = selectedCuisines.length == 1
           ? selectedCuisines.first
@@ -228,19 +270,40 @@ class _HomeScreenState extends State<HomeScreen> {
 
       var restaurants = result?.restaurants ?? [];
 
+      // Apply local constraints (budget & crowded vibe)
+      if (prefs?.budget != null) {
+        restaurants = restaurants
+            .where(
+              (r) => r.priceLevel == null || r.priceLevel! <= prefs!.budget!,
+            )
+            .toList();
+      }
+      if (prefs?.isCrowded == true) {
+        restaurants = restaurants.where((r) => r.isCrowded).toList();
+      }
+
       if (selectedCuisines.isNotEmpty) {
         var filtered = restaurants
             .where((r) => r.matchesAnyCuisine(selectedCuisines))
             .toList();
         if (filtered.isEmpty) {
-          final allLocal = await context
-              .read<RestaurantRepository>()
-              .getAllRestaurants();
-          filtered =
-              allLocal
-                  .where((r) => r.matchesAnyCuisine(selectedCuisines))
-                  .toList()
-                ..sort((a, b) => b.rating.compareTo(a.rating));
+          final allLocal = await restaurantRepo.getAllRestaurants();
+          filtered = allLocal
+              .where((r) => r.matchesAnyCuisine(selectedCuisines))
+              .toList();
+          // Filter by budget & crowded on local fallback too
+          if (prefs?.budget != null) {
+            filtered = filtered
+                .where(
+                  (r) =>
+                      r.priceLevel == null || r.priceLevel! <= prefs!.budget!,
+                )
+                .toList();
+          }
+          if (prefs?.isCrowded == true) {
+            filtered = filtered.where((r) => r.isCrowded).toList();
+          }
+          filtered.sort((a, b) => b.rating.compareTo(a.rating));
           filtered = filtered.take(10).toList();
         }
         restaurants = filtered;
@@ -589,6 +652,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
               if (_isWalking) SliverToBoxAdapter(child: _buildWalkingBanner()),
 
+              SliverToBoxAdapter(child: _buildHeroRecommendCard()),
+
               SliverToBoxAdapter(
                 child: _buildSectionHeader(
                   emoji: '🍽️',
@@ -629,8 +694,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _buildSectionHeader(
                   emoji: '',
                   title: 'Recommended For You',
-                  showSeeAll: true,
-                  onSeeAll: _recommended.isNotEmpty
+                  showSeeAll: !_isGuest && _recommended.isNotEmpty,
+                  onSeeAll: !_isGuest && _recommended.isNotEmpty
                       ? () => Navigator.pushNamed(
                           context,
                           '/recommendation',
@@ -643,21 +708,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               SliverToBoxAdapter(
-                child: _loadingRecommended
-                    ? _buildSkeletonRow()
-                    : _errorRecommended
-                    ? _buildOfflineState(
-                        onRetry: () {
-                          setState(() {
-                            _loadingRecommended = true;
-                            _errorRecommended = false;
-                          });
-                          _loadRecommended();
-                        },
-                      )
-                    : _recommended.isEmpty
-                    ? _buildEmptyRecommendations()
-                    : _buildCardRow(_recommended, showFindSimilar: true),
+                child: _isGuest
+                    ? _buildGuestRecommendationBanner()
+                    : (_loadingRecommended
+                          ? _buildSkeletonRow()
+                          : _errorRecommended
+                          ? _buildOfflineState(
+                              onRetry: () {
+                                setState(() {
+                                  _loadingRecommended = true;
+                                  _errorRecommended = false;
+                                });
+                                _loadRecommended();
+                              },
+                            )
+                          : _recommended.isEmpty
+                          ? _buildEmptyRecommendations()
+                          : _buildCardRow(_recommended, showFindSimilar: true)),
               ),
 
               // ── MOST POPULAR SECTION (NO RATING FILTER) ────────────────
@@ -717,12 +784,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color(0xFF0A5260),
-                Color(0xFF15687A),
-                Color(0xFF1E8599),
-                Color(0xFFFF8C42),
-              ],
+              colors: AppColors.oceanGradient,
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -738,7 +800,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       GestureDetector(
-                        onTap: _locationLoading ? null : _loadLocation,
+                        onTap: _locationLoading
+                            ? null
+                            : () => _loadLocation(forceRefresh: true),
                         child: Row(
                           children: [
                             const Icon(
@@ -880,12 +944,12 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
+          bottom: -1,
+          left: -1,
+          right: -1,
           child: CustomPaint(
-            size: const Size(double.infinity, 56),
-            painter: _ConvexBottomCurvePainter(bgColor: scaffoldBg),
+            size: const Size(double.infinity, 48),
+            painter: _RoundedTopBodyPainter(bgColor: scaffoldBg),
           ),
         ),
       ],
@@ -899,13 +963,11 @@ class _HomeScreenState extends State<HomeScreen> {
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0D9488), Color(0xFFFF6B35)],
-        ),
+        gradient: const LinearGradient(colors: AppColors.oceanGradient),
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0D9488).withValues(alpha: 0.25),
+            color: AppColors.secondary.withValues(alpha: 0.2),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -935,6 +997,234 @@ class _HomeScreenState extends State<HomeScreen> {
               Icons.close_rounded,
               color: Colors.white70,
               size: 18,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroRecommendCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: () {
+        GuestGuard.check(
+          context,
+          featureName: 'get personalized AI recommendations',
+          onAllowed: () {
+            Navigator.pushNamed(context, AppRoutes.smartRecommend);
+          },
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            colors: isDark
+                ? const [Color(0xFFD07E50), Color(0xFFEAA678)]
+                : AppColors.freshMakanGradient,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: (isDark ? const Color(0xFFD07E50) : AppColors.primary)
+                  .withValues(alpha: isDark ? 0.12 : 0.2),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            Positioned(
+              right: -24,
+              top: -24,
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.12),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'AI-POWERED',
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF5C2D00),
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Get smart recommendations',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF3B1E00),
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  const Text(
+                    'Explainable matches based on your taste & topic similarity.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF6B3C0E),
+                      height: 1.25,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Try MakanMana AI',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF3B1E00),
+                          ),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 12,
+                          color: Color(0xFF3B1E00),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGuestRecommendationBanner() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF16222F), const Color(0xFF0F172A)]
+              : [const Color(0xFFE6F4F6), const Color(0xFFD0EDF0)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.05)
+              : AppColors.secondary.withValues(alpha: 0.15),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Unlock Custom Choices',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Create an account to tell us what you like! Get custom choices based on your preferred cuisines, budget limits, and dietary options.',
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.4,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: ElevatedButton(
+              onPressed: () {
+                GuestGuard.check(
+                  context,
+                  featureName: 'personalize your recommendations',
+                  onAllowed: () {},
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Personalize Now',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
             ),
           ),
         ],
@@ -1316,10 +1606,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ─── Convex Curve Painter ─────────────────────────────────────────────────────
+// ─── Rounded Top Body Painter ──────────────────────────────────────────────────
 
-class _ConvexBottomCurvePainter extends CustomPainter {
-  const _ConvexBottomCurvePainter({required this.bgColor});
+class _RoundedTopBodyPainter extends CustomPainter {
+  const _RoundedTopBodyPainter({required this.bgColor});
   final Color bgColor;
 
   @override
@@ -1327,27 +1617,19 @@ class _ConvexBottomCurvePainter extends CustomPainter {
     final paint = Paint()
       ..color = bgColor
       ..style = PaintingStyle.fill;
-    const offsets = [0.0, 1.5, -1.5];
-    for (final dy in offsets) {
-      final path = Path();
-      path.moveTo(0, size.height);
-      path.lineTo(0, size.height * 0.55 + dy);
-      path.cubicTo(
-        size.width * 0.20,
-        size.height * 0.55 + dy - 6,
-        size.width * 0.80,
-        size.height * 0.55 + dy - 6,
-        size.width,
-        size.height * 0.55 + dy,
-      );
-      path.lineTo(size.width, size.height);
-      path.close();
-      canvas.drawPath(path, paint);
-    }
+
+    // Draw a rounded rectangle that covers the bottom of the header,
+    // leaving a curved corner transition where the gradient shows through.
+    final rrect = RRect.fromRectAndCorners(
+      Rect.fromLTRB(0, 16, size.width, size.height),
+      topLeft: const Radius.circular(28),
+      topRight: const Radius.circular(28),
+    );
+    canvas.drawRRect(rrect, paint);
   }
 
   @override
-  bool shouldRepaint(_ConvexBottomCurvePainter old) => old.bgColor != bgColor;
+  bool shouldRepaint(_RoundedTopBodyPainter old) => old.bgColor != bgColor;
 }
 
 // ─── Category Chip ────────────────────────────────────────────────────────────
@@ -1429,13 +1711,13 @@ class _RestaurantCard extends StatelessWidget {
     this.onFindSimilar,
   });
 
-  Widget _gradientFallback() => Container(
+  Widget _gradientFallback(BuildContext context) => Container(
     height: 108,
     decoration: BoxDecoration(
       gradient: LinearGradient(
         colors: [
-          AppColors.secondary.withValues(alpha: 0.75),
-          AppColors.primary.withValues(alpha: 0.55),
+          AppColors.adaptiveSecondary(context).withValues(alpha: 0.8),
+          AppColors.adaptiveSecondary(context).withValues(alpha: 0.4),
         ],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
@@ -1478,9 +1760,18 @@ class _RestaurantCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white.withValues(alpha: 0.04)
+                : Colors.black.withValues(alpha: 0.05),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: Colors.black.withValues(
+                alpha: Theme.of(context).brightness == Brightness.dark
+                    ? 0.20
+                    : 0.04,
+              ),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -1504,8 +1795,8 @@ class _RestaurantCard extends StatelessWidget {
                     width: double.infinity,
                     fit: BoxFit.cover,
                     fadeInDuration: const Duration(milliseconds: 300),
-                    placeholder: (_, _) => _gradientFallback(),
-                    errorWidget: (_, _, _) => _gradientFallback(),
+                    placeholder: (_, _) => _gradientFallback(context),
+                    errorWidget: (_, _, _) => _gradientFallback(context),
                   ),
                 ),
                 // ✅ FIX: Reduced overlay opacity from 0.3 to 0.15 for lighter effect
@@ -1702,7 +1993,7 @@ class _RestaurantCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 6),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [AppColors.primary, AppColors.secondary],
+                            colors: AppColors.freshMakanGradient,
                           ),
                           borderRadius: BorderRadius.circular(8),
                         ),

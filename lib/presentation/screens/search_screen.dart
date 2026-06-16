@@ -47,6 +47,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   Set<String> _activeFacilities = {};
   double _activeMinRating = 0.0;
   double _activeMaxDistance = 500.0;
+  int? _activeMaxPriceLevel;
   String _sortBy = 'Nearest';
 
   // ─── Search history ────────────────────────────────────────────────────────
@@ -79,14 +80,24 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   }
 
   Future<void> _loadLocationThenRestaurants() async {
-    try {
-      final pos = await LocationService.instance.getPosition();
-      if (mounted) {
-        userLat = pos.latitude;
-        userLon = pos.longitude;
-      }
-    } catch (_) {}
-    if (mounted) await _initialLoad();
+    // First, load cached/fallback data immediately so the screen doesn't stay blank
+    if (mounted) {
+      await _initialLoad();
+    }
+
+    // Then, resolve actual GPS location in the background
+    LocationService.instance
+        .getPosition()
+        .then((pos) {
+          if (mounted) {
+            setState(() {
+              userLat = pos.latitude;
+              userLon = pos.longitude;
+            });
+            _applyFilters();
+          }
+        })
+        .catchError((_) {});
   }
 
   @override
@@ -203,6 +214,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         return r.isRomantic;
       case OccasionOptions.scenicView:
         return r.hasScenicView;
+      case OccasionOptions.crowded:
+        return r.isCrowded;
       default:
         return false;
     }
@@ -249,6 +262,10 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       final matchFacility =
           _activeFacilities.isEmpty ||
           _activeFacilities.any((f) => _matchesFacility(r, f));
+      final matchPrice =
+          _activeMaxPriceLevel == null ||
+          r.priceLevel == null ||
+          r.priceLevel! <= _activeMaxPriceLevel!;
 
       return matchQuery &&
           matchCuisine &&
@@ -256,7 +273,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
           matchDist &&
           matchDietary &&
           matchOccasion &&
-          matchFacility;
+          matchFacility &&
+          matchPrice;
     }).toList();
 
     if (_sortBy == 'Nearest') {
@@ -278,6 +296,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     required Set<String> facilities,
     required double minRating,
     required double maxDist,
+    int? maxPriceLevel,
   }) {
     final q = _searchController.text.toLowerCase().trim();
     return _allRestaurants.where((r) {
@@ -292,13 +311,18 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
           occasions.isEmpty || occasions.any((f) => _matchesOccasion(r, f));
       final matchFacility =
           facilities.isEmpty || facilities.any((f) => _matchesFacility(r, f));
+      final matchPrice =
+          maxPriceLevel == null ||
+          r.priceLevel == null ||
+          r.priceLevel! <= maxPriceLevel;
       return matchQuery &&
           matchCuisine &&
           matchRating &&
           matchDist &&
           matchDietary &&
           matchOccasion &&
-          matchFacility;
+          matchFacility &&
+          matchPrice;
     }).length;
   }
 
@@ -310,6 +334,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       _activeFacilities = {};
       _activeMinRating = 0.0;
       _activeMaxDistance = 500.0;
+      _activeMaxPriceLevel = null;
       _sortBy = 'Nearest';
       _searchController.clear();
     });
@@ -322,7 +347,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       _activeOccasions.isNotEmpty ||
       _activeFacilities.isNotEmpty ||
       _activeMinRating > 0 ||
-      _activeMaxDistance < 500;
+      _activeMaxDistance < 500 ||
+      _activeMaxPriceLevel != null;
 
   bool get _isSearching => _searchController.text.trim().isNotEmpty;
 
@@ -817,7 +843,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                         ? Colors.white
                         : Theme.of(
                             context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.65),
+                          ).colorScheme.onSurface.withValues(alpha: 0.85),
                   ),
                 ),
               ),
@@ -844,7 +870,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
               fontSize: 17,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.3,
-              color: AppColors.primary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           if (subtitle != null) ...[
@@ -855,7 +881,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                 fontSize: 12,
                 color: Theme.of(
                   context,
-                ).colorScheme.onSurface.withValues(alpha: 0.4),
+                ).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ],
@@ -893,6 +919,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   // ─── Horizontal card ──────────────────────────────────────────────────────
   Widget _buildHorizontalCard(Restaurant r) {
     final km = _getDistance(r);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
@@ -905,12 +932,19 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: Theme.of(
-              context,
-            ).colorScheme.outlineVariant.withValues(alpha: 0.3),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.04)
+                : Colors.black.withValues(alpha: 0.05),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -919,7 +953,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
             // Image
             ClipRRect(
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
+                top: Radius.circular(20),
               ),
               child: CachedNetworkImage(
                 imageUrl: RestaurantImage.getUrl(r.cuisineType, seed: r.id),
@@ -983,7 +1017,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                         size: 11,
                         color: Theme.of(
                           context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.4),
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                       const SizedBox(width: 2),
                       Text(
@@ -992,7 +1026,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                           fontSize: 11,
                           color: Theme.of(
                             context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.45),
+                          ).colorScheme.onSurface.withValues(alpha: 0.75),
                         ),
                       ),
                     ],
@@ -1032,7 +1066,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
               fontSize: 13,
               color: Theme.of(
                 context,
-              ).colorScheme.onSurface.withValues(alpha: 0.5),
+              ).colorScheme.onSurface.withValues(alpha: 0.75),
             ),
           ),
           const Spacer(),
@@ -1101,20 +1135,31 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? AppColors.primary.withValues(alpha: 0.5)
-                : Theme.of(
-                    context,
-                  ).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                ? AppColors.primary.withValues(alpha: 0.8)
+                : (Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white.withValues(alpha: 0.04)
+                      : Colors.black.withValues(alpha: 0.05)),
             width: isSelected ? 1.5 : 1,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(
+                alpha: Theme.of(context).brightness == Brightness.dark
+                    ? (isSelected ? 0.30 : 0.20)
+                    : (isSelected ? 0.08 : 0.04),
+              ),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
               child: CachedNetworkImage(
                 imageUrl: RestaurantImage.getUrl(r.cuisineType, seed: r.id),
                 width: 76,
@@ -1168,7 +1213,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                         size: 12,
                         color: Theme.of(
                           context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.35),
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                       const SizedBox(width: 2),
                       Text(
@@ -1177,7 +1222,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                           fontSize: 12,
                           color: Theme.of(
                             context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.45),
+                          ).colorScheme.onSurface.withValues(alpha: 0.75),
                         ),
                       ),
                     ],
@@ -1374,6 +1419,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     final tempFacilities = Set<String>.from(_activeFacilities);
     var tempMinRating = _activeMinRating;
     var tempMaxDist = _activeMaxDistance;
+    var tempMaxPriceLevel = _activeMaxPriceLevel;
 
     showModalBottomSheet(
       context: context,
@@ -1390,6 +1436,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
             facilities: tempFacilities,
             minRating: tempMinRating,
             maxDist: tempMaxDist,
+            maxPriceLevel: tempMaxPriceLevel,
           );
 
           void applyAndClose() {
@@ -1400,6 +1447,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
               _activeFacilities = Set.from(tempFacilities);
               _activeMinRating = tempMinRating;
               _activeMaxDistance = tempMaxDist;
+              _activeMaxPriceLevel = tempMaxPriceLevel;
             });
             _applyFilters();
             Navigator.pop(context);
@@ -1447,6 +1495,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                           tempFacilities.clear();
                           tempMinRating = 0.0;
                           tempMaxDist = 500.0;
+                          tempMaxPriceLevel = null;
                         }),
                         child: const Text(
                           'Reset all',
@@ -1538,6 +1587,11 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                           divisions: 10,
                           color: AppColors.primary,
                           onChanged: (v) => setModal(() => tempMinRating = v),
+                        ),
+                        _fsTitle('Maximum Budget'),
+                        _fsPriceChips(
+                          tempMaxPriceLevel,
+                          (v) => setModal(() => tempMaxPriceLevel = v),
                         ),
                         _fsTitle('Dietary'),
                         _fsChips(
@@ -1707,6 +1761,65 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       );
     }).toList(),
   );
+
+  Widget _fsPriceChips(int? activeLevel, void Function(int?) onSelected) {
+    final options = [
+      (null, 'Any'),
+      (1, 'Budget (< RM15)'),
+      (2, 'Moderate (RM15 - RM40)'),
+      (3, 'Upscale (RM40 - RM100)'),
+      (4, 'Fine Dining (RM100+)'),
+    ];
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: options.map((opt) {
+        final val = opt.$1;
+        final label = opt.$2;
+        final sel = activeLevel == val;
+        return GestureDetector(
+          onTap: () => onSelected(val),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: sel
+                  ? AppColors.primary.withValues(alpha: 0.1)
+                  : Theme.of(context).colorScheme.surfaceContainer,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: sel ? AppColors.primary : Theme.of(context).dividerColor,
+                width: sel ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (sel) ...[
+                  const Icon(
+                    Icons.check_rounded,
+                    size: 12,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 4),
+                ],
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: sel
+                        ? AppColors.primary
+                        : Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
 
   Widget _fsSlider({
     required double value,

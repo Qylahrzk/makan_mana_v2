@@ -844,8 +844,8 @@ class _MapScreenState extends State<MapScreen>
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  AppColors.primary.withValues(alpha: 0.15),
-                                  AppColors.secondary.withValues(alpha: 0.1),
+                                  AppColors.secondary.withValues(alpha: 0.15),
+                                  AppColors.secondary.withValues(alpha: 0.04),
                                 ],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
@@ -864,8 +864,8 @@ class _MapScreenState extends State<MapScreen>
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  AppColors.primary.withValues(alpha: 0.15),
-                                  AppColors.secondary.withValues(alpha: 0.1),
+                                  AppColors.secondary.withValues(alpha: 0.15),
+                                  AppColors.secondary.withValues(alpha: 0.04),
                                 ],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,

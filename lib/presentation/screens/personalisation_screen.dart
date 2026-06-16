@@ -575,6 +575,16 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
                 onChanged: (v) =>
                     setState(() => _draft = draft.copyWith(scenicView: v)),
               ),
+              _divider(),
+              _ToggleRow(
+                icon: Icons.people_rounded,
+                iconColor: Colors.deepOrange,
+                label: 'Lively / Crowded',
+                subtitle: 'Popular, bustling, and lively spots',
+                value: draft.isCrowded,
+                onChanged: (v) =>
+                    setState(() => _draft = draft.copyWith(isCrowded: v)),
+              ),
             ],
           ),
 
@@ -737,6 +747,89 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
                       ],
                     ),
                   ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── 7. Maximum Budget ───────────────────────────────────────────
+          _SectionTitle(title: '💰 Maximum Budget'),
+          _PrefsCard(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children:
+                      [
+                        (null, 'Any'),
+                        (1, 'Budget (< RM15)'),
+                        (2, 'Moderate (RM15 - RM40)'),
+                        (3, 'Upscale (RM40 - RM100)'),
+                        (4, 'Fine Dining (RM100+)'),
+                      ].map((opt) {
+                        final val = opt.$1;
+                        final label = opt.$2;
+                        final selected = draft.budget == val;
+                        return GestureDetector(
+                          onTap: () => setState(() {
+                            _draft = draft.copyWith(
+                              budget: val,
+                              clearBudget: val == null,
+                            );
+                          }),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: selected
+                                  ? AppColors.primary
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.surfaceContainer,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: selected
+                                    ? AppColors.primary
+                                    : Theme.of(context).dividerColor,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (selected) ...[
+                                  const Icon(
+                                    Icons.check_rounded,
+                                    size: 13,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 4),
+                                ],
+                                Text(
+                                  label,
+                                  style: TextStyle(
+                                    fontFamily: 'OpenSans',
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: selected
+                                        ? Colors.white
+                                        : Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withValues(alpha: 0.7),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
                 ),
               ),
             ],

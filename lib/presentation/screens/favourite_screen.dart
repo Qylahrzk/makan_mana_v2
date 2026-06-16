@@ -174,6 +174,7 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
       isCasual: false,
       isRomantic: item.isRomantic,
       hasScenicView: item.hasScenicView,
+      isCrowded: item.isCrowded,
       isWorthIt: false,
       isFastService: false,
       dominantTopic: item.dominantTopic,
@@ -366,8 +367,8 @@ class _FavouriteCard extends StatelessWidget {
     decoration: BoxDecoration(
       gradient: LinearGradient(
         colors: [
-          AppColors.primary.withValues(alpha: 0.15),
-          AppColors.secondary.withValues(alpha: 0.1),
+          AppColors.secondary.withValues(alpha: 0.18),
+          AppColors.secondary.withValues(alpha: 0.05),
         ],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
@@ -391,12 +392,21 @@ class _FavouriteCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white.withValues(alpha: 0.04)
+                : Colors.black.withValues(alpha: 0.05),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+              color: Colors.black.withValues(
+                alpha: Theme.of(context).brightness == Brightness.dark
+                    ? 0.20
+                    : 0.04,
+              ),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),

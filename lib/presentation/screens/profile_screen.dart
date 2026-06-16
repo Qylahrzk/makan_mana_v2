@@ -905,13 +905,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  AppColors.primary.withValues(alpha: 0.12),
-                                  AppColors.secondary.withValues(alpha: 0.08),
+                                  AppColors.secondary.withValues(alpha: 0.12),
+                                  AppColors.secondary.withValues(alpha: 0.04),
                                 ],
                               ),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: AppColors.primary.withValues(
+                                color: AppColors.secondary.withValues(
                                   alpha: 0.25,
                                 ),
                               ),
@@ -1288,8 +1288,8 @@ class _ProfileCard extends StatelessWidget {
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.primary, AppColors.secondary],
+              gradient: const LinearGradient(
+                colors: AppColors.oceanGradient,
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),

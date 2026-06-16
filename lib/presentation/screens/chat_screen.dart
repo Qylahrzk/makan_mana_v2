@@ -1,21 +1,14 @@
 // ============================================================
 // FILE: lib/presentation/screens/chat_screen.dart
 //
-// v3.1 CHANGES:
-//   1. Explainability chips per restaurant card: 'Matched: Halal + LDA: Romantic Vibe'
-//   2. Partial-match banner: 'Closest matches — scenic_view relaxed'
-//   3. Model + search badge: 'Answered by Groq · Searched online'
-//   4. Shows up to 5 restaurant cards, always visible (no card clipping)
-//   5. AppBar subtitle now says 'Gemini · Groq · Mistral + LDA' to reflect
-//      the multi-LLM setup accurately
-//   6. 'No results' state is replaced by partial-match fallback — API
-//      always returns results, so this case should not occur
+// UPDATED: Warm peachy gradient background + improved styling
 // ============================================================
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/app_colors.dart';
+import '../../core/nav_tab_proxy.dart';
 import '../../core/app_utils.dart';
 import '../../data/restaurant_repository.dart';
 import '../../logic/cubits/chat_cubit.dart';
@@ -23,26 +16,528 @@ import '../../logic/cubits/user_preferences_cubit.dart';
 import '../../models/chat_message_model.dart';
 import '../../models/restaurant_model.dart';
 import 'restaurant_detail_screen.dart';
+import '../widgets/premium_background.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
+
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _textCtrl = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _textCtrl.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _startChat(BuildContext context, String initialMessage) {
+    final text = initialMessage.trim();
+    if (text.isEmpty) return;
+
+    _textCtrl.clear();
+    _focusNode.unfocus();
+
+    // Reset ChatCubit
+    context.read<ChatCubit>().clearChat();
+
+    // Push the active chat screen fullscreen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ActiveConversationScreen(initialMessage: text),
+      ),
+    ).then((_) {
+      // Reset ChatCubit on return to tab
+      if (context.mounted) {
+        context.read<ChatCubit>().clearChat();
+      }
+    });
+  }
+
+  void _send() {
+    _startChat(context, _textCtrl.text);
+  }
+
+  static const List<(String, String)> _suggestions = [
+    ('✅ Halal cafe', 'Find me a halal cafe in Terengganu'),
+    ('🦞 Best seafood', 'Best seafood restaurant in Terengganu'),
+    ('🕯️ Romantic spots', 'Romantic dinner spots with scenic view'),
+    ('💰 Budget eats', 'Budget Malay food under RM15'),
+  ];
+
+  Widget _buildWelcome() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 10),
+
+          // ── Top Header Row (MakanBot Title & Subtitle) ───────────
+          Row(
+            children: [
+              _buildHeaderCircleButton(
+                context: context,
+                icon: Icons.arrow_back_ios_new_rounded,
+                onTap: () {
+                  context.findAncestorStateOfType<NavTabProxy>()?.switchTab(0);
+                },
+                isDark: isDark,
+              ),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      'MakanBot',
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      'Free Plan',
+                      style: TextStyle(
+                        fontFamily: 'OpenSans',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? AppColors.darkTextSecondary
+                            : Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _buildHeaderCircleButton(
+                context: context,
+                icon: Icons.grid_view_rounded,
+                onTap: () => _showGridMenu(context),
+                isDark: isDark,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 32),
+
+          // ── Title RichText ───────────────────────────────────────
+          RichText(
+            textAlign: TextAlign.left,
+            text: TextSpan(
+              style: TextStyle(
+                fontFamily: 'Montserrat',
+                fontSize: 32,
+                fontWeight: FontWeight.w900,
+                height: 1.15,
+                color: isDark ? Colors.white : AppColors.textPrimary,
+              ),
+              children: [
+                TextSpan(text: 'Your '),
+                TextSpan(
+                  text: '✨ Smart\n',
+                  style: TextStyle(
+                    color: isDark
+                        ? AppColors.darkSecondary
+                        : AppColors.secondary,
+                  ),
+                ),
+                TextSpan(
+                  text: 'Assistant ',
+                  style: TextStyle(
+                    color: isDark
+                        ? AppColors.darkSecondary
+                        : AppColors.secondary,
+                  ),
+                ),
+                TextSpan(text: 'for\nDaily Dining'),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          // ── Mascot on Right, Speech Bubble on Left overlapping ────
+          SizedBox(
+            height: 170,
+            width: double.infinity,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // Mascot on the Right (partially off-screen)
+                Positioned(
+                  right: -25,
+                  top: 0,
+                  bottom: 0,
+                  width: 140,
+                  child: Image.asset(
+                    'assets/images/chatbot.png',
+                    fit: BoxFit.contain,
+                    alignment: Alignment.centerRight,
+                  ),
+                ),
+
+                // Speech Bubble on the Left
+                Positioned(
+                  left: 0,
+                  right: 95, // Overlaps the mascot's left side slightly
+                  top: 15,
+                  child: CustomPaint(
+                    painter: SpeechBubblePainter(
+                      bgColor: isDark
+                          ? AppColors.darkSurface.withValues(alpha: 0.75)
+                          : Colors.white.withValues(alpha: 0.90),
+                      borderColor: isDark
+                          ? Colors.white.withValues(alpha: 0.10)
+                          : AppColors.secondary.withValues(alpha: 0.15),
+                      isDark: isDark,
+                      isTailOnLeft: false, // Tail on the right, pointing right
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                        left: 14,
+                        right: 24, // tailWidth (10) + 14
+                        top: 12,
+                        bottom: 12,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "Hi! I'm Tutu, your makanbot! 👋",
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: isDark
+                                  ? AppColors.darkOnSurface
+                                  : AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Ask me anything to find the perfect restaurant in Terengganu!",
+                            style: TextStyle(
+                              fontFamily: 'OpenSans',
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: isDark
+                                  ? AppColors.darkTextSecondary
+                                  : Colors.grey[600],
+                              height: 1.25,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── Suggested section label (Left Aligned) ───────────────
+          Text(
+            'SUGGESTED QUESTIONS',
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.1,
+              color: (isDark ? AppColors.darkOnSurface : AppColors.textPrimary)
+                  .withValues(alpha: 0.45),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // ── Left-aligned Suggestions Chips (Wrap layout, baseline aligned) ──
+          Wrap(
+            alignment: WrapAlignment.start,
+            spacing: 12,
+            runSpacing: 10,
+            children: _suggestions.map((item) {
+              final (label, prompt) = item;
+              final parts = label.split(' ');
+              final emoji = parts.first;
+              final text = parts.skip(1).join(' ');
+
+              return GestureDetector(
+                onTap: () => _startChat(context, prompt),
+                child: Container(
+                  height: 38,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.darkSurface.withValues(alpha: 0.6)
+                        : Colors.white.withValues(alpha: 0.8),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : AppColors.secondary.withValues(alpha: 0.15),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.15 : 0.03,
+                        ),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(emoji, style: const TextStyle(fontSize: 14)),
+                      const SizedBox(width: 6),
+                      Text(
+                        text,
+                        style: TextStyle(
+                          fontFamily: 'OpenSans',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isDark
+                              ? AppColors.darkOnSurface
+                              : AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabInputBar(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bottomPad = MediaQuery.of(context).padding.bottom;
+
+    // Position exactly above the floating bottom navigation bar
+    final double navBarHeight = 68.0 + (bottomPad > 0 ? bottomPad + 6 : 14);
+
+    final showSend = _textCtrl.text.trim().isNotEmpty;
+    final bool isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+    final double bottomPadding = isKeyboardOpen ? 8 : (8 + navBarHeight);
+
+    final itemBgColor = isDark
+        ? const Color(0xFF1B1929).withValues(alpha: 0.8)
+        : Colors.white;
+    final itemBorderColor = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : AppColors.secondary.withValues(alpha: 0.15);
+    final itemShadow = isDark
+        ? null
+        : [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ];
+
+    return Container(
+      // Only bottom padding to push it above the floating navbar
+      padding: EdgeInsets.fromLTRB(16, 8, 16, bottomPadding),
+      color: Colors.transparent, // Fully transparent container background
+      child: Row(
+        children: [
+          // Left Standalone [+] Button
+          GestureDetector(
+            onTap: () {
+              _focusNode.requestFocus();
+            },
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: itemBgColor,
+                border: Border.all(color: itemBorderColor, width: 1.5),
+                boxShadow: itemShadow,
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.add_rounded,
+                  color: isDark ? Colors.white : AppColors.textPrimary,
+                  size: 22,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Right Capsule Input Field
+          Expanded(
+            child: Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                color: itemBgColor,
+                border: Border.all(color: itemBorderColor, width: 1.5),
+                boxShadow: itemShadow,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _textCtrl,
+                      focusNode: _focusNode,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _send(),
+                      onChanged: (_) {
+                        setState(() {});
+                      },
+                      style: TextStyle(
+                        fontFamily: 'OpenSans',
+                        fontSize: 14,
+                        color: isDark ? Colors.white : AppColors.textPrimary,
+                      ),
+                      decoration: InputDecoration(
+                        filled: false,
+                        hintText: 'Type a message..',
+                        hintStyle: TextStyle(
+                          fontFamily: 'OpenSans',
+                          fontSize: 14,
+                          color: isDark ? Colors.white30 : Colors.grey[400],
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                        ),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // Right End Icon (Voice Waveform or Send Button)
+                  showSend
+                      ? GestureDetector(
+                          onTap: _send,
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: const LinearGradient(
+                                colors: AppColors.freshMakanGradient,
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.send_rounded,
+                                color: Colors.white,
+                                size: 14,
+                              ),
+                            ),
+                          ),
+                        )
+                      : GestureDetector(
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Text(
+                                  'Voice feature is coming soon!',
+                                ),
+                                duration: const Duration(seconds: 2),
+                                backgroundColor: AppColors.adaptiveSecondary(
+                                  context,
+                                ),
+                              ),
+                            );
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 4),
+                            child: _VoiceWaveformIcon(),
+                          ),
+                        ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      extendBody: true,
+      resizeToAvoidBottomInset: true,
+      body: PremiumGradientBackground(
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              Expanded(child: _buildWelcome()),
+              _buildTabInputBar(context),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ActiveConversationScreen extends StatefulWidget {
+  final String initialMessage;
+  const ActiveConversationScreen({super.key, required this.initialMessage});
+
+  @override
+  State<ActiveConversationScreen> createState() =>
+      _ActiveConversationScreenState();
+}
+
+class _ActiveConversationScreenState extends State<ActiveConversationScreen> {
+  final TextEditingController _textCtrl = TextEditingController();
   final ScrollController _scrollCtrl = ScrollController();
   final FocusNode _focusNode = FocusNode();
 
-  static const List<(String, String)> _suggestions = [
-    ('Halal cafe', 'Find me a halal cafe in Terengganu'),
-    ('Best seafood', 'Best seafood restaurant in Terengganu'),
-    ('Romantic dinner', 'Romantic dinner spots with scenic view'),
-    ('Budget Malay food', 'Budget Malay food under RM15'),
-    ('Family + parking', 'Family-friendly restaurants with parking'),
-    ('Top rated', 'What are the highest rated restaurants?'),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _sendText(widget.initialMessage);
+    });
+  }
 
   @override
   void dispose() {
@@ -156,6 +651,7 @@ class _ChatScreenState extends State<ChatScreen> {
       isCasual: false,
       isRomantic: p['is_romantic'] == true,
       hasScenicView: p['has_scenic_view'] == true,
+      isCrowded: p['is_crowded'] == true,
       isWorthIt: false,
       isFastService: false,
       dominantTopic: 0,
@@ -179,150 +675,107 @@ class _ChatScreenState extends State<ChatScreen> {
     );
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.transparent,
+      extendBody: true,
       resizeToAvoidBottomInset: true,
       appBar: _buildAppBar(isDark),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: BlocConsumer<ChatCubit, ChatState>(
-                listener: (context, state) {
-                  if (state is! ChatInitial) _scrollToBottom();
-                },
-                builder: (context, state) {
-                  if (state is ChatInitial) return _buildWelcome();
-                  final messages = switch (state) {
-                    ChatLoaded() => state.messages,
-                    ChatSending() => state.messages,
-                    ChatError() => state.messages,
-                    _ => <ChatMessageModel>[],
-                  };
-                  return _buildMessageList(messages);
-                },
-              ),
-            ),
-            _buildInputBar(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── App bar ───────────────────────────────────────────────────────────────
-  // FIX: subtitle updated to reflect multi-LLM + LDA setup accurately.
-  PreferredSizeWidget _buildAppBar(bool isDark) {
-    return PreferredSize(
-      preferredSize: const Size.fromHeight(64),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isDark
-                ? [AppColors.darkSurface, AppColors.darkSurface]
-                : [AppColors.secondary, AppColors.secondaryLight],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+      body: PremiumGradientBackground(
         child: SafeArea(
           bottom: false,
-          child: SizedBox(
-            height: 64,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  // Bot avatar
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.20),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.30),
-                        width: 1,
-                      ),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.auto_awesome_rounded,
-                        size: 20,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Title + subtitle
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'GanuBot 🤖',
-                          style: TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                        Text(
-                          // FIX: accurate subtitle — reflects multi-LLM + LDA
-                          'Groq · Gemini · + LDA',
-                          style: TextStyle(
-                            fontFamily: 'OpenSans',
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.75),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Clear button
-                  BlocBuilder<ChatCubit, ChatState>(
-                    builder: (context, state) {
-                      if (state is ChatInitial) return const SizedBox();
-                      return GestureDetector(
-                        onTap: _showClearDialog,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 7,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.22),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.35),
-                              width: 1,
-                            ),
-                          ),
-                          child: const Text(
-                            'Clear',
-                            style: TextStyle(
-                              fontFamily: 'OpenSans',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+          child: Column(
+            children: [
+              Expanded(
+                child: BlocConsumer<ChatCubit, ChatState>(
+                  listener: (context, state) {
+                    if (state is! ChatInitial) _scrollToBottom();
+                  },
+                  builder: (context, state) {
+                    if (state is ChatInitial) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final messages = switch (state) {
+                      ChatLoaded() => state.messages,
+                      ChatSending() => state.messages,
+                      ChatError() => state.messages,
+                      _ => <ChatMessageModel>[],
+                    };
+                    return _buildMessageList(messages);
+                  },
+                ),
               ),
+              BlocBuilder<ChatCubit, ChatState>(
+                builder: (context, state) {
+                  return _buildInputBar();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(bool isDark) {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(70),
+      child: Container(
+        color: Colors.transparent,
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 10,
+              bottom: 10,
+            ),
+            child: Row(
+              children: [
+                _buildHeaderCircleButton(
+                  context: context,
+                  icon: Icons.arrow_back_ios_new_rounded,
+                  onTap: () {
+                    context.read<ChatCubit>().clearChat();
+                    Navigator.pop(context);
+                  },
+                  isDark: isDark,
+                ),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        'MakanBot',
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? Colors.white : AppColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        'Free Plan',
+                        style: TextStyle(
+                          fontFamily: 'OpenSans',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: isDark
+                              ? AppColors.darkTextSecondary
+                              : Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _buildHeaderCircleButton(
+                  context: context,
+                  icon: Icons.grid_view_rounded,
+                  onTap: () =>
+                      _showGridMenu(context, onClear: _showClearDialog),
+                  isDark: isDark,
+                ),
+              ],
             ),
           ),
         ),
@@ -330,231 +783,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // ── Welcome screen ────────────────────────────────────────────────────────
-  Widget _buildWelcome() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final prefs = context.watch<UserPreferencesCubit>().current;
-    final activePrefs = <String>[];
-    if (prefs?.halal == true) activePrefs.add('Halal');
-    if (prefs?.vegetarian == true) activePrefs.add('Vegetarian');
-    if (prefs?.vegan == true) activePrefs.add('Vegan');
-    if (prefs?.hasParking == true) activePrefs.add('Parking');
-    if (prefs?.hasWifi == true) activePrefs.add('WiFi');
-    if (prefs?.hasAc == true) activePrefs.add('Air-Cond');
-    if (prefs?.familyFriendly == true) activePrefs.add('Family Friendly');
-    if (prefs?.romantic == true) activePrefs.add('Romantic');
-    if (prefs?.scenicView == true) activePrefs.add('Scenic View');
-    if (prefs?.groupFriendly == true) activePrefs.add('Group Friendly');
-    if (prefs?.casual == true) activePrefs.add('Casual');
-    if (prefs?.worthIt == true) activePrefs.add('Worth It');
-    if (prefs?.fastService == true) activePrefs.add('Fast Service');
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.20),
-              ),
-            ),
-            child: const Center(
-              child: Text('🍜', style: TextStyle(fontSize: 32)),
-            ),
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            'Makan maner rini? 🍜',
-            style: TextStyle(
-              fontFamily: 'Montserrat',
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
-              height: 1.2,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Terengganu restaurants, AI-powered',
-            style: TextStyle(
-              fontFamily: 'Montserrat',
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: AppColors.secondary,
-              letterSpacing: -0.2,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'I know ~990 restaurants across Terengganu. '
-            'Ask for recommendations, halal options, scenic spots, and more.',
-            style: TextStyle(
-              fontFamily: 'OpenSans',
-              fontSize: 13,
-              height: 1.55,
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.55),
-            ),
-          ),
-
-          if (activePrefs.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.secondaryTint,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.secondary.withValues(alpha: 0.25),
-                ),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.tune_rounded,
-                    size: 16,
-                    color: AppColors.secondary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Your preferences are active:',
-                          style: TextStyle(
-                            fontFamily: 'OpenSans',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.secondary,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          activePrefs.join(' · '),
-                          style: TextStyle(
-                            fontFamily: 'OpenSans',
-                            fontSize: 11,
-                            color: AppColors.secondary.withValues(alpha: 0.85),
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          'My answers will match these automatically.',
-                          style: TextStyle(
-                            fontFamily: 'OpenSans',
-                            fontSize: 11,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.45),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 26),
-          Text(
-            'TRY ASKING',
-            style: TextStyle(
-              fontFamily: 'OpenSans',
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.38),
-            ),
-          ),
-          const SizedBox(height: 12),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              childAspectRatio: 2.8,
-            ),
-            itemCount: _suggestions.length,
-            itemBuilder: (_, i) {
-              final (label, prompt) = _suggestions[i];
-              return GestureDetector(
-                onTap: () => _sendText(prompt),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkSurface : AppColors.surface,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: AppColors.secondary.withValues(alpha: 0.20),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 4,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        _suggestionEmoji(label),
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          label,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: 'OpenSans',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.onSurface,
-                            height: 1.3,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _suggestionEmoji(String label) {
-    if (label.contains('Halal')) return '✅';
-    if (label.contains('seafood')) return '🦞';
-    if (label.contains('Romantic')) return '🕯️';
-    if (label.contains('Budget')) return '💰';
-    if (label.contains('Family')) return '👨‍👩‍👧';
-    if (label.contains('rated')) return '⭐';
-    return '🍽️';
-  }
-
-  // ── Message list ──────────────────────────────────────────────────────────
   Widget _buildMessageList(List<ChatMessageModel> messages) {
     return ListView.builder(
       controller: _scrollCtrl,
@@ -564,19 +792,23 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // ── Single bubble ─────────────────────────────────────────────────────────
   Widget _buildBubble(ChatMessageModel msg) {
     if (msg.isTyping) return _buildTypingBubble();
     final isUser = msg.isUser;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final userBubbleColor = isDark ? AppColors.darkPrimary : AppColors.primary;
+    final activePrimary = isDark ? AppColors.darkPrimary : AppColors.primary;
+    final activeSecondary = isDark
+        ? AppColors.darkSecondary
+        : AppColors.secondary;
+
+    final userBubbleColor = activePrimary;
     final botBubbleColor = isDark
         ? AppColors.darkSurface
-        : const Color(0xFFF0F8F8);
+        : const Color(0xFFF4FAFA);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         mainAxisAlignment: isUser
             ? MainAxisAlignment.end
@@ -586,15 +818,25 @@ class _ChatScreenState extends State<ChatScreen> {
           // Bot avatar
           if (!isUser) ...[
             Container(
-              width: 30,
-              height: 30,
-              decoration: const BoxDecoration(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppColors.secondary, AppColors.secondaryLight],
+                  colors: [
+                    activeSecondary,
+                    activeSecondary.withValues(alpha: 0.75),
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: activeSecondary.withValues(alpha: 0.15),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: const Center(
                 child: Icon(
@@ -616,32 +858,42 @@ class _ChatScreenState extends State<ChatScreen> {
                 // Message bubble
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 11,
+                    horizontal: 16,
+                    vertical: 12,
                   ),
                   decoration: BoxDecoration(
+                    gradient: isUser
+                        ? LinearGradient(
+                            colors: [
+                              userBubbleColor,
+                              userBubbleColor.withValues(alpha: 0.85),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
                     color: isUser
-                        ? userBubbleColor
+                        ? null
                         : msg.isError
                         ? AppColors.error.withValues(alpha: 0.08)
                         : botBubbleColor,
                     borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(18),
-                      topRight: const Radius.circular(18),
-                      bottomLeft: Radius.circular(isUser ? 18 : 4),
-                      bottomRight: Radius.circular(isUser ? 4 : 18),
+                      topLeft: const Radius.circular(20),
+                      topRight: const Radius.circular(20),
+                      bottomLeft: Radius.circular(isUser ? 20 : 4),
+                      bottomRight: Radius.circular(isUser ? 4 : 20),
                     ),
                     border: !isUser
                         ? Border.all(
                             color: msg.isError
                                 ? AppColors.error.withValues(alpha: 0.25)
-                                : AppColors.secondary.withValues(alpha: 0.15),
+                                : activeSecondary.withValues(alpha: 0.15),
                             width: 1,
                           )
                         : null,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.06),
+                        color: Colors.black.withValues(alpha: 0.04),
                         blurRadius: 6,
                         offset: const Offset(0, 2),
                       ),
@@ -666,7 +918,6 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      // ── Model + search badge (bot messages only) ─────────
                       if (!isUser && !msg.isError && msg.modelUsed.isNotEmpty)
                         _buildModelBadge(msg),
                       const SizedBox(height: 2),
@@ -686,15 +937,11 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ),
 
-                // ── Partial-match banner ─────────────────────────────────────
                 if (!isUser &&
                     msg.hasPartialMatch &&
                     msg.relaxedCriteria.isNotEmpty)
                   _buildPartialMatchBanner(msg.relaxedCriteria),
 
-                // ── Restaurant cards (FIX: always up to 5, fully visible) ────
-                // FIX: show up to 5 cards; removed .take(5) clipping issue by
-                // using Column instead of ListView so all cards are rendered.
                 if (!isUser && msg.restaurants.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   ...msg.restaurants
@@ -716,20 +963,24 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // ── Model + search badge ──────────────────────────────────────────────────
   Widget _buildModelBadge(ChatMessageModel msg) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeSecondary = isDark
+        ? AppColors.darkSecondary
+        : AppColors.secondary;
+
     final parts = <String>[];
     if (msg.modelUsed.isNotEmpty) parts.add('⚡ ${msg.modelUsed}');
     if (msg.searchUsed) parts.add('🔍 Searched online');
     if (parts.isEmpty) return const SizedBox();
 
     return Container(
-      margin: const EdgeInsets.only(top: 4, bottom: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      margin: const EdgeInsets.only(top: 6, bottom: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.secondary.withValues(alpha: 0.10),
+        color: activeSecondary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.20)),
+        border: Border.all(color: activeSecondary.withValues(alpha: 0.18)),
       ),
       child: Text(
         parts.join('  ·  '),
@@ -737,13 +988,12 @@ class _ChatScreenState extends State<ChatScreen> {
           fontFamily: 'OpenSans',
           fontSize: 10,
           fontWeight: FontWeight.w600,
-          color: AppColors.secondary,
+          color: activeSecondary,
         ),
       ),
     );
   }
 
-  // ── Partial-match banner ──────────────────────────────────────────────────
   Widget _buildPartialMatchBanner(List<String> relaxedCriteria) {
     final relaxedStr = relaxedCriteria
         .map((c) => c.replaceAll('_', ' '))
@@ -776,19 +1026,26 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // ── Typing bubble ─────────────────────────────────────────────────────────
   Widget _buildTypingBubble() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeSecondary = isDark
+        ? AppColors.darkSecondary
+        : AppColors.secondary;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Container(
-            width: 30,
-            height: 30,
-            decoration: const BoxDecoration(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppColors.secondary, AppColors.secondaryLight],
+                colors: [
+                  activeSecondary,
+                  activeSecondary.withValues(alpha: 0.75),
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -806,19 +1063,19 @@ class _ChatScreenState extends State<ChatScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF0F8F8),
+              color: isDark ? AppColors.darkSurface : const Color(0xFFF4FAFA),
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(18),
-                topRight: Radius.circular(18),
-                bottomRight: Radius.circular(18),
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+                bottomRight: Radius.circular(20),
                 bottomLeft: Radius.circular(4),
               ),
               border: Border.all(
-                color: AppColors.secondary.withValues(alpha: 0.18),
+                color: activeSecondary.withValues(alpha: 0.15),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
+                  color: Colors.black.withValues(alpha: 0.04),
                   blurRadius: 6,
                   offset: const Offset(0, 2),
                 ),
@@ -831,121 +1088,169 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // ── Input bar ─────────────────────────────────────────────────────────────
   Widget _buildInputBar() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return BlocBuilder<ChatCubit, ChatState>(
       builder: (context, state) {
         final sending = state is ChatSending;
+        final hasText = _textCtrl.text.trim().isNotEmpty;
+
+        final itemBgColor = isDark
+            ? const Color(0xFF1B1929).withValues(alpha: 0.8)
+            : Colors.white;
+        final itemBorderColor = isDark
+            ? Colors.white.withValues(alpha: 0.08)
+            : AppColors.secondary.withValues(alpha: 0.15);
+        final itemShadow = isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ];
+
         return Container(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.darkSurface : AppColors.surface,
-            border: Border(
-              top: BorderSide(
-                color: isDark ? const Color(0xFF2E2E42) : AppColors.divider,
-                width: 1,
-              ),
-            ),
+          // Use bottom padding for safe area since there is no bottom navigation bar here
+          padding: EdgeInsets.fromLTRB(
+            16,
+            8,
+            16,
+            8 + MediaQuery.of(context).padding.bottom,
           ),
+          color: Colors.transparent, // Fully transparent background
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Expanded(
+              // Left Standalone [+] Button
+              GestureDetector(
+                onTap: () => _showUpgradeBottomSheet(context),
                 child: Container(
-                  constraints: const BoxConstraints(maxHeight: 120),
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? AppColors.darkSurfaceVariant
-                        : AppColors.surfaceVariant,
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color: isDark
-                          ? AppColors.darkSecondary.withValues(alpha: 0.25)
-                          : AppColors.secondary.withValues(alpha: 0.30),
-                      width: 1.5,
-                    ),
+                    shape: BoxShape.circle,
+                    color: itemBgColor,
+                    border: Border.all(color: itemBorderColor, width: 1.5),
+                    boxShadow: itemShadow,
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    child: TextField(
-                      controller: _textCtrl,
-                      focusNode: _focusNode,
-                      enabled: !sending,
-                      maxLines: 5,
-                      minLines: 1,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => sending ? null : _send(),
-                      style: TextStyle(
-                        fontFamily: 'OpenSans',
-                        fontSize: 14,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: sending
-                            ? 'GanuBot is thinking...'
-                            : 'Ask about restaurants...',
-                        hintStyle: TextStyle(
-                          fontFamily: 'OpenSans',
-                          fontSize: 14,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.38),
-                        ),
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 10,
-                        ),
-                        isDense: true,
-                      ),
+                  child: Center(
+                    child: Icon(
+                      Icons.add_rounded,
+                      color: isDark ? Colors.white : AppColors.textPrimary,
+                      size: 22,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              GestureDetector(
-                onTap: sending ? null : _send,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 46,
-                  height: 46,
+              const SizedBox(width: 12),
+
+              // Right Capsule Input Field
+              Expanded(
+                child: Container(
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
                   decoration: BoxDecoration(
-                    color: sending
-                        ? AppColors.primary.withValues(alpha: 0.45)
-                        : AppColors.primary,
-                    shape: BoxShape.circle,
-                    boxShadow: sending
-                        ? []
-                        : [
-                            BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.35),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
+                    borderRadius: BorderRadius.circular(24),
+                    color: itemBgColor,
+                    border: Border.all(color: itemBorderColor, width: 1.5),
+                    boxShadow: itemShadow,
                   ),
-                  child: sending
-                      ? const Center(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _textCtrl,
+                          focusNode: _focusNode,
+                          enabled: !sending,
+                          maxLines: 1,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => sending ? null : _send(),
+                          onChanged: (_) {
+                            setState(() {});
+                          },
+                          style: TextStyle(
+                            fontFamily: 'OpenSans',
+                            fontSize: 14,
+                            color: isDark
+                                ? Colors.white
+                                : AppColors.textPrimary,
+                          ),
+                          decoration: InputDecoration(
+                            filled: false,
+                            hintText: sending
+                                ? 'Makanbot is thinking...'
+                                : 'Type a message..',
+                            hintStyle: TextStyle(
+                              fontFamily: 'OpenSans',
+                              fontSize: 14,
+                              color: isDark ? Colors.white30 : Colors.grey[400],
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                            ),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+
+                      // Right End Icon (Sending indicator, Send button or Voice waveform)
+                      if (sending)
+                        const Center(
                           child: SizedBox(
-                            width: 18,
-                            height: 18,
+                            width: 20,
+                            height: 20,
                             child: CircularProgressIndicator(
-                              color: Colors.white,
+                              color: AppColors.primary,
                               strokeWidth: 2,
                             ),
                           ),
                         )
-                      : const Icon(
-                          Icons.send_rounded,
-                          color: Colors.white,
-                          size: 19,
+                      else if (hasText)
+                        GestureDetector(
+                          onTap: _send,
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: const LinearGradient(
+                                colors: AppColors.freshMakanGradient,
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.send_rounded,
+                                color: Colors.white,
+                                size: 14,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        GestureDetector(
+                          onTap: () => _showUpgradeBottomSheet(context),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 4),
+                            child: _VoiceWaveformIcon(),
+                          ),
                         ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -955,7 +1260,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // ── Clear dialog ──────────────────────────────────────────────────────────
   void _showClearDialog() {
     showDialog(
       context: context,
@@ -1014,8 +1318,247 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-// ─── Restaurant Mini-Card ─────────────────────────────────────────────────────
-// FIX: Now renders 'Matched: ...' explainability chips below the card info.
+void _showUpgradeBottomSheet(BuildContext context) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final activePrimary = isDark ? AppColors.darkPrimary : AppColors.primary;
+  final activeSecondary = isDark
+      ? AppColors.darkSecondary
+      : AppColors.secondary;
+
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (context) {
+      return Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0F172A) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        padding: EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 16,
+          bottom: MediaQuery.of(context).padding.bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white24 : Colors.black12,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: activePrimary.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.star_rounded,
+                    color: activePrimary,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'Makanbot',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  '+',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    color: activePrimary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Unlock the full power of AI-assisted dining',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'OpenSans',
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: isDark ? AppColors.darkTextSecondary : Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 24),
+            _buildUpgradeFeatureItem(
+              context,
+              icon: Icons.mic_rounded,
+              title: 'Speech-to-Text Voice Search',
+              description:
+                  'Talk to Makanbot naturally instead of typing to get recommendations on the fly.',
+              color: activeSecondary,
+            ),
+            const SizedBox(height: 16),
+            _buildUpgradeFeatureItem(
+              context,
+              icon: Icons.cloud_upload_rounded,
+              title: 'Smart Photos & File Uploads',
+              description:
+                  'Attach menus, receipts, screenshots, or restaurant pictures to extract insights.',
+              color: activePrimary,
+            ),
+            const SizedBox(height: 16),
+            _buildUpgradeFeatureItem(
+              context,
+              icon: Icons.auto_awesome_rounded,
+              title: 'Priority AI & Unlimited Chats',
+              description:
+                  'Get instant peak-hour priority responses and personalized taste mapping.',
+              color: const Color(0xFF10B981),
+            ),
+            const SizedBox(height: 32),
+            Container(
+              width: double.infinity,
+              height: 52,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: const LinearGradient(
+                  colors: AppColors.freshMakanGradient,
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: activePrimary.withValues(alpha: 0.35),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text(
+                        'Thank you! Makanbot+ subscription model integration coming soon.',
+                      ),
+                      backgroundColor: activeSecondary,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  'Upgrade to Makanbot+ for RM9.90/mo',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Maybe Later',
+                style: TextStyle(
+                  fontFamily: 'OpenSans',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark
+                      ? AppColors.darkTextSecondary
+                      : Colors.grey[500],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+Widget _buildUpgradeFeatureItem(
+  BuildContext context, {
+  required IconData icon,
+  required String title,
+  required String description,
+  required Color color,
+}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+
+  return Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: color, size: 20),
+      ),
+      const SizedBox(width: 16),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontFamily: 'Montserrat',
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              description,
+              style: TextStyle(
+                fontFamily: 'OpenSans',
+                fontSize: 12,
+                color: isDark ? AppColors.darkTextSecondary : Colors.grey[600],
+                height: 1.35,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+}
 
 class _RestaurantMiniCard extends StatelessWidget {
   final Map<String, dynamic> preview;
@@ -1032,7 +1575,6 @@ class _RestaurantMiniCard extends StatelessWidget {
     final price = preview['price_level'] as int?;
     final isPartial = preview['is_partial_match'] == true;
 
-    // matched_filters from API — e.g. ['Halal', 'Scenic View', 'LDA: Romantic Vibe']
     final rawFilters = preview['matched_filters'] as List<dynamic>? ?? [];
     final matchedFilters = rawFilters.map((e) => e.toString()).toList();
 
@@ -1040,8 +1582,9 @@ class _RestaurantMiniCard extends StatelessWidget {
     final rawCuisine = preview['cuisine_type'];
     if (rawCuisine is List) {
       cuisine = (rawCuisine).join(', ');
-    } else if (rawCuisine is String)
+    } else if (rawCuisine is String) {
       cuisine = rawCuisine;
+    }
 
     final priceStr = switch (price) {
       1 => '💰',
@@ -1208,8 +1751,7 @@ class _RestaurantMiniCard extends StatelessWidget {
               ),
             ),
 
-            // ── FIX: Explainability chips ──────────────────────────────────
-            // 'Matched: Halal + Scenic View · LDA: Romantic Vibe'
+            // ── Explainability chips ───────────────────────────────────────
             if (matchedFilters.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
@@ -1238,16 +1780,12 @@ class _RestaurantMiniCard extends StatelessWidget {
   }
 }
 
-// ─── Matched Chips Widget ─────────────────────────────────────────────────────
-// Renders 'Matched: Halal + Scenic View · LDA: Romantic Vibe' in a single row.
-
 class _MatchedChips extends StatelessWidget {
   final List<String> filters;
   const _MatchedChips({required this.filters});
 
   @override
   Widget build(BuildContext context) {
-    // Separate LDA from KBF chips
     final ldaFilters = filters.where((f) => f.startsWith('LDA:')).toList();
     final kbfFilters = filters.where((f) => !f.startsWith('LDA:')).toList();
 
@@ -1290,8 +1828,6 @@ class _MatchedChips extends StatelessWidget {
   }
 }
 
-// ─── Typing Dots ──────────────────────────────────────────────────────────────
-
 class _TypingDots extends StatefulWidget {
   const _TypingDots();
   @override
@@ -1324,6 +1860,10 @@ final class _TypingDotsState extends State<_TypingDots>
       builder: (_, _) => Row(
         mainAxisSize: MainAxisSize.min,
         children: List.generate(3, (i) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final activeSecondary = isDark
+              ? AppColors.darkSecondary
+              : AppColors.secondary;
           final t = (_ctrl.value + i / 3.0) % 1.0;
           final opacity = t < 0.5
               ? 0.3 + (t / 0.5) * 0.7
@@ -1333,11 +1873,294 @@ final class _TypingDotsState extends State<_TypingDots>
             height: 7,
             margin: const EdgeInsets.symmetric(horizontal: 3),
             decoration: BoxDecoration(
-              color: AppColors.secondary.withValues(alpha: opacity),
+              color: activeSecondary.withValues(alpha: opacity),
               shape: BoxShape.circle,
             ),
           );
         }),
+      ),
+    );
+  }
+}
+
+// ─── Custom Speech Bubble Painter ────────────────────────────────────────────
+class SpeechBubblePainter extends CustomPainter {
+  final Color bgColor;
+  final Color borderColor;
+  final double borderWidth;
+  final double borderRadius;
+  final double tailWidth;
+  final double tailHeight;
+  final bool isDark;
+  final bool isTailOnLeft;
+
+  SpeechBubblePainter({
+    required this.bgColor,
+    required this.borderColor,
+    this.borderWidth = 1.5,
+    this.borderRadius = 16,
+    this.tailWidth = 10,
+    this.tailHeight = 12,
+    required this.isDark,
+    this.isTailOnLeft = true,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = bgColor
+      ..style = PaintingStyle.fill;
+
+    final borderPaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = borderWidth
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final path = Path();
+    final double w = size.width;
+    final double h = size.height;
+    final double tailCenterY = h * 0.45;
+
+    if (isTailOnLeft) {
+      // Draw the bubble path clockwise with a left-pointing tail
+      path.moveTo(tailWidth + borderRadius, 0);
+      path.lineTo(w - borderRadius, 0);
+      path.arcToPoint(
+        Offset(w, borderRadius),
+        radius: Radius.circular(borderRadius),
+        clockwise: true,
+      );
+      path.lineTo(w, h - borderRadius);
+      path.arcToPoint(
+        Offset(w - borderRadius, h),
+        radius: Radius.circular(borderRadius),
+        clockwise: true,
+      );
+      path.lineTo(tailWidth + borderRadius, h);
+      path.arcToPoint(
+        Offset(tailWidth, h - borderRadius),
+        radius: Radius.circular(borderRadius),
+        clockwise: true,
+      );
+      path.lineTo(tailWidth, tailCenterY + tailHeight / 2);
+      path.lineTo(0, tailCenterY);
+      path.lineTo(tailWidth, tailCenterY - tailHeight / 2);
+      path.lineTo(tailWidth, borderRadius);
+      path.arcToPoint(
+        Offset(tailWidth + borderRadius, 0),
+        radius: Radius.circular(borderRadius),
+        clockwise: true,
+      );
+    } else {
+      // Draw the bubble path clockwise with a right-pointing tail
+      path.moveTo(borderRadius, 0);
+      path.lineTo(w - tailWidth - borderRadius, 0);
+      path.arcToPoint(
+        Offset(w - tailWidth, borderRadius),
+        radius: Radius.circular(borderRadius),
+        clockwise: true,
+      );
+      path.lineTo(w - tailWidth, tailCenterY - tailHeight / 2);
+      path.lineTo(w, tailCenterY);
+      path.lineTo(w - tailWidth, tailCenterY + tailHeight / 2);
+      path.lineTo(w - tailWidth, h - borderRadius);
+      path.arcToPoint(
+        Offset(w - tailWidth - borderRadius, h),
+        radius: Radius.circular(borderRadius),
+        clockwise: true,
+      );
+      path.lineTo(borderRadius, h);
+      path.arcToPoint(
+        Offset(0, h - borderRadius),
+        radius: Radius.circular(borderRadius),
+        clockwise: true,
+      );
+      path.lineTo(0, borderRadius);
+      path.arcToPoint(
+        Offset(borderRadius, 0),
+        radius: Radius.circular(borderRadius),
+        clockwise: true,
+      );
+    }
+    path.close();
+
+    // Draw shadow
+    canvas.drawShadow(
+      path,
+      Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+      6.0,
+      true,
+    );
+
+    // Draw fill
+    canvas.drawPath(path, paint);
+
+    // Draw border
+    canvas.drawPath(path, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant SpeechBubblePainter oldDelegate) {
+    return oldDelegate.bgColor != bgColor ||
+        oldDelegate.borderColor != borderColor ||
+        oldDelegate.isDark != isDark ||
+        oldDelegate.isTailOnLeft != isTailOnLeft;
+  }
+}
+
+// ─── Header & Menu Helpers ───────────────────────────────────────────────────
+
+Widget _buildHeaderCircleButton({
+  required BuildContext context,
+  required IconData icon,
+  required VoidCallback onTap,
+  required bool isDark,
+}) {
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.06)
+            : Colors.white.withValues(alpha: 0.5),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : AppColors.secondary.withValues(alpha: 0.15),
+          width: 1.5,
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          icon,
+          color: isDark ? Colors.white : AppColors.textPrimary,
+          size: 18,
+        ),
+      ),
+    ),
+  );
+}
+
+void _showGridMenu(BuildContext context, {VoidCallback? onClear}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) {
+      return Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0F172A) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.only(
+          top: 16,
+          left: 24,
+          right: 24,
+          bottom: MediaQuery.of(context).padding.bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white24 : Colors.black12,
+                borderRadius: BorderRadius.circular(2.0),
+              ),
+            ),
+            const SizedBox(height: 24),
+            ListTile(
+              leading: const Icon(Icons.star_rounded, color: AppColors.primary),
+              title: Text(
+                'Upgrade to MakanBot+',
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
+              subtitle: const Text(
+                'Voice chat, menu upload & unlimited answers',
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showUpgradeBottomSheet(context);
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(
+                Icons.delete_sweep_rounded,
+                color: AppColors.error,
+              ),
+              title: Text(
+                'Clear Conversation',
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
+              subtitle: const Text('Reset chat history and start fresh'),
+              onTap: () {
+                Navigator.pop(ctx);
+                if (onClear != null) {
+                  onClear();
+                } else if (context.mounted) {
+                  context.read<ChatCubit>().clearChat();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Chat history cleared.')),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+// ─── Custom Voice Waveform Icon ──────────────────────────────────────────────
+
+class _VoiceWaveformIcon extends StatelessWidget {
+  const _VoiceWaveformIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = isDark ? Colors.white60 : Colors.grey[600]!;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _bar(8, color),
+        const SizedBox(width: 2.5),
+        _bar(14, color),
+        const SizedBox(width: 2.5),
+        _bar(20, color),
+        const SizedBox(width: 2.5),
+        _bar(14, color),
+        const SizedBox(width: 2.5),
+        _bar(8, color),
+      ],
+    );
+  }
+
+  Widget _bar(double height, Color color) {
+    return Container(
+      width: 2.5,
+      height: height,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(1.25),
       ),
     );
   }

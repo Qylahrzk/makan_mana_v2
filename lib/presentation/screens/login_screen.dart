@@ -6,6 +6,7 @@ import '../../logic/cubits/auth_cubit.dart';
 import 'signup_screen.dart';
 import 'forgot_password_screen.dart';
 import 'main_nav.dart';
+import '../widgets/premium_background.dart';
 
 /// LoginScreen
 ///
@@ -56,10 +57,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
+      SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
     );
 
@@ -85,219 +87,224 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
+        body: PremiumGradientBackground(
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 20),
 
-                  // ── Back ─────────────────────────────────────────────
-                  _BackButton(),
+                    // ── Back ─────────────────────────────────────────────
+                    _BackButton(),
 
-                  const SizedBox(height: 32),
+                    const SizedBox(height: 32),
 
-                  // ── Heading ──────────────────────────────────────────
-                  const Text(
-                    'Welcome\nBack 👋',
-                    style: TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF1A1A1A),
-                      letterSpacing: -0.8,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Sign in to your Makan Mana account',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[500],
-                      height: 1.5,
-                    ),
-                  ),
-
-                  const SizedBox(height: 36),
-
-                  // ── Email ────────────────────────────────────────────
-                  const _FieldLabel(label: 'Email Address'),
-                  const SizedBox(height: 8),
-                  _InputField(
-                    controller: _emailCtrl,
-                    hint: 'you@example.com',
-                    keyboardType: TextInputType.emailAddress,
-                    prefixIcon: Icons.email_outlined,
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) {
-                        return 'Please enter your email';
-                      }
-                      if (!v.contains('@')) return 'Enter a valid email';
-                      return null;
-                    },
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ── Password ─────────────────────────────────────────
-                  const _FieldLabel(label: 'Password'),
-                  const SizedBox(height: 8),
-                  _InputField(
-                    controller: _passwordCtrl,
-                    hint: '••••••••',
-                    obscureText: _obscurePassword,
-                    prefixIcon: Icons.lock_outline_rounded,
-                    suffixIcon: GestureDetector(
-                      onTap: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
-                      child: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                        color: Colors.grey[400],
-                        size: 20,
+                    // ── Heading ──────────────────────────────────────────
+                    Text(
+                      'Welcome\nBack 👋',
+                      style: TextStyle(
+                        fontSize: 34,
+                        fontWeight: FontWeight.w900,
+                        color: Theme.of(context).colorScheme.onSurface,
+                        letterSpacing: -0.8,
+                        height: 1.2,
                       ),
                     ),
-                    validator: (v) {
-                      if (v == null || v.isEmpty) {
-                        return 'Please enter your password';
-                      }
-                      if (v.length < 6) {
-                        return 'Password must be at least 6 characters';
-                      }
-                      return null;
-                    },
-                  ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Sign in to your Makan Mana account',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                        height: 1.5,
+                      ),
+                    ),
 
-                  // ── Forgot password ──────────────────────────────────
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ForgotPasswordScreen(),
+                    const SizedBox(height: 36),
+
+                    // ── Email ────────────────────────────────────────────
+                    const _FieldLabel(label: 'Email Address'),
+                    const SizedBox(height: 8),
+                    _InputField(
+                      controller: _emailCtrl,
+                      hint: 'you@example.com',
+                      keyboardType: TextInputType.emailAddress,
+                      prefixIcon: Icons.email_outlined,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) {
+                          return 'Please enter your email';
+                        }
+                        if (!v.contains('@')) return 'Enter a valid email';
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ── Password ─────────────────────────────────────────
+                    const _FieldLabel(label: 'Password'),
+                    const SizedBox(height: 8),
+                    _InputField(
+                      controller: _passwordCtrl,
+                      hint: '••••••••',
+                      obscureText: _obscurePassword,
+                      prefixIcon: Icons.lock_outline_rounded,
+                      suffixIcon: GestureDetector(
+                        onTap: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
+                        child: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: Colors.grey[400],
+                          size: 20,
                         ),
                       ),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 8,
-                        ),
-                      ),
-                      child: Text(
-                        'Forgot Password?',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.secondary,
-                        ),
-                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) {
+                          return 'Please enter your password';
+                        }
+                        if (v.length < 6) {
+                          return 'Password must be at least 6 characters';
+                        }
+                        return null;
+                      },
                     ),
-                  ),
 
-                  const SizedBox(height: 8),
-
-                  // ── Sign In button ───────────────────────────────────
-                  BlocBuilder<AuthCubit, AuthState>(
-                    buildWhen: (prev, curr) =>
-                        curr is AuthLoading ||
-                        curr is AuthError ||
-                        curr is AuthAuthenticated ||
-                        prev is AuthLoading,
-                    builder: (context, state) {
-                      final loading = state is AuthLoading && _submitAttempted;
-                      return SizedBox(
-                        width: double.infinity,
-                        height: 54,
-                        child: ElevatedButton(
-                          onPressed: loading ? null : _submit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor: AppColors.primary
-                                .withValues(alpha: 0.6),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
+                    // ── Forgot password ──────────────────────────────────
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ForgotPasswordScreen(),
                           ),
-                          child: loading
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2.5,
-                                  ),
-                                )
-                              : const Text(
-                                  'Sign In',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
                         ),
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // ── Divider ──────────────────────────────────────────
-                  _OrDivider(),
-
-                  const SizedBox(height: 20),
-
-                  // ── Google button ────────────────────────────────────
-                  _GoogleButton(
-                    onTap: () => context.read<AuthCubit>().signInWithGoogle(),
-                  ),
-
-                  const SizedBox(height: 36),
-
-                  // ── Sign up link ─────────────────────────────────────
-                  Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          "Don't have an account?",
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 8,
+                          ),
+                        ),
+                        child: Text(
+                          'Forgot Password?',
                           style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.secondary,
                           ),
                         ),
-                        TextButton(
-                          onPressed: () => Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const SignupScreen(),
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // ── Sign In button ───────────────────────────────────
+                    BlocBuilder<AuthCubit, AuthState>(
+                      buildWhen: (prev, curr) =>
+                          curr is AuthLoading ||
+                          curr is AuthError ||
+                          curr is AuthAuthenticated ||
+                          prev is AuthLoading,
+                      builder: (context, state) {
+                        final loading =
+                            state is AuthLoading && _submitAttempted;
+                        return SizedBox(
+                          width: double.infinity,
+                          height: 54,
+                          child: ElevatedButton(
+                            onPressed: loading ? null : _submit,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: AppColors.primary
+                                  .withValues(alpha: 0.6),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
                             ),
+                            child: loading
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : const Text(
+                                    'Sign In',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
                           ),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
-                          ),
-                          child: Text(
-                            'Sign Up',
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // ── Divider ──────────────────────────────────────────
+                    _OrDivider(),
+
+                    const SizedBox(height: 20),
+
+                    // ── Google button ────────────────────────────────────
+                    _GoogleButton(
+                      onTap: () => context.read<AuthCubit>().signInWithGoogle(),
+                    ),
+
+                    const SizedBox(height: 36),
+
+                    // ── Sign up link ─────────────────────────────────────
+                    Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "Don't have an account?",
                             style: TextStyle(
                               fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
+                              color: Colors.grey[600],
                             ),
                           ),
-                        ),
-                      ],
+                          TextButton(
+                            onPressed: () => Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const SignupScreen(),
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                              ),
+                            ),
+                            child: Text(
+                              'Sign Up',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
 
-                  const SizedBox(height: 20),
-                ],
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
             ),
           ),
@@ -312,19 +319,25 @@ class _LoginScreenState extends State<LoginScreen> {
 class _BackButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: () => Navigator.pop(context),
       child: Container(
         width: 42,
         height: 42,
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F5F5),
+          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.08),
+          ),
         ),
-        child: const Icon(
+        child: Icon(
           Icons.arrow_back_ios_new_rounded,
           size: 18,
-          color: Color(0xFF1A1A1A),
+          color: Theme.of(context).colorScheme.onSurface,
         ),
       ),
     );
@@ -336,15 +349,15 @@ class _OrDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: Divider(color: Colors.grey[200])),
+        Expanded(child: Divider(color: Colors.grey[300])),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Text(
             'or continue with',
-            style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
           ),
         ),
-        Expanded(child: Divider(color: Colors.grey[200])),
+        Expanded(child: Divider(color: Colors.grey[300])),
       ],
     );
   }
@@ -358,10 +371,10 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w700,
-        color: Color(0xFF1A1A1A),
+        color: Theme.of(context).colorScheme.onSurface,
         letterSpacing: 0.2,
       ),
     );
@@ -389,34 +402,46 @@ class _InputField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.08);
+
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 15,
         fontWeight: FontWeight.w500,
-        color: Color(0xFF1A1A1A),
+        color: Theme.of(context).colorScheme.onSurface,
       ),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-        prefixIcon: Icon(prefixIcon, size: 20, color: Colors.grey[400]),
+        hintStyle: TextStyle(
+          color: isDark ? Colors.grey[500] : Colors.grey[500],
+          fontSize: 14,
+        ),
+        prefixIcon: Icon(
+          prefixIcon,
+          size: 20,
+          color: isDark ? Colors.grey[500] : Colors.grey[500],
+        ),
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: const Color(0xFFF8F8F8),
+        fillColor: isDark ? AppColors.darkSurface : Colors.white,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 16,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[200]!),
+          borderSide: BorderSide(color: borderColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[200]!),
+          borderSide: BorderSide(color: borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -449,7 +474,7 @@ class _GoogleButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey[200]!),
+          border: Border.all(color: Colors.grey[300]!),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),

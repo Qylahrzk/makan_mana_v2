@@ -46,8 +46,10 @@ class AppRoutes {
   static const String recommendation = '/recommendation';
   static const String restaurantDetail = '/restaurant-detail';
   static const String map = '/map';
+  static const String makanbot = '/makanbot';
   static const String favourite = '/favourite';
   static const String profile = '/profile';
+  static const String smartRecommend = '/smart-recommend';
 }
 
 // ─────────────────────────────────────────
@@ -109,6 +111,7 @@ class RestaurantColumns {
   static const String isCasual = 'is_casual';
   static const String isRomantic = 'is_romantic';
   static const String hasScenicView = 'has_scenic_view';
+  static const String isCrowded = 'is_crowded';
 
   // Service quality booleans
   static const String isWorthIt = 'is_worth_it';
@@ -236,8 +239,16 @@ class OccasionOptions {
   static const String casual = 'Casual';
   static const String romantic = 'Romantic';
   static const String scenicView = 'Scenic View';
+  static const String crowded = 'Crowded';
 
-  static const List<String> all = [family, group, casual, romantic, scenicView];
+  static const List<String> all = [
+    family,
+    group,
+    casual,
+    romantic,
+    scenicView,
+    crowded,
+  ];
 }
 
 class ServiceOptions {

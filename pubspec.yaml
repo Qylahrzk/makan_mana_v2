@@ -74,6 +74,7 @@ flutter:
     - assets/images/onboard_3.png
     - assets/images/favourite_logo.png
     - assets/images/no_results.png
+    - assets/images/chatbot.png
 
   fonts:
     # ── Montserrat — Headlines & Restaurant Names ──────────────────────────

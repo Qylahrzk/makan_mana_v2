@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/notification_service.dart';
 import '../../models/user_preferences_model.dart';
 
@@ -10,28 +11,33 @@ import '../../models/user_preferences_model.dart';
 
 abstract class UserPreferencesState extends Equatable {
   const UserPreferencesState();
-  @override List<Object?> get props => [];
+  @override
+  List<Object?> get props => [];
 }
 
 class PreferencesInitial extends UserPreferencesState {}
+
 class PreferencesLoading extends UserPreferencesState {}
 
 class PreferencesSaving extends UserPreferencesState {
   final UserPreferencesModel prefs;
   const PreferencesSaving(this.prefs);
-  @override List<Object?> get props => [prefs];
+  @override
+  List<Object?> get props => [prefs];
 }
 
 class PreferencesLoaded extends UserPreferencesState {
   final UserPreferencesModel prefs;
   const PreferencesLoaded(this.prefs);
-  @override List<Object?> get props => [prefs];
+  @override
+  List<Object?> get props => [prefs];
 }
 
 class PreferencesError extends UserPreferencesState {
   final String message;
   const PreferencesError(this.message);
-  @override List<Object?> get props => [message];
+  @override
+  List<Object?> get props => [message];
 }
 
 // ─── Cubit ────────────────────────────────────────────────────────────────────
@@ -64,20 +70,27 @@ class UserPreferencesCubit extends Cubit<UserPreferencesState> {
 
       log('loadPreferences: raw response = $response', name: 'UserPrefsCubit');
 
-      final UserPreferencesModel prefs;
+      UserPreferencesModel prefs;
       if (response != null) {
         prefs = UserPreferencesModel.fromJson(
-            Map<String, dynamic>.from(response as Map));
-        log('loadPreferences: ✅ parsed cuisines=${prefs.cuisineTypes}',
-            name: 'UserPrefsCubit');
+          Map<String, dynamic>.from(response as Map),
+        );
+        log(
+          'loadPreferences: ✅ parsed cuisines=${prefs.cuisineTypes}',
+          name: 'UserPrefsCubit',
+        );
       } else {
-        log('loadPreferences: no row found for $userId — using empty',
-            name: 'UserPrefsCubit');
+        log(
+          'loadPreferences: no row found for $userId — using empty',
+          name: 'UserPrefsCubit',
+        );
         prefs = UserPreferencesModel.empty(userId);
       }
 
-      emit(PreferencesLoaded(prefs));
-      return prefs;
+      // Load locally stored preferences (budget & isCrowded)
+      final prefsWithLocal = await _loadLocalPreferences(prefs, userId);
+      emit(PreferencesLoaded(prefsWithLocal));
+      return prefsWithLocal;
     } catch (e, stack) {
       log('loadPreferences ERROR: $e\n$stack', name: 'UserPrefsCubit');
       final empty = UserPreferencesModel.empty(userId);
@@ -96,10 +109,17 @@ class UserPreferencesCubit extends Cubit<UserPreferencesState> {
   }) async {
     emit(PreferencesSaving(prefs));
     try {
+      // Save budget and isCrowded locally first
+      await _saveLocalPreferences(prefs, userId);
+
       final payload = prefs.toJson();
-      log('savePreferences: upserting payload=$payload',
-          name: 'UserPrefsCubit');
-      debugPrint('UserPrefsCubit.savePreferences: cuisines=${prefs.cuisineTypes}');
+      log(
+        'savePreferences: upserting payload=$payload',
+        name: 'UserPrefsCubit',
+      );
+      debugPrint(
+        'UserPrefsCubit.savePreferences: cuisines=${prefs.cuisineTypes}',
+      );
 
       final response = await _client
           .from(_table)
@@ -109,18 +129,25 @@ class UserPreferencesCubit extends Cubit<UserPreferencesState> {
 
       log('savePreferences: raw response = $response', name: 'UserPrefsCubit');
 
-      final saved = UserPreferencesModel.fromJson(
-          Map<String, dynamic>.from(response as Map));
+      var saved = UserPreferencesModel.fromJson(
+        Map<String, dynamic>.from(response as Map),
+      );
 
-      log('savePreferences: ✅ cuisines=${saved.cuisineTypes} '
-          'halal=${saved.halal}', name: 'UserPrefsCubit');
+      // Merge the locally saved fields
+      saved = saved.copyWith(budget: prefs.budget, isCrowded: prefs.isCrowded);
+
+      log(
+        'savePreferences: ✅ cuisines=${saved.cuisineTypes} '
+        'halal=${saved.halal} budget=${saved.budget} isCrowded=${saved.isCrowded}',
+        name: 'UserPrefsCubit',
+      );
 
       // Update OneSignal tags for push notification targeting
       await NotificationService.instance.updatePreferenceTags(
-        halal:          saved.halal,
-        vegetarian:     saved.vegetarian,
+        halal: saved.halal,
+        vegetarian: saved.vegetarian,
         familyFriendly: saved.familyFriendly,
-        cuisines:       saved.cuisineTypes,
+        cuisines: saved.cuisineTypes,
       );
 
       emit(PreferencesLoaded(saved));
@@ -141,7 +168,10 @@ class UserPreferencesCubit extends Cubit<UserPreferencesState> {
 
   Future<void> toggleVegetarian(String userId) async {
     final p = current ?? UserPreferencesModel.empty(userId);
-    await savePreferences(p.copyWith(vegetarian: !p.vegetarian), userId: userId);
+    await savePreferences(
+      p.copyWith(vegetarian: !p.vegetarian),
+      userId: userId,
+    );
   }
 
   Future<void> toggleVegan(String userId) async {
@@ -152,7 +182,10 @@ class UserPreferencesCubit extends Cubit<UserPreferencesState> {
   // Facilities
   Future<void> toggleParking(String userId) async {
     final p = current ?? UserPreferencesModel.empty(userId);
-    await savePreferences(p.copyWith(hasParking: !p.hasParking), userId: userId);
+    await savePreferences(
+      p.copyWith(hasParking: !p.hasParking),
+      userId: userId,
+    );
   }
 
   Future<void> toggleWifi(String userId) async {
@@ -167,23 +200,35 @@ class UserPreferencesCubit extends Cubit<UserPreferencesState> {
 
   Future<void> toggleOutdoor(String userId) async {
     final p = current ?? UserPreferencesModel.empty(userId);
-    await savePreferences(p.copyWith(hasOutdoor: !p.hasOutdoor), userId: userId);
+    await savePreferences(
+      p.copyWith(hasOutdoor: !p.hasOutdoor),
+      userId: userId,
+    );
   }
 
   Future<void> toggleAccessible(String userId) async {
     final p = current ?? UserPreferencesModel.empty(userId);
-    await savePreferences(p.copyWith(accessible: !p.accessible), userId: userId);
+    await savePreferences(
+      p.copyWith(accessible: !p.accessible),
+      userId: userId,
+    );
   }
 
   // Vibes
   Future<void> toggleFamilyFriendly(String userId) async {
     final p = current ?? UserPreferencesModel.empty(userId);
-    await savePreferences(p.copyWith(familyFriendly: !p.familyFriendly), userId: userId);
+    await savePreferences(
+      p.copyWith(familyFriendly: !p.familyFriendly),
+      userId: userId,
+    );
   }
 
   Future<void> toggleGroupFriendly(String userId) async {
     final p = current ?? UserPreferencesModel.empty(userId);
-    await savePreferences(p.copyWith(groupFriendly: !p.groupFriendly), userId: userId);
+    await savePreferences(
+      p.copyWith(groupFriendly: !p.groupFriendly),
+      userId: userId,
+    );
   }
 
   Future<void> toggleCasual(String userId) async {
@@ -198,7 +243,10 @@ class UserPreferencesCubit extends Cubit<UserPreferencesState> {
 
   Future<void> toggleScenicView(String userId) async {
     final p = current ?? UserPreferencesModel.empty(userId);
-    await savePreferences(p.copyWith(scenicView: !p.scenicView), userId: userId);
+    await savePreferences(
+      p.copyWith(scenicView: !p.scenicView),
+      userId: userId,
+    );
   }
 
   // Service
@@ -209,16 +257,67 @@ class UserPreferencesCubit extends Cubit<UserPreferencesState> {
 
   Future<void> toggleFastService(String userId) async {
     final p = current ?? UserPreferencesModel.empty(userId);
-    await savePreferences(p.copyWith(fastService: !p.fastService), userId: userId);
+    await savePreferences(
+      p.copyWith(fastService: !p.fastService),
+      userId: userId,
+    );
   }
 
   // Cuisine
   Future<void> toggleCuisine(String userId, String cuisine) async {
-    final p        = current ?? UserPreferencesModel.empty(userId);
+    final p = current ?? UserPreferencesModel.empty(userId);
     final cuisines = List<String>.from(p.cuisineTypes);
     cuisines.contains(cuisine)
         ? cuisines.remove(cuisine)
         : cuisines.add(cuisine);
     await savePreferences(p.copyWith(cuisineTypes: cuisines), userId: userId);
+  }
+
+  // Budget
+  Future<void> setBudget(String userId, int? budget) async {
+    final p = current ?? UserPreferencesModel.empty(userId);
+    await savePreferences(
+      p.copyWith(budget: budget, clearBudget: budget == null),
+      userId: userId,
+    );
+  }
+
+  // Crowded
+  Future<void> toggleCrowded(String userId) async {
+    final p = current ?? UserPreferencesModel.empty(userId);
+    await savePreferences(p.copyWith(isCrowded: !p.isCrowded), userId: userId);
+  }
+
+  // Local Storage Helpers
+  Future<UserPreferencesModel> _loadLocalPreferences(
+    UserPreferencesModel prefs,
+    String userId,
+  ) async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      final budgetVal = sp.getInt('pref_budget_$userId');
+      final isCrowdedVal = sp.getBool('pref_is_crowded_$userId') ?? false;
+      return prefs.copyWith(budget: budgetVal, isCrowded: isCrowdedVal);
+    } catch (e) {
+      log('Error loading local preferences: $e', name: 'UserPrefsCubit');
+      return prefs;
+    }
+  }
+
+  Future<void> _saveLocalPreferences(
+    UserPreferencesModel prefs,
+    String userId,
+  ) async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      if (prefs.budget != null) {
+        await sp.setInt('pref_budget_$userId', prefs.budget!);
+      } else {
+        await sp.remove('pref_budget_$userId');
+      }
+      await sp.setBool('pref_is_crowded_$userId', prefs.isCrowded);
+    } catch (e) {
+      log('Error saving local preferences: $e', name: 'UserPrefsCubit');
+    }
   }
 }

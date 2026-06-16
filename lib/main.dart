@@ -68,7 +68,8 @@ class MyApp extends StatelessWidget {
           ),
 
           BlocProvider(
-            create: (context) => AuthCubit(context.read<SupabaseService>()),
+            create: (context) =>
+                AuthCubit(context.read<SupabaseService>())..checkSession(),
           ),
 
           BlocProvider(
@@ -463,14 +464,19 @@ class MyApp extends StatelessWidget {
                 ),
               ),
 
-              dividerTheme: const DividerThemeData(color: Color(0xFF2E2E42)),
+              dividerTheme: DividerThemeData(
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
 
               cardTheme: CardThemeData(
                 color: AppColors.darkSurface,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
-                  side: const BorderSide(color: Color(0xFF2E2E42), width: 1),
+                  side: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    width: 1,
+                  ),
                 ),
               ),
 

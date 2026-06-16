@@ -109,20 +109,22 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
       ),
     );
 
+    final bool isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+
     return ValueListenableBuilder<int>(
       valueListenable: _tabIndex,
       builder: (context, currentIndex, _) {
-        final isChatTab = currentIndex == 2;
-
         return Scaffold(
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          extendBody: !isChatTab,
+          extendBody: true,
           body: IndexedStack(index: currentIndex, children: _screens),
-          bottomNavigationBar: _FloatingNavBar(
-            currentIndex: currentIndex,
-            activeAnims: _activeAnims,
-            onTap: _onTabTap,
-          ),
+          bottomNavigationBar: isKeyboardOpen
+              ? const SizedBox.shrink()
+              : _FloatingNavBar(
+                  currentIndex: currentIndex,
+                  activeAnims: _activeAnims,
+                  onTap: _onTabTap,
+                ),
         );
       },
     );
@@ -155,202 +157,147 @@ class _FloatingNavBar extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final activePrimary = isDark ? AppColors.darkPrimary : AppColors.primary;
 
+    const double barHeight = 68.0;
+    const double btnSize = 56.0;
+
     return Container(
-      padding: EdgeInsets.only(bottom: bottomPad > 0 ? bottomPad : 8),
-      decoration: BoxDecoration(
-        color: isDark
-            ? AppColors.darkSurface
-            : Theme.of(context).colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
-          ),
-        ],
+      color: Colors.transparent,
+      padding: EdgeInsets.only(
+        left: 12,
+        right: 12,
+        bottom: bottomPad > 0 ? bottomPad + 6 : 14,
       ),
-      child: SizedBox(
-        height: 80,
-        child: Column(
-          children: [
-            // Top separator line
-            Container(
-              height: 2,
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                border: Border(
-                  top: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
-                ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.bottomCenter,
+        children: [
+          // 1. Floating navigation bar card container
+          Container(
+            height: barHeight,
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF0F172A)
+                  : Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.05),
+                width: 1.0,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-
-            // Navigation buttons
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // Home
-                  _NavButtonWithLabel(
-                    icon: Icons.home_rounded,
-                    label: 'Home',
-                    isActive: currentIndex == 0,
-                    animation: activeAnims[0],
-                    onTap: () => onTap(0),
-                    activePrimary: activePrimary,
+            child: Row(
+              children: [
+                // Left side: Home, Discover
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _NavButtonWithLabel(
+                        inactiveIcon: Icons.home_outlined,
+                        activeIcon: Icons.home_rounded,
+                        label: 'Home',
+                        isActive: currentIndex == 0,
+                        animation: activeAnims[0],
+                        onTap: () => onTap(0),
+                        activePrimary: activePrimary,
+                      ),
+                      _NavButtonWithLabel(
+                        inactiveIcon: Icons.explore_outlined,
+                        activeIcon: Icons.explore_rounded,
+                        label: 'Discover',
+                        isActive: currentIndex == 1,
+                        animation: activeAnims[1],
+                        onTap: () => onTap(1),
+                        activePrimary: activePrimary,
+                      ),
+                    ],
                   ),
+                ),
 
-                  // Search / Explore
-                  _NavButtonWithLabel(
-                    icon: Icons.search_rounded,
-                    label: 'Search',
-                    isActive: currentIndex == 1,
-                    animation: activeAnims[1],
-                    onTap: () => onTap(1),
-                    activePrimary: activePrimary,
-                  ),
-
-                  // Chat (Design 1 - Green circle only, no label or line)
-                  _ChatButton(
-                    icon: Icons.auto_awesome_rounded,
+                // Center spacer placeholder for MAKANBOT label
+                SizedBox(
+                  width: 76,
+                  child: _MakanbotLabelButton(
                     isActive: currentIndex == 2,
                     animation: activeAnims[2],
                     onTap: () => onTap(2),
                     activePrimary: activePrimary,
                   ),
-
-                  // Saved / Favourite - FIXED: NO BADGE (removed for consistency)
-                  _NavButtonWithLabel(
-                    icon: Icons.favorite_rounded,
-                    label: 'Saved',
-                    isActive: currentIndex == 3,
-                    animation: activeAnims[3],
-                    onTap: () => onTap(3),
-                    activePrimary: activePrimary,
-                    // badgeBuilder: null - no badge shown
-                  ),
-
-                  // Profile
-                  _NavButtonWithLabel(
-                    icon: Icons.person_rounded,
-                    label: 'Profile',
-                    isActive: currentIndex == 4,
-                    animation: activeAnims[4],
-                    onTap: () => onTap(4),
-                    activePrimary: activePrimary,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Chat Button (Design 1 - Green Circle Only) ──────────────────────────
-//
-// Clean green circle with white icon
-// No label, no indicator line
-// Just the icon centered for focus
-
-class _ChatButton extends StatelessWidget {
-  final IconData icon;
-  final bool isActive;
-  final Animation<double> animation;
-  final VoidCallback onTap;
-  final Color activePrimary;
-
-  const _ChatButton({
-    required this.icon,
-    required this.isActive,
-    required this.animation,
-    required this.onTap,
-    required this.activePrimary,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 56,
-        child: Center(
-          child: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: activePrimary,
-              boxShadow: [
-                // Main shadow
-                BoxShadow(
-                  color: activePrimary.withValues(alpha: 0.35),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                  spreadRadius: 0,
                 ),
-                // Glow ring
-                BoxShadow(
-                  color: activePrimary.withValues(alpha: 0.15),
-                  blurRadius: 0,
-                  spreadRadius: 3,
-                ),
-              ],
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Shimmer gradient overlay
-                Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Colors.white.withValues(alpha: 0.15),
-                        Colors.white.withValues(alpha: 0.02),
-                      ],
-                    ),
+
+                // Right side: Favourite, Profile
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _NavButtonWithLabel(
+                        inactiveIcon: Icons.favorite_border_rounded,
+                        activeIcon: Icons.favorite_rounded,
+                        label: 'Favourite',
+                        isActive: currentIndex == 3,
+                        animation: activeAnims[3],
+                        onTap: () => onTap(3),
+                        activePrimary: activePrimary,
+                      ),
+                      _NavButtonWithLabel(
+                        inactiveIcon: Icons.person_outline_rounded,
+                        activeIcon: Icons.person_rounded,
+                        label: 'Profile',
+                        isActive: currentIndex == 4,
+                        animation: activeAnims[4],
+                        onTap: () => onTap(4),
+                        activePrimary: activePrimary,
+                      ),
+                    ],
                   ),
                 ),
-                // White icon
-                Icon(icon, size: 26, color: Colors.white),
               ],
             ),
           ),
-        ),
+
+          // 2. Raised circular Makanbot button overlapping the top border
+          Positioned(
+            bottom: barHeight - (btnSize / 2) - 3,
+            child: _MakanbotRaisedButton(
+              icon: Icons.auto_awesome_rounded,
+              isActive: currentIndex == 2,
+              animation: activeAnims[2],
+              onTap: () => onTap(2),
+              activePrimary: activePrimary,
+              size: btnSize,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// ─── Navigation Button with Label ────────────────────────────────────────
-//
-// Home, Search, Saved, Profile buttons
-// Icon + compact label + indicator line
-// Reduced gap between icon and label
+// ─── Makanbot Raised Button (Design overlap center) ──────────────────────────
 
-class _NavButtonWithLabel extends StatelessWidget {
+class _MakanbotRaisedButton extends StatelessWidget {
   final IconData icon;
-  final String label;
   final bool isActive;
   final Animation<double> animation;
   final VoidCallback onTap;
   final Color activePrimary;
-  // ✅ FIX: Added default value (null) for badgeBuilder parameter
-  final Widget Function()? badgeBuilder;
+  final double size;
 
-  const _NavButtonWithLabel({
+  const _MakanbotRaisedButton({
     required this.icon,
-    required this.label,
     required this.isActive,
     required this.animation,
     required this.onTap,
     required this.activePrimary,
-    this.badgeBuilder,
+    required this.size,
   });
 
   @override
@@ -363,7 +310,150 @@ class _NavButtonWithLabel extends StatelessWidget {
         builder: (context, _) {
           final t = animation.value;
 
-          // Color transition
+          return Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: activePrimary,
+              boxShadow: [
+                BoxShadow(
+                  color: activePrimary.withValues(alpha: 0.35),
+                  blurRadius: 10 + (t * 4),
+                  offset: Offset(0, 3 + (t * 2)),
+                ),
+                BoxShadow(
+                  color: activePrimary.withValues(alpha: 0.15),
+                  blurRadius: 0,
+                  spreadRadius: 3 + (t * 1),
+                ),
+              ],
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.white.withValues(alpha: 0.2),
+                        Colors.white.withValues(alpha: 0.02),
+                      ],
+                    ),
+                  ),
+                ),
+                Icon(icon, size: 26, color: const Color(0xFF0F172A)),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ─── Makanbot Label & Indicator Placeholder ──────────────────────────────────
+
+class _MakanbotLabelButton extends StatelessWidget {
+  final bool isActive;
+  final Animation<double> animation;
+  final VoidCallback onTap;
+  final Color activePrimary;
+
+  const _MakanbotLabelButton({
+    required this.isActive,
+    required this.animation,
+    required this.onTap,
+    required this.activePrimary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedBuilder(
+        animation: animation,
+        builder: (context, _) {
+          final t = animation.value;
+
+          final labelColor = activePrimary;
+
+          final lineWidth = t > 0.1 ? 38.0 : 0.0;
+
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Vertical space allocation for the raised circular button above
+              const SizedBox(height: 24),
+
+              Text(
+                'Makanbot',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: labelColor,
+                  height: 1.0,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+
+              const SizedBox(height: 3),
+
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: lineWidth,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: activePrimary,
+                  borderRadius: BorderRadius.circular(1.5),
+                ),
+              ),
+              const SizedBox(height: 5),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ─── Navigation Button with Label ────────────────────────────────────────
+
+class _NavButtonWithLabel extends StatelessWidget {
+  final IconData inactiveIcon;
+  final IconData activeIcon;
+  final String label;
+  final bool isActive;
+  final Animation<double> animation;
+  final VoidCallback onTap;
+  final Color activePrimary;
+
+  const _NavButtonWithLabel({
+    required this.inactiveIcon,
+    required this.activeIcon,
+    required this.label,
+    required this.isActive,
+    required this.animation,
+    required this.onTap,
+    required this.activePrimary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedBuilder(
+        animation: animation,
+        builder: (context, _) {
+          final t = animation.value;
+
           final iconColor = Color.lerp(
             Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
             activePrimary,
@@ -376,8 +466,8 @@ class _NavButtonWithLabel extends StatelessWidget {
             t,
           )!;
 
-          // Indicator line animation
           final lineWidth = t > 0.1 ? 38.0 : 0.0;
+          final iconData = isActive ? activeIcon : inactiveIcon;
 
           return SizedBox(
             width: 58,
@@ -385,24 +475,8 @@ class _NavButtonWithLabel extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Icon with badge (if provided)
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Icon
-                    Icon(icon, size: 26, color: iconColor),
-
-                    // Badge (only if badgeBuilder provided)
-                    // For Saved button: badgeBuilder is null, so no badge shown
-                    if (badgeBuilder != null)
-                      Positioned(top: -2, right: -2, child: badgeBuilder!()),
-                  ],
-                ),
-
-                // Reduced gap between icon and label (2px instead of 4px)
+                Icon(iconData, size: 26, color: iconColor),
                 const SizedBox(height: 2),
-
-                // Label (10px instead of 11px)
                 Text(
                   label,
                   style: TextStyle(
@@ -411,14 +485,10 @@ class _NavButtonWithLabel extends StatelessWidget {
                     color: labelColor,
                     height: 1.0,
                   ),
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-
-                // Space before indicator line (2px)
-                const SizedBox(height: 2),
-
-                // Indicator line (animated)
+                const SizedBox(height: 3),
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   width: lineWidth,

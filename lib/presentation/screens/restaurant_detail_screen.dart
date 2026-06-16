@@ -807,8 +807,8 @@ class _RestaurantDetailView extends StatelessWidget {
 
   Widget _heroGradient() => Container(
     decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [AppColors.secondary, AppColors.primary.withValues(alpha: 0.8)],
+      gradient: const LinearGradient(
+        colors: AppColors.oceanGradient,
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
@@ -1019,14 +1019,16 @@ class _RestaurantDetailView extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.secondary.withValues(alpha: 0.06),
-            AppColors.primary.withValues(alpha: 0.04),
+            AppColors.adaptiveSecondary(context).withValues(alpha: 0.08),
+            AppColors.adaptiveSecondary(context).withValues(alpha: 0.02),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.12)),
+        border: Border.all(
+          color: AppColors.adaptiveSecondary(context).withValues(alpha: 0.12),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1564,12 +1566,21 @@ class _SimilarCard extends StatelessWidget {
         margin: const EdgeInsets.only(right: 14),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white.withValues(alpha: 0.04)
+                : Colors.black.withValues(alpha: 0.05),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.07),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+              color: Colors.black.withValues(
+                alpha: Theme.of(context).brightness == Brightness.dark
+                    ? 0.20
+                    : 0.04,
+              ),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -1577,15 +1588,15 @@ class _SimilarCard extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: const BorderRadius.horizontal(
-                left: Radius.circular(16),
+                left: Radius.circular(20),
               ),
               child: CachedNetworkImage(
                 imageUrl: RestaurantImage.getUrl(r.cuisineType, seed: r.id),
                 width: 90,
                 height: 170,
                 fit: BoxFit.cover,
-                placeholder: (_, _) => _imgPlaceholder(),
-                errorWidget: (_, _, _) => _imgPlaceholder(),
+                placeholder: (_, _) => _imgPlaceholder(context),
+                errorWidget: (_, _, _) => _imgPlaceholder(context),
               ),
             ),
             Expanded(
@@ -1680,14 +1691,14 @@ class _SimilarCard extends StatelessWidget {
     );
   }
 
-  Widget _imgPlaceholder() => Container(
+  Widget _imgPlaceholder(BuildContext context) => Container(
     width: 90,
     height: 170,
     decoration: BoxDecoration(
       gradient: LinearGradient(
         colors: [
-          AppColors.secondary.withValues(alpha: 0.18),
-          AppColors.primary.withValues(alpha: 0.12),
+          AppColors.adaptiveSecondary(context).withValues(alpha: 0.18),
+          AppColors.adaptiveSecondary(context).withValues(alpha: 0.05),
         ],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
@@ -1695,7 +1706,7 @@ class _SimilarCard extends StatelessWidget {
     ),
     child: Icon(
       Icons.restaurant_rounded,
-      color: AppColors.secondary.withValues(alpha: 0.5),
+      color: AppColors.adaptiveSecondary(context).withValues(alpha: 0.5),
       size: 26,
     ),
   );

@@ -277,6 +277,7 @@ class SupabaseService {
         isFamilyFriendly: restaurant.isFamilyFriendly,
         isRomantic: restaurant.isRomantic,
         hasScenicView: restaurant.hasScenicView,
+        isCrowded: restaurant.isCrowded,
         hasOutdoor: restaurant.hasOutdoor,
         hasWifi: restaurant.hasWifi,
         lat: restaurant.lat,

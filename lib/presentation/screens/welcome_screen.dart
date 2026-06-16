@@ -115,11 +115,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               height: double.infinity,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF1A3F4A),
-                    Color(0xFF2F6F7E),
-                    Color(0xFF3D8A9A),
-                  ],
+                  colors: AppColors.oceanGradient,
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),

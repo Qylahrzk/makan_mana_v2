@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:makan_mana_v2/core/app_colors.dart';
 import 'package:makan_mana_v2/core/app_constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -113,9 +114,9 @@ class _SplashScreenState extends State<SplashScreen>
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF1A3F4A), Color(0xFF2F6F7E), Color(0xFF1E5060)],
+            colors: AppColors.oceanGradient,
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),

@@ -30,6 +30,7 @@ class FavouriteModel extends Equatable {
   final bool isFamilyFriendly;
   final bool isRomantic;
   final bool hasScenicView;
+  final bool isCrowded;
   final bool hasOutdoor;
   final bool hasWifi;
 
@@ -63,6 +64,7 @@ class FavouriteModel extends Equatable {
     required this.isFamilyFriendly,
     required this.isRomantic,
     required this.hasScenicView,
+    required this.isCrowded,
     required this.hasOutdoor,
     required this.hasWifi,
     this.lat,
@@ -140,6 +142,7 @@ class FavouriteModel extends Equatable {
       isFamilyFriendly: json['is_family_friendly'] as bool? ?? false,
       isRomantic: json['is_romantic'] as bool? ?? false,
       hasScenicView: json['has_scenic_view'] as bool? ?? false,
+      isCrowded: json['is_crowded'] as bool? ?? false,
       hasOutdoor: json['has_outdoor'] as bool? ?? false,
       hasWifi: json['has_wifi'] as bool? ?? false,
       lat: (json['latitude'] as num?)?.toDouble(),
@@ -197,6 +200,7 @@ class FavouriteModel extends Equatable {
       if (isFamilyFriendly) 'Family Friendly',
       if (isRomantic) 'Romantic',
       if (hasScenicView) 'Scenic View',
+      if (isCrowded) 'Crowded',
       if (hasOutdoor) 'Outdoor',
       if (hasWifi) 'WiFi',
     ];
@@ -221,6 +225,7 @@ class FavouriteModel extends Equatable {
     isFamilyFriendly,
     isRomantic,
     hasScenicView,
+    isCrowded,
     hasOutdoor,
     hasWifi,
     lat,

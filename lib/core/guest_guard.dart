@@ -81,7 +81,7 @@ class _GuestBottomSheet extends StatelessWidget {
             width: 68,
             height: 68,
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
+              color: AppColors.primary.withValues(alpha: 0.16),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -114,7 +114,7 @@ class _GuestBottomSheet extends StatelessWidget {
               // ✅ FIX: Use theme color instead of hardcoded grey[500]
               color: Theme.of(
                 context,
-              ).colorScheme.onSurface.withValues(alpha: 0.5),
+              ).colorScheme.onSurface.withValues(alpha: 0.75),
               height: 1.6,
             ),
           ),
@@ -189,12 +189,17 @@ class _GuestBottomSheet extends StatelessWidget {
                     ? AppColors
                           .darkSecondary // Bright cyan for dark mode
                     : AppColors.secondary, // Regular teal for light mode
+                backgroundColor:
+                    (Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkSecondary
+                            : AppColors.secondary)
+                        .withValues(alpha: 0.05),
                 side: BorderSide(
                   color:
                       (Theme.of(context).brightness == Brightness.dark
                               ? AppColors.darkSecondary
                               : AppColors.secondary)
-                          .withValues(alpha: 0.35),
+                          .withValues(alpha: 0.65),
                   width: 1.5,
                 ),
                 shape: RoundedRectangleBorder(
@@ -222,7 +227,7 @@ class _GuestBottomSheet extends StatelessWidget {
                   // ✅ FIX: Use theme color instead of hardcoded grey[400]
                   color: Theme.of(
                     context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.35),
+                  ).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
             ),
@@ -254,7 +259,7 @@ class _FeatureChip extends StatelessWidget {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
+            color: color.withValues(alpha: 0.18),
             borderRadius: BorderRadius.circular(14),
           ),
           child: Icon(icon, size: 22, color: color),
@@ -268,7 +273,7 @@ class _FeatureChip extends StatelessWidget {
             // ✅ FIX: Use theme color instead of hardcoded grey[600]
             color: Theme.of(
               context,
-            ).colorScheme.onSurface.withValues(alpha: 0.55),
+            ).colorScheme.onSurface.withValues(alpha: 0.8),
           ),
         ),
       ],

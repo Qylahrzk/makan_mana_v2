@@ -10,128 +10,140 @@ class AppColors {
   AppColors._();
 
   // ─────────────────────────────────────────
-  // 60% — NEUTRAL BASE
+  // 60% — NEUTRAL CANVAS (Backgrounds & large surface areas)
   // ─────────────────────────────────────────
 
-  /// Scaffold / page background
-  static const Color background = Color(0xFFF9FAFB);
+  /// Scaffold / page background (Light: Off-white)
+  static const Color background = Color(0xFFF8F9FA);
 
-  /// Main surface / card background
+  /// Main surface / card background (Light: Pure White)
   static const Color surface = Colors.white;
 
-  /// Slightly elevated surface (input fields, chips)
-  static const Color surfaceVariant = Color(0xFFF0F2F4);
+  /// Slightly elevated surface (input fields, chips) (Light)
+  static const Color surfaceVariant = Color(0xFFF1F5F9);
 
-  /// Elevated surface container
-  static const Color surfaceContainer = Color(0xFFF3F4F6);
-
-  // ─────────────────────────────────────────
-  // 20% — DISCOVERY ORANGE (Primary / CTA)
-  // Used for: ElevatedButton, "See All", active nav pill,
-  //           FAB, rating chips, primary gradients.
-  // ─────────────────────────────────────────
-
-  /// Primary CTA color — Discovery Orange
-  static const Color primary = Color(0xFFFF8C42);
-
-  /// Lighter orange tint — chip fills, tag backgrounds
-  static const Color primaryTint = Color(0xFFFFF0E6);
-
-  /// Orange container — highlighted sections
-  static const Color primaryContainer = Color(0xFFFFD4B0);
-
-  /// Text / icon on orange backgrounds
-  static const Color onPrimary = Colors.white;
+  /// Elevated surface container (Light)
+  static const Color surfaceContainer = Color(0xFFE2E8F0);
 
   // ─────────────────────────────────────────
-  // 20% — TERENGGANU TEAL (Secondary / Brand Structure)
-  // Used for: headers, map pins, attribute badges,
-  //           section markers, compass, tags.
+  // 30% — Brand Structure & Trust (Teal / Slate)
   // ─────────────────────────────────────────
 
-  /// Secondary brand color — Terengganu Teal
-  static const Color secondary = Color(0xFF2F6F7E);
+  /// Secondary brand color — Deep Teal (Light)
+  static const Color secondary = Color.fromARGB(255, 17, 120, 130);
 
-  /// Lighter teal variant — for large header surfaces
-  static const Color secondaryLight = Color(0xFF3D8A9E);
+  /// Secondary variant — Deep Slate / Slate Blue (Light)
+  static const Color secondaryLight = Color(0xFF1E293B);
 
-  /// Teal tint — chip backgrounds, tag fills
+  /// Teal tint — chip backgrounds, tag fills (Light)
   static const Color secondaryTint = Color(0xFFE0F2F1);
 
-  /// Teal container — highlighted info sections
+  /// Teal container (Light)
   static const Color secondaryContainer = Color(0xFFB2DFDB);
 
-  /// Text / icon on teal backgrounds
+  /// Text / icon on teal backgrounds (Light)
   static const Color onSecondary = Colors.white;
 
   /// Tertiary — muted green (accent detail only)
-  static const Color tertiary = Color(0xFF4E7F64);
+  static const Color tertiary = Color.fromARGB(255, 101, 166, 130);
+
+  // ─────────────────────────────────────────
+  // 10% — BRAND ACTION / ACCENT (Orange / Saffron)
+  // ─────────────────────────────────────────
+
+  /// Primary CTA color — Vibrant Saffron Orange (Light)
+  static const Color primary = Color(0xFFFF7A00);
+
+  /// Lighter orange tint — chip fills, tag backgrounds (Light)
+  static const Color primaryTint = Color(0xFFFFF0E6);
+
+  /// Orange container — highlighted sections (Light)
+  static const Color primaryContainer = Color.fromARGB(255, 252, 198, 153);
+
+  /// Text / icon on orange backgrounds (Light)
+  static const Color onPrimary = Colors.white;
 
   // ─────────────────────────────────────────
   // TEXT COLORS
   // ─────────────────────────────────────────
 
-  /// Primary text — warm dark
-  static const Color textPrimary = Color(0xFF3A2F2F);
+  /// Primary text — Slate (Light)
+  static const Color textPrimary = Color(0xFF1E293B);
 
-  /// Secondary / muted text
-  static const Color textSecondary = Color(0xFF4096AA);
+  /// Secondary / muted text — Deep Teal (Light)
+  static const Color textSecondary = Color.fromARGB(255, 17, 120, 130);
 
   /// Hint / placeholder text
-  static const Color textHint = Color(0xFF90A4AE);
+  static const Color textHint = Color(0xFF94A3B8);
 
   /// Text on surface (cards, white backgrounds)
-  static const Color onSurface = Color(0xFF3A2F2F);
+  static const Color onSurface = Color.fromARGB(255, 27, 65, 59);
 
   /// Disabled text
-  static const Color disabledText = Color(0xFF9CA3AF);
+  static const Color disabledText = Color(0xFF64748B);
 
   // ─────────────────────────────────────────
-  // DARK THEME
+  // DARK THEME (60% Canvas / 30% Structure / 10% Action)
   // ─────────────────────────────────────────
 
-  /// Dark scaffold background
-  static const Color darkBackground = Color(0xFF12121C);
+  /// Dark scaffold background — Gray-ish dark purple
+  static const Color darkBackground = Color(0xFF110F1B);
 
-  /// Dark surface — card / sheet background
-  static const Color darkSurface = Color(0xFF1E1E2E);
+  /// Dark surface — Card background elevated off charcoal with grey-purple tint
+  static const Color darkSurface = Color(0xFF1B1929);
 
-  /// Dark elevated surface
-  static const Color darkSurfaceVariant = Color(0xFF2A2A3E);
+  /// Dark elevated surface variant
+  static const Color darkSurfaceVariant = Color(0xFF262337);
 
-  /// Primary in dark mode — Soft Orange (high contrast on dark bg)
-  static const Color darkPrimary = Color(0xFFFF9E60);
+  /// Primary action in dark mode — Desaturated/Muted Saffron Orange
+  static const Color darkPrimary = Color(0xFFE59866);
 
-  /// Secondary in dark mode — High-visibility Cyan/Teal
-  static const Color darkSecondary = Color(0xFF6AEBFC);
+  /// Secondary brand structure in dark mode — Muted Soft Teal
+  static const Color darkSecondary = Color.fromARGB(255, 95, 165, 172);
 
-  /// Tertiary in dark mode — Muted green
-  static const Color darkTertiary = Color(0xFF6BA685);
+  /// Tertiary in dark mode — Desaturated muted green
+  static const Color darkTertiary = Color.fromARGB(255, 88, 139, 113);
 
-  /// Text on dark surfaces
-  static const Color darkOnSurface = Color(0xFFE8E8F0);
+  /// Typography on dark surfaces — Off-white / Ice Blue
+  static const Color darkOnSurface = Color(0xFFF5F5F7);
 
-  /// Muted text on dark surfaces
-  static const Color darkTextSecondary = Color(0xFFB0BEC5);
+  /// Muted text on dark surfaces — Legible light purple-gray blend
+  static const Color darkTextSecondary = Color(0xFF9E9BAE);
 
   // ─────────────────────────────────────────
   // SEMANTIC / UTILITY
   // ─────────────────────────────────────────
 
-  static const Color success = Color(0xFF22C55E);
+  static const Color success = Color(0xFF10B981);
   static const Color error = Color(0xFFEF4444);
-  static const Color warning = Color(0xFFFACC15);
-  static const Color star = Color(0xFFFBBF24);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color star = Color(0xFFF59E0B);
   static const Color favourite = Color(0xFFEF4444);
-  static const Color divider = Color(0xFFE5E7EB);
-  static const Color disabled = Color(0xFFD1D5DB);
+  static const Color divider = Color(0xFFE2E8F0);
+  static const Color disabled = Color(0xFFCBD5E1);
   static const Color scrim = Color(0x80000000);
+
+  // ─────────────────────────────────────────
+  // GRADIENTS (60:30:10 Monochromatic / Family Gradients)
+  // ─────────────────────────────────────────
+
+  /// "Terengganu Ocean" Gradient — Deep Teal to Fresh Mint (For Headers/Splash Screens)
+  static const List<Color> oceanGradient = [
+    Color(0xFF084147),
+    Color(0xFF127A85),
+  ];
+
+  /// "Fresh Makan" Gradient — Deep Tangerine to Bright Saffron (For Primary Actions/Buttons)
+  static const List<Color> freshMakanGradient = [
+    Color(0xFFE05300),
+    Color(0xFFFF8A00),
+  ];
 
   // ─────────────────────────────────────────
   // LDA TOPIC TAG COLORS
   // ─────────────────────────────────────────
 
-  static const Color ldaTagText = Color(0xFF2F6F7E);
+  static const Color ldaTagText = Color(0xFF0D5C63);
   static const Color ldaTagBackground = Color(0xFFE0F2F1);
   static const Color ldaTagBorder = Color(0xFF80CBC4);
 
@@ -139,7 +151,7 @@ class AppColors {
   // KBF MATCH SCORE COLORS
   // ─────────────────────────────────────────
 
-  static const Color kbfMatchColor = Color(0xFFFF8C42);
+  static const Color kbfMatchColor = Color(0xFFFF7A00);
   static const Color kbfMatchTrack = Color(0xFFFFD4B0);
 
   // ─────────────────────────────────────────
@@ -147,10 +159,10 @@ class AppColors {
   // ─────────────────────────────────────────
 
   static const Color botBubble = Color(0xFFE0F2F1);
-  static const Color botBubbleText = Color(0xFF1A3A40);
-  static const Color userBubble = Color(0xFFF0F2F4);
-  static const Color userBubbleText = Color(0xFF3A2F2F);
-  static const Color chatChipBackground = Color(0xFFFF8C42);
+  static const Color botBubbleText = Color(0xFF0D5C63);
+  static const Color userBubble = Color(0xFFF1F5F9);
+  static const Color userBubbleText = Color(0xFF1E293B);
+  static const Color chatChipBackground = Color(0xFFFF7A00);
 
   // ─────────────────────────────────────────
   // ADAPTIVE HELPERS

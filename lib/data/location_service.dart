@@ -49,7 +49,10 @@ class LocationService {
       // 3. Get current position
       // LocationAccuracy.medium is a good balance — fast + battery-friendly
       final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.medium,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 4),
+        ),
       );
 
       _cached = pos;
@@ -69,21 +72,27 @@ class LocationService {
   /// True if we have a real GPS fix (not the fallback)
   bool get hasCachedPosition => _cached != null;
 
+  /// Cached latitude or fallback
+  double get cachedLat => _cached?.latitude ?? fallbackLat;
+
+  /// Cached longitude or fallback
+  double get cachedLon => _cached?.longitude ?? fallbackLon;
+
   /// Clear the cache — forces a fresh GPS read next call
   void clearCache() => _cached = null;
 
   // ─── Private ──────────────────────────────────────────────────────────────
 
   Position _fallback() => Position(
-        latitude: fallbackLat,
-        longitude: fallbackLon,
-        timestamp: DateTime.now(),
-        accuracy: 0,
-        altitude: 0,
-        altitudeAccuracy: 0,
-        heading: 0,
-        headingAccuracy: 0,
-        speed: 0,
-        speedAccuracy: 0,
-      );
+    latitude: fallbackLat,
+    longitude: fallbackLon,
+    timestamp: DateTime.now(),
+    accuracy: 0,
+    altitude: 0,
+    altitudeAccuracy: 0,
+    heading: 0,
+    headingAccuracy: 0,
+    speed: 0,
+    speedAccuracy: 0,
+  );
 }

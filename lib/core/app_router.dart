@@ -13,6 +13,7 @@ import '../presentation/screens/main_nav.dart';
 import '../presentation/screens/search_screen.dart';
 import '../presentation/screens/restaurant_detail_screen.dart';
 import '../presentation/screens/recommendation_screen.dart';
+import '../presentation/screens/smart_recommend_screen.dart';
 import '../presentation/screens/map_screen.dart';
 import '../presentation/screens/favourite_screen.dart';
 import '../presentation/screens/profile_screen.dart';
@@ -71,6 +72,7 @@ class AppRouter {
         return _slide(const ForgotPasswordScreen());
 
       // ── Main shell ───────────────────────────────────────────────────────
+      case AppRoutes.home:
       case AppRoutes.main:
         final args = settings.arguments;
         final initialIndex = args is int ? args : 0;
@@ -105,6 +107,9 @@ class AppRouter {
             relaxedFilters: args.relaxedFilters,
           ),
         );
+
+      case AppRoutes.smartRecommend:
+        return _slide(const SmartRecommendScreen());
 
       default:
         return _error(settings.name);
