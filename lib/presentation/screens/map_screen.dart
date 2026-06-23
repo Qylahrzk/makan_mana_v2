@@ -1,20 +1,3 @@
-// ============================================================
-// FILE: lib/presentation/screens/map_screen.dart
-//
-// FIXES IN THIS VERSION:
-//
-// FIX 1 — Completer crash on widget rebuild:
-//   Replaced Completer<GoogleMapController> with a nullable
-//   GoogleMapController? field. onMapCreated now simply assigns
-//   the controller — safe to call multiple times on rebuild.
-//   All usages of _mapController.future replaced with direct
-//   null-safe calls on _mapController?.
-//
-// FIX 2 — Price level badge in preview card (carried over).
-//
-// FIX 3 — Selected restaurant name overlay on map (carried over).
-// ============================================================
-
 import 'dart:ui' as ui;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -29,6 +12,7 @@ import '../../data/restaurant_repository.dart';
 import '../../data/location_service.dart';
 import '../../models/restaurant_model.dart';
 import 'restaurant_detail_screen.dart';
+import '../widgets/curved_header_painter.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -39,19 +23,11 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen>
     with SingleTickerProviderStateMixin {
-  // ── Controllers ────────────────────────────────────────────────────────────
-  // FIX: Use nullable controller instead of Completer.
-  // Completer throws StateError if complete() is called more than once,
-  // which happens when the GoogleMap widget rebuilds (e.g. on hot reload,
-  // orientation change, or when setState triggers a full widget tree rebuild).
-  // A nullable field is safe — assigning it multiple times is harmless.
   GoogleMapController? _mapController;
-
   late final AnimationController _cardController;
   late final Animation<Offset> _cardSlide;
   late final Animation<double> _cardFade;
 
-  // ── State ───────────────────────────────────────────────────────────────────
   List<Restaurant> _allRestaurants = [];
   Set<Marker> _markers = {};
   Restaurant? _selectedRestaurant;
@@ -59,8 +35,8 @@ class _MapScreenState extends State<MapScreen>
   String _searchQuery = '';
   String _selectedCuisine = 'All';
   final Map<String, BitmapDescriptor> _customMarkerCache = {};
+  final TextEditingController _searchController = TextEditingController();
 
-  // GPS — updated from LocationService, fallback to KT centre
   double _userLat = LocationService.fallbackLat;
   double _userLon = LocationService.fallbackLon;
   LatLng _ktCenter = LatLng(
@@ -68,13 +44,11 @@ class _MapScreenState extends State<MapScreen>
     LocationService.fallbackLon,
   );
 
-  // ── Lifecycle ───────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
     _loadLocation();
 
-    // Card slide-up animation — plays when a marker is tapped
     _cardController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -90,13 +64,12 @@ class _MapScreenState extends State<MapScreen>
 
   @override
   void dispose() {
-    // FIX: Dispose the controller directly — no Completer to worry about.
+    _searchController.dispose();
     _mapController?.dispose();
     _cardController.dispose();
     super.dispose();
   }
 
-  // ── GPS ─────────────────────────────────────────────────────────────────────
   Future<void> _loadLocation() async {
     try {
       final pos = await LocationService.instance.getPosition();
@@ -110,7 +83,6 @@ class _MapScreenState extends State<MapScreen>
     } catch (_) {}
   }
 
-  // ── Data loading ─────────────────────────────────────────────────────────────
   Future<void> _loadRestaurants() async {
     try {
       final repo = RestaurantRepository();
@@ -129,7 +101,6 @@ class _MapScreenState extends State<MapScreen>
     }
   }
 
-  // ── Distance helper ──────────────────────────────────────────────────────────
   double _getDistance(Restaurant r) => AppUtils.calculateDistance(
     _userLat,
     _userLon,
@@ -137,7 +108,6 @@ class _MapScreenState extends State<MapScreen>
     r.lon ?? _userLon,
   );
 
-  // ── Filtered list ────────────────────────────────────────────────────────────
   List<Restaurant> get _filteredRestaurants {
     final q = _searchQuery.toLowerCase();
     return _allRestaurants.where((r) {
@@ -151,7 +121,6 @@ class _MapScreenState extends State<MapScreen>
     }).toList();
   }
 
-  // ── Rebuild markers ──────────────────────────────────────────────────────────
   void _rebuildMarkers(List<Restaurant> restaurants) {
     final filtered = restaurants
         .where((r) => r.lat != null && r.lon != null)
@@ -181,14 +150,12 @@ class _MapScreenState extends State<MapScreen>
     });
   }
 
-  // ── Pre-cache Custom Rating Markers ──────────────────────────────────────────
   Future<void> _precacheMarkerIcons(List<Restaurant> restaurants) async {
     for (final r in restaurants) {
       if (r.lat == null || r.lon == null) continue;
 
       final ratingStr = AppUtils.formatRating(r.rating);
 
-      // Cache normal state
       final normalKey = '${r.id}_false';
       if (!_customMarkerCache.containsKey(normalKey)) {
         final icon = await _createRatingMarkerImage(
@@ -198,7 +165,6 @@ class _MapScreenState extends State<MapScreen>
         _customMarkerCache[normalKey] = icon;
       }
 
-      // Cache selected state
       final selectedKey = '${r.id}_true';
       if (!_customMarkerCache.containsKey(selectedKey)) {
         final icon = await _createRatingMarkerImage(
@@ -209,7 +175,6 @@ class _MapScreenState extends State<MapScreen>
       }
     }
 
-    // Trigger setState to draw the loaded custom markers
     if (mounted) {
       _rebuildMarkers(
         _filteredRestaurants.isEmpty ? _allRestaurants : _filteredRestaurants,
@@ -217,14 +182,11 @@ class _MapScreenState extends State<MapScreen>
     }
   }
 
-  // ── Draw Pill-Shaped Rating Marker ──────────────────────────────────────────
   Future<BitmapDescriptor> _createRatingMarkerImage({
     required String rating,
     required bool isSelected,
   }) async {
-    const double pixelRatio =
-        1.0; // Draw at exact logical size to avoid giant markers on Google Maps
-
+    const double pixelRatio = 1.0;
     const double baseWidth = 55.0;
     const double baseHeight = 26.0;
 
@@ -233,7 +195,6 @@ class _MapScreenState extends State<MapScreen>
 
     final ui.PictureRecorder recorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(recorder);
-
     canvas.scale(pixelRatio);
 
     final Color primaryColor = isSelected
@@ -269,7 +230,6 @@ class _MapScreenState extends State<MapScreen>
 
     bubblePath.addPath(tailPath, Offset.zero);
 
-    // Subtle drop shadow
     final Paint shadowPaint = Paint()
       ..color = Colors.black.withValues(alpha: 0.15)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5);
@@ -301,7 +261,6 @@ class _MapScreenState extends State<MapScreen>
       ..strokeWidth = 0.8
       ..strokeCap = StrokeCap.round;
 
-    // Draw tiny fork icon
     canvas.drawLine(
       const Offset(circleX - 2, circleY - 1),
       const Offset(circleX - 2, circleY + 3),
@@ -328,7 +287,6 @@ class _MapScreenState extends State<MapScreen>
       iconPaint,
     );
 
-    // Draw tiny spoon icon
     canvas.drawLine(
       const Offset(circleX + 2, circleY - 1),
       const Offset(circleX + 2, circleY + 3),
@@ -350,13 +308,12 @@ class _MapScreenState extends State<MapScreen>
     final TextPainter textPainter = TextPainter(
       textDirection: TextDirection.ltr,
     );
-
     textPainter.text = TextSpan(
       text: rating,
       style: const TextStyle(
         fontSize: 10,
         fontWeight: FontWeight.w800,
-        color: Color(0xFF1E293B), // Slate 800
+        color: Color(0xFF1E293B),
       ),
     );
 
@@ -373,14 +330,11 @@ class _MapScreenState extends State<MapScreen>
       format: ui.ImageByteFormat.png,
     );
 
-    if (byteData == null) {
-      return BitmapDescriptor.defaultMarker;
-    }
+    if (byteData == null) return BitmapDescriptor.defaultMarker;
 
     return BitmapDescriptor.bytes(byteData.buffer.asUint8List());
   }
 
-  // ── Marker tap handler ───────────────────────────────────────────────────────
   void _onMarkerTap(Restaurant r) {
     setState(() => _selectedRestaurant = r);
     _rebuildMarkers(_allRestaurants);
@@ -388,7 +342,6 @@ class _MapScreenState extends State<MapScreen>
     _moveCameraTo(r);
   }
 
-  // ── Dismiss preview card ─────────────────────────────────────────────────────
   void _dismissCard() {
     _cardController.reverse().then((_) {
       if (mounted) {
@@ -398,10 +351,6 @@ class _MapScreenState extends State<MapScreen>
     });
   }
 
-  // ── Move camera ──────────────────────────────────────────────────────────────
-  // FIX: Direct null-safe call instead of awaiting Completer.future.
-  // This is safe because _moveCameraTo is only called after onMapCreated
-  // has fired, which means _mapController is already assigned.
   void _moveCameraTo(Restaurant r) {
     if (r.lat == null || r.lon == null) return;
     _mapController?.animateCamera(
@@ -409,13 +358,10 @@ class _MapScreenState extends State<MapScreen>
     );
   }
 
-  // ── Recenter button ──────────────────────────────────────────────────────────
-  // FIX: Same pattern — direct null-safe call, no async/await needed.
   void _recenterMap() {
     _mapController?.animateCamera(CameraUpdate.newLatLngZoom(_ktCenter, 13));
   }
 
-  // ── Apply filter ─────────────────────────────────────────────────────────────
   void _applyFilter() {
     _rebuildMarkers(_filteredRestaurants);
     if (_selectedRestaurant != null &&
@@ -424,7 +370,6 @@ class _MapScreenState extends State<MapScreen>
     }
   }
 
-  // ── Price level helpers ──────────────────────────────────────────────────────
   (String, Color)? _priceInfo(int level) {
     switch (level) {
       case 1:
@@ -440,15 +385,16 @@ class _MapScreenState extends State<MapScreen>
     }
   }
 
-  // ── BUILD ────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final topOffset = MediaQuery.of(context).padding.top + 178;
     return Scaffold(
       backgroundColor: AppColors.background,
+      extendBodyBehindAppBar: true,
+      appBar: _buildAppBar(),
       body: SizedBox.expand(
         child: Stack(
           children: [
-            // ── 1. Full-screen Google Map ────────────────────────────────────
             Positioned.fill(
               child: GoogleMap(
                 initialCameraPosition: CameraPosition(
@@ -460,177 +406,27 @@ class _MapScreenState extends State<MapScreen>
                 myLocationButtonEnabled: false,
                 zoomControlsEnabled: false,
                 mapToolbarEnabled: false,
-
-                // FIX: Simply assign the controller. Safe to call on every
-                // rebuild because assigning a field is idempotent, unlike
-                // Completer.complete() which throws on a second call.
-                onMapCreated: (controller) {
-                  _mapController = controller;
-                },
-
-                // Tapping anywhere on the map dismisses the preview card
+                onMapCreated: (controller) => _mapController = controller,
                 onTap: (_) =>
                     _selectedRestaurant != null ? _dismissCard() : null,
               ),
             ),
 
-            // ── 2. Top search bar + cuisine filter chips ─────────────────────
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: SafeArea(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Header row: back button + search field
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                      child: Row(
-                        children: [
-                          // Back button
-                          GestureDetector(
-                            onTap: () => Navigator.pop(context),
-                            child: Container(
-                              width: 42,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.12),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                Icons.arrow_back_rounded,
-                                color: AppColors.secondary,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-
-                          // Search field
-                          Expanded(
-                            child: Container(
-                              height: 42,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.12),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: TextField(
-                                style: AppTextStyles.bodyMedium.copyWith(
-                                  color: AppColors.textPrimary,
-                                ),
-                                onChanged: (v) {
-                                  setState(() => _searchQuery = v);
-                                  _applyFilter();
-                                },
-                                decoration: InputDecoration(
-                                  hintText: 'Search on map...',
-                                  hintStyle: AppTextStyles.bodyMedium.copyWith(
-                                    color: Colors.grey[400],
-                                  ),
-                                  prefixIcon: Icon(
-                                    Icons.search_rounded,
-                                    color: AppColors.secondary,
-                                    size: 20,
-                                  ),
-                                  border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    // Cuisine filter chips row
-                    SizedBox(
-                      height: 34,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: CuisineOptions.all.length,
-                        itemBuilder: (_, i) {
-                          final c = CuisineOptions.all[i];
-                          final active = _selectedCuisine == c;
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() => _selectedCuisine = c);
-                              _applyFilter();
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
-                              margin: const EdgeInsets.only(right: 8),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: active
-                                    ? AppColors.primary
-                                    : Colors.white.withValues(alpha: 0.95),
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.08),
-                                    blurRadius: 6,
-                                  ),
-                                ],
-                              ),
-                              child: Text(
-                                c,
-                                style: AppTextStyles.labelSmall.copyWith(
-                                  color: active
-                                      ? Colors.white
-                                      : AppColors.textPrimary,
-                                  fontWeight: active
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // ── 3. Restaurant count pill ─────────────────────────────────────
             if (!_isLoading)
               Positioned(
-                top: MediaQuery.of(context).padding.top + 120,
+                top: topOffset + 8,
                 left: 0,
                 right: 0,
                 child: Center(
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 6,
+                      horizontal: 12,
+                      vertical: 5,
                     ),
                     decoration: BoxDecoration(
                       color: AppColors.secondary.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(18),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.15),
@@ -642,7 +438,7 @@ class _MapScreenState extends State<MapScreen>
                       '${_filteredRestaurants.length} restaurants on map',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -650,12 +446,9 @@ class _MapScreenState extends State<MapScreen>
                 ),
               ),
 
-            // ── 4. Selected restaurant name overlay ──────────────────────────
-            // Shows a floating name chip when a marker is tapped.
-            // Disappears when the card is dismissed.
             if (_selectedRestaurant != null)
               Positioned(
-                top: MediaQuery.of(context).padding.top + 155,
+                top: topOffset + 40,
                 left: 0,
                 right: 0,
                 child: Center(
@@ -665,12 +458,12 @@ class _MapScreenState extends State<MapScreen>
                     child: Container(
                       constraints: const BoxConstraints(maxWidth: 260),
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 7,
+                        horizontal: 12,
+                        vertical: 6,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(18),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.18),
@@ -682,21 +475,20 @@ class _MapScreenState extends State<MapScreen>
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Red dot matching the selected marker colour
                           Container(
-                            width: 8,
-                            height: 8,
+                            width: 7,
+                            height: 7,
                             decoration: const BoxDecoration(
                               color: Colors.red,
                               shape: BoxShape.circle,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 7),
                           Flexible(
                             child: Text(
                               _selectedRestaurant!.name,
                               style: const TextStyle(
-                                fontSize: 13,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w700,
                                 color: Color(0xFF1A1A1A),
                               ),
@@ -709,8 +501,8 @@ class _MapScreenState extends State<MapScreen>
                             onTap: _dismissCard,
                             child: Icon(
                               Icons.close_rounded,
-                              size: 14,
-                              color: Colors.grey[500],
+                              size: 13,
+                              color: Colors.grey[400],
                             ),
                           ),
                         ],
@@ -720,7 +512,6 @@ class _MapScreenState extends State<MapScreen>
                 ),
               ),
 
-            // ── 5. Loading overlay ───────────────────────────────────────────
             if (_isLoading)
               Positioned.fill(
                 child: Container(
@@ -743,8 +534,6 @@ class _MapScreenState extends State<MapScreen>
                 ),
               ),
 
-            // ── 6. Recenter FAB ─────────────────────────────────────────────
-            // Moves up when the preview card is visible.
             Positioned(
               right: 16,
               bottom: _selectedRestaurant != null ? 230 : 100,
@@ -763,8 +552,6 @@ class _MapScreenState extends State<MapScreen>
               ),
             ),
 
-            // ── 7. Restaurant preview card ───────────────────────────────────
-            // Slides up from the bottom when a marker is tapped.
             if (_selectedRestaurant != null)
               Positioned(
                 bottom: 0,
@@ -784,7 +571,198 @@ class _MapScreenState extends State<MapScreen>
     );
   }
 
-  // ── Preview card ─────────────────────────────────────────────────────────────
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      automaticallyImplyLeading: true,
+      toolbarHeight: 56,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+        onPressed: () => Navigator.pop(context),
+      ),
+      titleSpacing: 0,
+      title: const Padding(
+        padding: EdgeInsets.only(left: 4),
+        child: Text(
+          'Map Explorer',
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+            letterSpacing: -0.3,
+            shadows: [
+              Shadow(
+                offset: Offset(0, 1),
+                blurRadius: 3.0,
+                color: Colors.black12,
+              ),
+            ],
+          ),
+        ),
+      ),
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(126),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.10),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 14),
+                    const Icon(
+                      Icons.search_rounded,
+                      color: AppColors.primary,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
+                        ),
+                        onChanged: (v) {
+                          setState(() => _searchQuery = v);
+                          _applyFilter();
+                        },
+                        decoration: const InputDecoration(
+                          hintText: 'Search on map...',
+                          hintStyle: TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFFAAAAAA),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          errorBorder: InputBorder.none,
+                          disabledBorder: InputBorder.none,
+                          focusedErrorBorder: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    if (_searchQuery.isNotEmpty)
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          size: 18,
+                          color: Colors.grey,
+                        ),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _searchQuery = '';
+                          });
+                          _applyFilter();
+                        },
+                      ),
+                    const SizedBox(width: 14),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 34,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: CuisineOptions.all.length,
+                  itemBuilder: (_, i) {
+                    final c = CuisineOptions.all[i];
+                    final active = _selectedCuisine == c;
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() => _selectedCuisine = c);
+                        _applyFilter();
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 13),
+                        decoration: BoxDecoration(
+                          color: active
+                              ? AppColors.primary
+                              : Colors.white.withValues(alpha: 0.95),
+                          borderRadius: BorderRadius.circular(18),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            c,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: active
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: active
+                                  ? Colors.white
+                                  : AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      flexibleSpace: Stack(
+        children: [
+          ClipPath(
+            clipper: const HeaderCurveClipper(curveRadius: 24),
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: AppColors.oceanGradient,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -1,
+            left: -1,
+            right: -1,
+            child: CustomPaint(
+              size: const Size(double.infinity, 48),
+              painter: CurvedHeaderPainter.adaptive(context),
+            ),
+          ),
+        ],
+      ),
+      backgroundColor: Colors.transparent,
+      foregroundColor: Colors.white,
+      elevation: 0,
+    );
+  }
+
   Widget _buildPreviewCard(Restaurant r) {
     final km = _getDistance(r);
     final mins = (km * 3).round();
@@ -809,7 +787,6 @@ class _MapScreenState extends State<MapScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Drag handle
             Container(
               margin: const EdgeInsets.only(top: 10, bottom: 4),
               width: 36,
@@ -819,7 +796,6 @@ class _MapScreenState extends State<MapScreen>
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
               child: Column(
@@ -827,7 +803,6 @@ class _MapScreenState extends State<MapScreen>
                 children: [
                   Row(
                     children: [
-                      // Restaurant photo
                       ClipRRect(
                         borderRadius: BorderRadius.circular(14),
                         child: CachedNetworkImage(
@@ -847,8 +822,6 @@ class _MapScreenState extends State<MapScreen>
                                   AppColors.secondary.withValues(alpha: 0.15),
                                   AppColors.secondary.withValues(alpha: 0.04),
                                 ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
                               ),
                               borderRadius: BorderRadius.circular(14),
                             ),
@@ -867,8 +840,6 @@ class _MapScreenState extends State<MapScreen>
                                   AppColors.secondary.withValues(alpha: 0.15),
                                   AppColors.secondary.withValues(alpha: 0.04),
                                 ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
                               ),
                               borderRadius: BorderRadius.circular(14),
                             ),
@@ -881,12 +852,10 @@ class _MapScreenState extends State<MapScreen>
                         ),
                       ),
                       const SizedBox(width: 12),
-
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Name
                             Text(
                               r.name,
                               maxLines: 1,
@@ -896,8 +865,6 @@ class _MapScreenState extends State<MapScreen>
                               ),
                             ),
                             const SizedBox(height: 2),
-
-                            // Category · cuisine
                             Text(
                               '${r.categories} · ${r.cuisineType}',
                               style: AppTextStyles.bodySmall.copyWith(
@@ -906,8 +873,6 @@ class _MapScreenState extends State<MapScreen>
                               ),
                             ),
                             const SizedBox(height: 5),
-
-                            // Rating + travel time + price badge
                             Wrap(
                               crossAxisAlignment: WrapCrossAlignment.center,
                               spacing: 8,
@@ -978,8 +943,6 @@ class _MapScreenState extends State<MapScreen>
                           ],
                         ),
                       ),
-
-                      // Dismiss button
                       GestureDetector(
                         onTap: _dismissCard,
                         child: Container(
@@ -998,8 +961,6 @@ class _MapScreenState extends State<MapScreen>
                       ),
                     ],
                   ),
-
-                  // Attribute chips — max 3
                   if (attrs.isNotEmpty) ...[
                     const SizedBox(height: 10),
                     Wrap(
@@ -1037,10 +998,7 @@ class _MapScreenState extends State<MapScreen>
                           .toList(),
                     ),
                   ],
-
                   const SizedBox(height: 14),
-
-                  // Action buttons
                   Row(
                     children: [
                       Expanded(
@@ -1073,7 +1031,6 @@ class _MapScreenState extends State<MapScreen>
                         ),
                       ),
                       const SizedBox(width: 10),
-
                       SizedBox(
                         height: 44,
                         child: OutlinedButton(

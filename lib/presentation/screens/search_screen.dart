@@ -17,15 +17,17 @@ import '../../core/guest_guard.dart';
 import '../../logic/cubits/favourite_cubit.dart';
 import '../../logic/cubits/auth_cubit.dart';
 import 'map_screen.dart';
+import '../widgets/gradient_divider.dart';
+import '../widgets/curved_header_painter.dart';
 
 class RestaurantSearchScreen extends StatefulWidget {
   const RestaurantSearchScreen({super.key});
 
   @override
-  State<RestaurantSearchScreen> createState() => _RestaurantSearchScreenState();
+  State<RestaurantSearchScreen> createState() => RestaurantSearchScreenState();
 }
 
-class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
+class RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   // ─── Controllers ──────────────────────────────────────────────────────────
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
@@ -238,6 +240,25 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     }
   }
 
+  void setCategory(String category) {
+    setState(() {
+      _searchController.clear();
+      _activeDietary.clear();
+      _activeOccasions.clear();
+      _activeFacilities.clear();
+      _activeMinRating = 0.0;
+      _activeMaxDistance = 500.0;
+      _activeMaxPriceLevel = null;
+
+      if (category == 'All') {
+        _activeCuisines = {};
+      } else {
+        _activeCuisines = {category};
+      }
+    });
+    _applyFilters();
+  }
+
   // ─── Filter logic (IMPROVED) ──────────────────────────────────────────────
   void _applyFilters() {
     final q = _searchController.text.toLowerCase().trim();
@@ -373,6 +394,11 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         statusBarIconBrightness: Theme.of(context).brightness == Brightness.dark
             ? Brightness.light
             : Brightness.dark,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness:
+            Theme.of(context).brightness == Brightness.dark
+            ? Brightness.light
+            : Brightness.dark,
       ),
     );
 
@@ -403,293 +429,306 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       child: GestureDetector(
         onTap: () => _searchFocusNode.unfocus(),
         child: Scaffold(
+          extendBodyBehindAppBar: true,
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          body: SafeArea(
-            child: Column(
-              children: [
-                // ── Top bar ───────────────────────────────────────────────
-                _buildTopBar(),
+          appBar: _buildAppBar(),
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                  onRefresh: _onRefresh,
+                  color: AppColors.primary,
+                  child: CustomScrollView(
+                    controller: _listController,
+                    slivers: [
+                      SliverPadding(
+                        padding: EdgeInsets.only(
+                          top: MediaQuery.of(context).padding.top + 164 + 4,
+                        ),
+                      ),
+                      // Recent searches — shown when focused + empty
+                      if (_isSearchFocused &&
+                          _searchHistory.isNotEmpty &&
+                          !_isSearching)
+                        SliverToBoxAdapter(
+                          child: _buildRecentSearchesSection(),
+                        ),
 
-                // ── Main scrollable content ───────────────────────────────
-                Expanded(
-                  child: _isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : RefreshIndicator(
-                          onRefresh: _onRefresh,
-                          color: AppColors.primary,
-                          child: CustomScrollView(
-                            controller: _listController,
-                            slivers: [
-                              // Recent searches — shown when focused + empty
-                              if (_isSearchFocused &&
-                                  _searchHistory.isNotEmpty &&
-                                  !_isSearching)
-                                SliverToBoxAdapter(
-                                  child: _buildRecentSearchesSection(),
-                                ),
+                      // Cuisine chips — always visible
+                      SliverToBoxAdapter(child: _buildCuisineChips()),
 
-                              // Cuisine chips — always visible
-                              SliverToBoxAdapter(child: _buildCuisineChips()),
+                      // ── Searching / filtered mode ─────────────
+                      if (_isSearching || _hasActiveFilters) ...[
+                        SliverToBoxAdapter(child: _buildResultsHeader()),
+                        if (_filteredResults.isEmpty)
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: _buildEmptyState(),
+                          )
+                        else
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                            sliver: SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (_, i) => _buildCard(_filteredResults[i]),
+                                childCount: _filteredResults.length,
+                              ),
+                            ),
+                          ),
+                      ]
+                      // ── Default browse mode ───────────────────
+                      else ...[
+                        // Nearby section
+                        if (_nearbyList.isNotEmpty) ...[
+                          SliverToBoxAdapter(
+                            child: _buildSectionHeader(
+                              title: 'Nearby',
+                              onSeeAll: () => _pushSeeAll(
+                                _nearbyList.take(50).toList(),
+                                'Nearby Restaurants',
+                              ),
+                            ),
+                          ),
+                          SliverToBoxAdapter(
+                            child: _buildHorizontalCardRow(
+                              _nearbyList.take(10).toList(),
+                            ),
+                          ),
+                        ],
 
-                              // ── Searching / filtered mode ─────────────
-                              if (_isSearching || _hasActiveFilters) ...[
-                                SliverToBoxAdapter(
-                                  child: _buildResultsHeader(),
-                                ),
-                                if (_filteredResults.isEmpty)
-                                  SliverFillRemaining(
-                                    hasScrollBody: false,
-                                    child: _buildEmptyState(),
-                                  )
-                                else
-                                  SliverPadding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      16,
-                                      0,
-                                      16,
-                                      120,
-                                    ),
-                                    sliver: SliverList(
-                                      delegate: SliverChildBuilderDelegate(
-                                        (_, i) =>
-                                            _buildCard(_filteredResults[i]),
-                                        childCount: _filteredResults.length,
-                                      ),
-                                    ),
-                                  ),
-                              ]
-                              // ── Default browse mode ───────────────────
-                              else ...[
-                                // Nearby section
-                                if (_nearbyList.isNotEmpty) ...[
-                                  SliverToBoxAdapter(
-                                    child: _buildSectionHeader(
-                                      title: 'Nearby',
-                                      onSeeAll: () => _pushSeeAll(
-                                        _nearbyList.take(50).toList(),
-                                        'Nearby Restaurants',
-                                      ),
-                                    ),
-                                  ),
-                                  SliverToBoxAdapter(
-                                    child: _buildHorizontalCardRow(
-                                      _nearbyList.take(10).toList(),
-                                    ),
-                                  ),
-                                ],
-
-                                // Top Rated section
-                                SliverToBoxAdapter(
-                                  child: _buildSectionHeader(
-                                    title: 'Top Rated',
-                                    onSeeAll: () => _pushSeeAll(
-                                      _topRatedList.take(50).toList(),
-                                      'Top Rated',
-                                    ),
-                                  ),
-                                ),
-                                SliverToBoxAdapter(
-                                  child: _buildHorizontalCardRow(
-                                    _topRatedList.take(10).toList(),
-                                  ),
-                                ),
-
-                                // All Restaurants vertical list
-                                SliverToBoxAdapter(
-                                  child: _buildSectionHeader(
-                                    title: 'All Restaurants',
-                                    subtitle:
-                                        '${_allRestaurants.length} places',
-                                    onSeeAll: null,
-                                  ),
-                                ),
-                                SliverPadding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    0,
-                                    16,
-                                    120,
-                                  ),
-                                  sliver: SliverList(
-                                    delegate: SliverChildBuilderDelegate(
-                                      (_, i) => _buildCard(_filteredResults[i]),
-                                      childCount: _filteredResults.length,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
+                        // Top Rated section
+                        SliverToBoxAdapter(
+                          child: _buildSectionHeader(
+                            title: 'Top Rated',
+                            onSeeAll: () => _pushSeeAll(
+                              _topRatedList.take(50).toList(),
+                              'Top Rated',
+                            ),
                           ),
                         ),
+                        SliverToBoxAdapter(
+                          child: _buildHorizontalCardRow(
+                            _topRatedList.take(10).toList(),
+                          ),
+                        ),
+
+                        // All Restaurants vertical list
+                        SliverToBoxAdapter(
+                          child: _buildSectionHeader(
+                            title: 'All Restaurants',
+                            subtitle: '${_allRestaurants.length} places',
+                            onSeeAll: null,
+                          ),
+                        ),
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (_, i) => _buildCard(_filteredResults[i]),
+                              childCount: _filteredResults.length,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-              ],
-            ),
-          ),
         ),
       ),
     );
   }
 
   // ─── Top bar ──────────────────────────────────────────────────────────────
-  Widget _buildTopBar() {
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // ── Row 1: title left, map button right ──────────────────────
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Discovery',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Map view button
-              GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const MapScreen()),
-                ),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.09),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.map_outlined,
-                    size: 19,
-                    color: AppColors.primary,
-                  ),
-                ),
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      automaticallyImplyLeading: false,
+      toolbarHeight: 68,
+      title: const Padding(
+        padding: EdgeInsets.only(left: 8),
+        child: Text(
+          'Discovery',
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 28,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: -0.5,
+            shadows: [
+              Shadow(
+                offset: Offset(0, 1.5),
+                blurRadius: 4.0,
+                color: Colors.black26,
               ),
             ],
           ),
-
-          const SizedBox(height: 12),
-
-          // ── Row 2: search bar + filter button ────────────────────────
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.10),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
+        ),
+      ),
+      actions: [
+        // Map view button
+        Center(
+          child: GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MapScreen()),
+            ),
+            child: Container(
+              width: 40,
+              height: 40,
+              margin: const EdgeInsets.only(right: 20),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.map_outlined,
+                size: 19,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ],
+      flexibleSpace: Stack(
+        children: [
+          ClipPath(
+            clipper: const HeaderCurveClipper(),
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: AppColors.oceanGradient,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -1,
+            left: -1,
+            right: -1,
+            child: CustomPaint(
+              size: const Size(double.infinity, 48),
+              painter: CurvedHeaderPainter.adaptive(context),
+            ),
+          ),
+        ],
+      ),
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(96),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          child: Container(
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.10),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                const SizedBox(width: 14),
+                const Icon(
+                  Icons.search_rounded,
+                  color: AppColors.primary,
+                  size: 22,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
                   child: TextField(
                     controller: _searchController,
                     focusNode: _searchFocusNode,
-                    style: const TextStyle(fontSize: 14),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textPrimary,
+                    ),
                     onSubmitted: (query) {
                       _addToHistory(query);
                       _applyFilters();
                     },
-                    decoration: InputDecoration(
-                      hintText: 'Search restaurants, cuisine...',
+                    decoration: const InputDecoration(
+                      hintText: 'Search restaurants, cuisines...',
                       hintStyle: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey[500],
+                        color: Color(0xFFAAAAAA),
                       ),
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        child: Icon(
-                          Icons.search_rounded,
-                          size: 20,
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: Icon(
-                                Icons.close_rounded,
-                                size: 16,
-                                color: Colors.grey[400],
-                              ),
-                              onPressed: () {
-                                _searchController.clear();
-                                _applyFilters();
-                              },
-                            )
-                          : null,
+                      filled: true,
+                      fillColor: Colors.white,
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 13),
+                      focusedBorder: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      errorBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      focusedErrorBorder: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-
-              GestureDetector(
-                onTap: _showFilterSheet,
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: _hasActiveFilters ? AppColors.primary : Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.10),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                if (_searchController.text.isNotEmpty)
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () {
+                      _searchController.clear();
+                      _applyFilters();
+                    },
                   ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Icon(
-                        Icons.tune_rounded,
-                        size: 20,
-                        color: _hasActiveFilters
-                            ? Colors.white
-                            : AppColors.primary,
-                      ),
-                      if (_hasActiveFilters)
-                        Positioned(
-                          top: 9,
-                          right: 9,
-                          child: Container(
-                            width: 7,
-                            height: 7,
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: _showFilterSheet,
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _hasActiveFilters
+                          ? AppColors.primary
+                          : AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Icon(
+                          Icons.tune_rounded,
+                          size: 18,
+                          color: _hasActiveFilters
+                              ? Colors.white
+                              : AppColors.primary,
+                        ),
+                        if (_hasActiveFilters)
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: Container(
+                              width: 5,
+                              height: 5,
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ],
+        ),
       ),
+      backgroundColor: Colors.transparent,
+      foregroundColor: Colors.white,
+      elevation: 0,
     );
   }
 
@@ -825,6 +864,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
               duration: const Duration(milliseconds: 160),
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              constraints: const BoxConstraints(minWidth: 70),
               decoration: BoxDecoration(
                 color: active
                     ? AppColors.primary
@@ -974,11 +1014,12 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                 children: [
                   Text(
                     r.name,
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
+                      height: 1.2,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -1177,11 +1218,12 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                 children: [
                   Text(
                     r.name,
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
+                      height: 1.2,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -1527,12 +1569,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                     ],
                   ),
                 ),
-                Divider(
-                  height: 1,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.outlineVariant.withValues(alpha: 0.4),
-                ),
+                const GradientDivider(height: 1, thickness: 0.5),
                 Flexible(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),

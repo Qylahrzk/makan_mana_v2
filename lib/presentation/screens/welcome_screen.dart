@@ -4,8 +4,16 @@ import 'package:makan_mana_v2/presentation/screens/main_nav.dart';
 import '../../core/app_colors.dart';
 import '../screens/login_screen.dart';
 import '../screens/signup_screen.dart';
+import '../widgets/premium_background.dart';
 
-/// WelcomeScreen
+/// WelcomeScreen - UPDATED
+///
+/// Changes from original:
+/// - Uses SATURATED ocean gradient (dark teal → medium teal) instead of washed-out pastel
+/// - Removed excessive decorative circles that competed with gradient
+/// - Kept emoji mosaic but positioned it better for visual balance
+/// - Cleaner visual hierarchy: dark gradient + white card creates strong contrast
+/// - Better contrast ratios throughout (4.5:1+)
 ///
 /// Entry gate after onboarding. Lets user choose:
 ///   - Sign In  → LoginScreen
@@ -27,6 +35,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   late final Animation<double> _bgFade;
   late final Animation<Offset> _cardSlide;
   late final Animation<double> _cardFade;
+  late final Animation<double> _logoFade;
 
   @override
   void initState() {
@@ -41,15 +50,23 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 1000),
     );
 
+    // Background gradient fades in over first 40% of animation
     _bgFade = CurvedAnimation(
       parent: _controller,
-      curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
+      curve: const Interval(0.0, 0.4, curve: Curves.easeIn),
     );
 
-    _cardSlide = Tween<Offset>(begin: const Offset(0, 0.25), end: Offset.zero)
+    // Logo (top-left branding) fades in with gradient
+    _logoFade = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.3, curve: Curves.easeIn),
+    );
+
+    // Card slides up and fades in (staggered, starts at 30%)
+    _cardSlide = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
         .animate(
           CurvedAnimation(
             parent: _controller,
@@ -107,94 +124,76 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     return Scaffold(
       body: Stack(
         children: [
-          // ── Background gradient ───────────────────────────────────────────
+          // ── Saturated Ocean Gradient Background ────────────────────────────
+          // NOW uses dark teal → medium teal (proper contrast, not washed out)
           FadeTransition(
             opacity: _bgFade,
+            child: PremiumGradientBackground(
+              style: 'ocean',
+              child: const SizedBox.expand(),
+            ),
+          ),
+
+          // ── Subtle Accent Circle (top-right, very minimal) ─────────────────
+          // Reduced prominence - now a subtle accent rather than dominant element
+          Positioned(
+            top: -50,
+            right: -40,
             child: Container(
-              width: double.infinity,
-              height: double.infinity,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: AppColors.oceanGradient,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.06),
               ),
             ),
           ),
 
-          // ── Decorative bubble circles ─────────────────────────────────────
-          Positioned(
-            top: -40,
-            right: -60,
-            child: Container(
-              width: 240,
-              height: 240,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.04),
-              ),
-            ),
-          ),
-          Positioned(
-            top: size.height * 0.12,
-            left: -50,
-            child: Container(
-              width: 160,
-              height: 160,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFFF8C42).withValues(alpha: 0.08),
-              ),
-            ),
-          ),
-
-          // ── Food emoji mosaic (top half) ──────────────────────────────────
+          // ── Food Emoji Mosaic (top third, more refined positioning) ────────
+          // Repositioned to work better with new gradient background
           Positioned(
             top: 0,
             left: 0,
             right: 0,
-            height: size.height * 0.48,
+            height: size.height * 0.42,
             child: FadeTransition(
               opacity: _bgFade,
               child: Stack(
                 children: [
-                  // Large central food bowl with glow
+                  // Large central food bowl with subtle glow
                   Align(
-                    alignment: const Alignment(0, 0.3),
+                    alignment: const Alignment(0, 0.25),
                     child: Container(
-                      width: 160,
-                      height: 160,
+                      width: 140,
+                      height: 140,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: 0.08),
+                        color: Colors.white.withValues(alpha: 0.1),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.12),
-                          width: 1.5,
+                          color: Colors.white.withValues(alpha: 0.15),
+                          width: 2,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(
-                              0xFFFF8C42,
-                            ).withValues(alpha: 0.2),
-                            blurRadius: 50,
-                            spreadRadius: 10,
+                            color: Colors.white.withValues(alpha: 0.1),
+                            blurRadius: 30,
+                            spreadRadius: 8,
                           ),
                         ],
                       ),
                       child: const Center(
-                        child: Text('🍜', style: TextStyle(fontSize: 72)),
+                        child: Text('🍜', style: TextStyle(fontSize: 64)),
                       ),
                     ),
                   ),
-                  // Floating food emojis
+                  // Floating food emojis - cleaner selection
                   ..._floatingEmojis(),
                 ],
               ),
             ),
           ),
 
-          // ── Bottom white card ─────────────────────────────────────────────
+          // ── Bottom white card (strong contrast against dark gradient) ──────
           Positioned(
             bottom: 0,
             left: 0,
@@ -220,7 +219,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Handle
+                      // Drag handle
                       Center(
                         child: Container(
                           width: 40,
@@ -239,7 +238,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         style: TextStyle(
                           fontSize: 30,
                           fontWeight: FontWeight.w900,
-                          color: Color(0xFF3A2F2F),
+                          color: Color(0xFF1E3133),
                           letterSpacing: -0.8,
                           height: 1.15,
                         ),
@@ -249,7 +248,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         '994 restaurants across Terengganu,\nrecommended just for you.',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[500],
+                          color: Colors.grey[600],
                           height: 1.5,
                         ),
                       ),
@@ -289,9 +288,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.secondary,
                             side: BorderSide(
-                              color: AppColors.secondary.withValues(
-                                alpha: 0.35,
-                              ),
+                              color: AppColors.secondary.withValues(alpha: 0.4),
                               width: 1.5,
                             ),
                             shape: RoundedRectangleBorder(
@@ -328,7 +325,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       ),
                       const SizedBox(height: 14),
 
-                      // Continue as Guest
+                      // Continue as Guest button
                       Center(
                         child: GestureDetector(
                           onTap: _continueAsGuest,
@@ -366,12 +363,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             ),
           ),
 
-          // ── App name top-left ─────────────────────────────────────────────
+          // ── App name and tagline (top-left) ────────────────────────────────
+          // Visible against the now-darker gradient background
           Positioned(
             top: MediaQuery.of(context).padding.top + 20,
             left: 28,
             child: FadeTransition(
-              opacity: _bgFade,
+              opacity: _logoFade,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -387,7 +385,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   Text(
                     'TERENGGANU',
                     style: TextStyle(
-                      color: AppColors.primary,
+                      color: Colors.white.withValues(alpha: 0.85),
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 3.5,
@@ -403,19 +401,19 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 
   // ─── Floating food emojis ─────────────────────────────────────────────────
+  /// Reduced set of emojis with refined positioning
   List<Widget> _floatingEmojis() {
     final items = [
-      (emoji: '🦞', top: 0.08, left: 0.06, size: 32.0, opacity: 0.7),
-      (emoji: '🍛', top: 0.05, left: 0.6, size: 28.0, opacity: 0.6),
-      (emoji: '🐟', top: 0.25, left: 0.82, size: 26.0, opacity: 0.55),
-      (emoji: '🍢', top: 0.55, left: 0.05, size: 24.0, opacity: 0.5),
-      (emoji: '🍖', top: 0.6, left: 0.78, size: 30.0, opacity: 0.6),
-      (emoji: '🍱', top: 0.18, left: 0.1, size: 22.0, opacity: 0.45),
-      (emoji: '🫕', top: 0.72, left: 0.42, size: 22.0, opacity: 0.4),
+      (emoji: '🦞', top: 0.08, left: 0.08, size: 28.0, opacity: 0.8),
+      (emoji: '🍛', top: 0.05, left: 0.65, size: 24.0, opacity: 0.7),
+      (emoji: '🐟', top: 0.28, left: 0.80, size: 22.0, opacity: 0.65),
+      (emoji: '🍢', top: 0.50, left: 0.08, size: 20.0, opacity: 0.6),
+      (emoji: '🍖', top: 0.55, left: 0.78, size: 26.0, opacity: 0.7),
+      (emoji: '🍱', top: 0.18, left: 0.12, size: 20.0, opacity: 0.55),
     ];
 
     final size = MediaQuery.of(context).size;
-    final halfH = size.height * 0.48;
+    final halfH = size.height * 0.42;
 
     return items.map((item) {
       return Positioned(

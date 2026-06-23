@@ -7,12 +7,14 @@ import 'package:makan_mana_v2/presentation/screens/personalisation_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_colors.dart';
+import '../../core/app_constants.dart';
 import '../../logic/cubits/auth_cubit.dart';
 import '../../logic/cubits/profile_cubit.dart';
 import '../../logic/cubits/favourite_cubit.dart';
 import '../../models/user_model.dart';
 import 'favourite_screen.dart';
 import 'welcome_screen.dart';
+import '../widgets/curved_header_painter.dart';
 
 // ─── SUS Google Form URL ──────────────────────────────────────────────────────
 // Replace the URL below with your actual Google Form link.
@@ -752,6 +754,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ── BUILD ─────────────────────────────────────────────────────────────────
 
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      automaticallyImplyLeading: false,
+      toolbarHeight: 110,
+      title: const Padding(
+        padding: EdgeInsets.only(left: 8),
+        child: Text(
+          'My Profile',
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 28,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: -0.5,
+            shadows: [
+              Shadow(
+                offset: Offset(0, 1.5),
+                blurRadius: 4.0,
+                color: Colors.black26,
+              ),
+            ],
+          ),
+        ),
+      ),
+      flexibleSpace: Stack(
+        children: [
+          ClipPath(
+            clipper: const HeaderCurveClipper(),
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: AppColors.oceanGradient,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -1,
+            left: -1,
+            right: -1,
+            child: CustomPaint(
+              size: const Size(double.infinity, 48),
+              painter: CurvedHeaderPainter.adaptive(context),
+            ),
+          ),
+        ],
+      ),
+      backgroundColor: Colors.transparent,
+      foregroundColor: Colors.white,
+      elevation: 0,
+    );
+  }
+
+  // ── BUILD ─────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -759,6 +818,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: isDark
+            ? Brightness.light
+            : Brightness.dark,
       ),
     );
 
@@ -813,444 +876,437 @@ class _ProfileScreenState extends State<ProfileScreen> {
           }
         },
         child: Scaffold(
+          extendBodyBehindAppBar: true,
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          body: SafeArea(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  // ── Page title ─────────────────────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'My Profile',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          color: Theme.of(context).colorScheme.onSurface,
-                          letterSpacing: -0.5,
+          appBar: _buildAppBar(),
+          body: CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + 110 + 4,
+                ),
+              ),
+              // ── Profile Content ────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 8),
+
+                      if (isAuthenticated) ...[
+                        BlocBuilder<ProfileCubit, ProfileState>(
+                          builder: (context, state) {
+                            UserModel? user;
+                            if (state is ProfileLoaded) {
+                              user = state.user;
+                            }
+                            if (state is ProfileUpdateSuccess) {
+                              user = state.user;
+                            }
+                            user ??= context.read<AuthCubit>().currentUser;
+                            if (user == null) {
+                              return const SizedBox.shrink();
+                            }
+                            return _ProfileCard(
+                              user: user,
+                              onEditName: () =>
+                                  _showEditNameSheet(context, user!),
+                            );
+                          },
                         ),
-                      ),
-                    ),
-                  ),
+                        const SizedBox(height: 20),
+                      ],
 
-                  const SizedBox(height: 12),
+                      // ── Activity ───────────────────────────────────────────
+                      if (isAuthenticated) ...[
+                        _SectionHeader(label: 'Activity'),
+                        const SizedBox(height: 8),
+                        _MenuCard(
+                          items: [
+                            _MenuItem(
+                              icon: Icons.favorite_rounded,
+                              iconColor: Colors.red,
+                              label: 'My Wishlist',
+                              trailing:
+                                  BlocBuilder<FavouriteCubit, FavouriteState>(
+                                    builder: (_, state) {
+                                      if (state is FavouriteLoaded &&
+                                          state.items.isNotEmpty) {
+                                        return _CountBadge(
+                                          count: state.items.length,
+                                          color: Colors.red,
+                                        );
+                                      }
+                                      return const SizedBox();
+                                    },
+                                  ),
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const FavouriteScreen(),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                      ],
 
-                  // ── Profile card ───────────────────────────────────────────
-                  if (isAuthenticated)
-                    BlocBuilder<ProfileCubit, ProfileState>(
-                      builder: (context, state) {
-                        UserModel? user;
-                        if (state is ProfileLoaded) user = state.user;
-                        if (state is ProfileUpdateSuccess) user = state.user;
-                        user ??= context.read<AuthCubit>().currentUser;
-                        if (user == null) return const SizedBox.shrink();
-                        return _ProfileCard(
-                          user: user,
-                          onEditName: () => _showEditNameSheet(context, user!),
-                        );
-                      },
-                    ),
+                      // ── Personalisation ────────────────────────────────────
+                      _SectionHeader(label: 'Personalisation'),
+                      const SizedBox(height: 8),
 
-                  const SizedBox(height: 20),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      children: [
-                        // ── Activity ───────────────────────────────────────────
-                        if (isAuthenticated) ...[
-                          _SectionHeader(label: 'Activity'),
-                          const SizedBox(height: 8),
-                          _MenuCard(
-                            items: [
-                              _MenuItem(
-                                icon: Icons.favorite_rounded,
-                                iconColor: Colors.red,
-                                label: 'My Wishlist',
-                                trailing:
-                                    BlocBuilder<FavouriteCubit, FavouriteState>(
-                                      builder: (_, state) {
-                                        if (state is FavouriteLoaded &&
-                                            state.items.isNotEmpty) {
-                                          return _CountBadge(
-                                            count: state.items.length,
-                                            color: Colors.red,
-                                          );
-                                        }
-                                        return const SizedBox();
-                                      },
+                      if (!isAuthenticated)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppColors.secondary.withValues(alpha: 0.12),
+                                AppColors.secondary.withValues(alpha: 0.04),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppColors.secondary.withValues(
+                                alpha: 0.25,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.15,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.lock_outline_rounded,
+                                  color: AppColors.primary,
+                                  size: 22,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Sign up to use preferences',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface,
+                                      ),
                                     ),
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const FavouriteScreen(),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Create an account to personalise your '
+                                      'restaurant recommendations.',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.pushNamed(context, '/signup'),
+                                style: TextButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: const Text(
+                                  'Sign Up',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
-                        ],
+                        ),
 
-                        // ── Personalisation ────────────────────────────────────
-                        _SectionHeader(label: 'Personalisation'),
-                        const SizedBox(height: 8),
-
-                        if (!isAuthenticated)
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  AppColors.secondary.withValues(alpha: 0.12),
-                                  AppColors.secondary.withValues(alpha: 0.04),
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: AppColors.secondary.withValues(
-                                  alpha: 0.25,
-                                ),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 42,
-                                  height: 42,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(
-                                      alpha: 0.15,
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(
-                                    Icons.lock_outline_rounded,
-                                    color: AppColors.primary,
-                                    size: 22,
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Sign up to use preferences',
+                      _MenuCard(
+                        items: [
+                          _MenuItem(
+                            icon: Icons.tune_rounded,
+                            iconColor: AppColors.primary,
+                            label: 'My Preferences',
+                            trailing: isAuthenticated
+                                ? BlocBuilder<
+                                    UserPreferencesCubit,
+                                    UserPreferencesState
+                                  >(
+                                    builder: (_, st) {
+                                      final prefs = context
+                                          .read<UserPreferencesCubit>()
+                                          .current;
+                                      return Text(
+                                        prefs?.hasAnyPreference == true
+                                            ? 'Configured ✓'
+                                            : 'Not set',
                                         style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurface,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: prefs?.hasAnyPreference == true
+                                              ? AppColors.secondary
+                                              : Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurface
+                                                    .withValues(alpha: 0.4),
+                                        ),
+                                      );
+                                    },
+                                  )
+                                : Icon(
+                                    Icons.lock_outline_rounded,
+                                    size: 16,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.3),
+                                  ),
+                            onTap: () {
+                              if (!isAuthenticated) {
+                                ScaffoldMessenger.of(context)
+                                  ..hideCurrentSnackBar()
+                                  ..showSnackBar(
+                                    SnackBar(
+                                      content: const Text(
+                                        'Please sign up to use preferences',
+                                      ),
+                                      backgroundColor: AppColors.primary,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      margin: const EdgeInsets.all(16),
+                                      action: SnackBarAction(
+                                        label: 'Sign Up',
+                                        textColor: Colors.white,
+                                        onPressed: () => Navigator.pushNamed(
+                                          context,
+                                          '/signup',
                                         ),
                                       ),
-                                      const SizedBox(height: 2),
+                                    ),
+                                  );
+                                return;
+                              }
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => MultiBlocProvider(
+                                    providers: [
+                                      BlocProvider.value(
+                                        value: context
+                                            .read<UserPreferencesCubit>(),
+                                      ),
+                                      BlocProvider.value(
+                                        value: context.read<AuthCubit>(),
+                                      ),
+                                    ],
+                                    child: const PersonalisationScreen(),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // ── Settings ───────────────────────────────────────────
+                      _SectionHeader(label: 'Settings'),
+                      const SizedBox(height: 8),
+                      _MenuCard(
+                        items: [
+                          _MenuItem(
+                            icon: Icons.dark_mode_rounded,
+                            iconColor: const Color(0xFF6C63FF),
+                            label: 'Appearance',
+                            trailing: BlocBuilder<ThemeCubit, ThemeMode>(
+                              builder: (ctx, mode) => GestureDetector(
+                                onTap: () => _showThemeSheet(ctx),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(
+                                      0xFF6C63FF,
+                                    ).withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        mode == ThemeMode.dark
+                                            ? Icons.dark_mode_rounded
+                                            : mode == ThemeMode.light
+                                            ? Icons.light_mode_rounded
+                                            : Icons.brightness_auto_rounded,
+                                        size: 12,
+                                        color: const Color(0xFF6C63FF),
+                                      ),
+                                      const SizedBox(width: 4),
                                       Text(
-                                        'Create an account to personalise your '
-                                        'restaurant recommendations.',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurface
-                                              .withValues(alpha: 0.6),
+                                        ctx.read<ThemeCubit>().label,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF6C63FF),
+                                          fontWeight: FontWeight.w700,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: 10),
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pushNamed(context, '/signup'),
-                                  style: TextButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 8,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    minimumSize: Size.zero,
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  child: const Text(
-                                    'Sign Up',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
+                            ),
+                            onTap: () => _showThemeSheet(context),
+                            showChevron: false,
+                          ),
+                          _MenuItem(
+                            icon: Icons.notifications_none_rounded,
+                            iconColor: AppColors.secondary,
+                            label: 'Notifications',
+                            onTap: () => _showNotificationSheet(context),
+                          ),
+                          _MenuItem(
+                            icon: Icons.language_rounded,
+                            iconColor: AppColors.tertiary,
+                            label: 'Language',
+                            trailingText: 'English',
+                            onTap: () => _showLanguageSheet(context),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // ── About ──────────────────────────────────────────────
+                      _SectionHeader(label: 'About'),
+                      const SizedBox(height: 8),
+                      _MenuCard(
+                        items: [
+                          _MenuItem(
+                            icon: Icons.info_outline_rounded,
+                            iconColor: AppColors.primary,
+                            label: 'App Version',
+                            trailingText: _appVersion ?? '...',
+                            onTap: () {},
+                            showChevron: false,
+                          ),
+                          _MenuItem(
+                            icon: Icons.school_rounded,
+                            iconColor: AppColors.secondary,
+                            label: 'FYP Project',
+                            trailingText: 'UiTM',
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              AppRoutes.fypShowcase,
                             ),
                           ),
 
-                        _MenuCard(
-                          items: [
-                            _MenuItem(
-                              icon: Icons.tune_rounded,
-                              iconColor: AppColors.primary,
-                              label: 'My Preferences',
-                              trailing: isAuthenticated
-                                  ? BlocBuilder<
-                                      UserPreferencesCubit,
-                                      UserPreferencesState
-                                    >(
-                                      builder: (_, st) {
-                                        final prefs = context
-                                            .read<UserPreferencesCubit>()
-                                            .current;
-                                        return Text(
-                                          prefs?.hasAnyPreference == true
-                                              ? 'Configured ✓'
-                                              : 'Not set',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color:
-                                                prefs?.hasAnyPreference == true
-                                                ? AppColors.secondary
-                                                : Theme.of(context)
-                                                      .colorScheme
-                                                      .onSurface
-                                                      .withValues(alpha: 0.4),
-                                          ),
-                                        );
-                                      },
-                                    )
-                                  : Icon(
-                                      Icons.lock_outline_rounded,
-                                      size: 16,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface
-                                          .withValues(alpha: 0.3),
-                                    ),
-                              onTap: () {
-                                if (!isAuthenticated) {
-                                  ScaffoldMessenger.of(context)
-                                    ..hideCurrentSnackBar()
-                                    ..showSnackBar(
-                                      SnackBar(
-                                        content: const Text(
-                                          'Please sign up to use preferences',
-                                        ),
-                                        backgroundColor: AppColors.primary,
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                        ),
-                                        margin: const EdgeInsets.all(16),
-                                        action: SnackBarAction(
-                                          label: 'Sign Up',
-                                          textColor: Colors.white,
-                                          onPressed: () => Navigator.pushNamed(
-                                            context,
-                                            '/signup',
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  return;
-                                }
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => MultiBlocProvider(
-                                      providers: [
-                                        BlocProvider.value(
-                                          value: context
-                                              .read<UserPreferencesCubit>(),
-                                        ),
-                                        BlocProvider.value(
-                                          value: context.read<AuthCubit>(),
-                                        ),
-                                      ],
-                                      child: const PersonalisationScreen(),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // ── Settings ───────────────────────────────────────────
-                        _SectionHeader(label: 'Settings'),
-                        const SizedBox(height: 8),
-                        _MenuCard(
-                          items: [
-                            _MenuItem(
-                              icon: Icons.dark_mode_rounded,
-                              iconColor: const Color(0xFF6C63FF),
-                              label: 'Appearance',
-                              trailing: BlocBuilder<ThemeCubit, ThemeMode>(
-                                builder: (ctx, mode) => GestureDetector(
-                                  onTap: () => _showThemeSheet(ctx),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(
-                                        0xFF6C63FF,
-                                      ).withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          mode == ThemeMode.dark
-                                              ? Icons.dark_mode_rounded
-                                              : mode == ThemeMode.light
-                                              ? Icons.light_mode_rounded
-                                              : Icons.brightness_auto_rounded,
-                                          size: 12,
-                                          color: const Color(0xFF6C63FF),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          ctx.read<ThemeCubit>().label,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Color(0xFF6C63FF),
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                          // ── SUS Feedback button ────────────────────────────
+                          // Opens the Google Form SUS questionnaire in browser.
+                          // Replace _kSusFeedbackUrl at the top of this file
+                          // with your actual Google Form link.
+                          _MenuItem(
+                            icon: Icons.rate_review_rounded,
+                            iconColor: const Color(0xFF7C4DFF),
+                            label: 'Feedback',
+                            trailing: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFF7C4DFF,
+                                ).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'Google Form',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF7C4DFF),
                                 ),
                               ),
-                              onTap: () => _showThemeSheet(context),
-                              showChevron: false,
                             ),
-                            _MenuItem(
-                              icon: Icons.notifications_none_rounded,
-                              iconColor: AppColors.secondary,
-                              label: 'Notifications',
-                              onTap: () => _showNotificationSheet(context),
-                            ),
-                            _MenuItem(
-                              icon: Icons.language_rounded,
-                              iconColor: AppColors.tertiary,
-                              label: 'Language',
-                              trailingText: 'English',
-                              onTap: () => _showLanguageSheet(context),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // ── About ──────────────────────────────────────────────
-                        _SectionHeader(label: 'About'),
-                        const SizedBox(height: 8),
-                        _MenuCard(
-                          items: [
-                            _MenuItem(
-                              icon: Icons.info_outline_rounded,
-                              iconColor: AppColors.primary,
-                              label: 'App Version',
-                              trailingText: _appVersion ?? '...',
-                              onTap: () {},
-                              showChevron: false,
-                            ),
-                            _MenuItem(
-                              icon: Icons.school_rounded,
-                              iconColor: AppColors.secondary,
-                              label: 'FYP Project',
-                              trailingText: 'UiTM',
-                              onTap: () {},
-                              showChevron: false,
-                            ),
-
-                            // ── SUS Feedback button ────────────────────────────
-                            // Opens the Google Form SUS questionnaire in browser.
-                            // Replace _kSusFeedbackUrl at the top of this file
-                            // with your actual Google Form link.
-                            _MenuItem(
-                              icon: Icons.rate_review_rounded,
-                              iconColor: const Color(0xFF7C4DFF),
-                              label: 'Feedback',
-                              trailing: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xFF7C4DFF,
-                                  ).withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: const Text(
-                                  'Google Form',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF7C4DFF),
-                                  ),
-                                ),
-                              ),
-                              onTap: _openSusFeedback,
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // ── Sign Out / Sign In ─────────────────────────────────
-                        if (isAuthenticated)
-                          _MenuCard(
-                            items: [
-                              _MenuItem(
-                                icon: Icons.logout_rounded,
-                                iconColor: AppColors.error,
-                                label: 'Sign Out',
-                                labelColor: AppColors.error,
-                                onTap: () => _showLogoutDialog(context),
-                                showChevron: false,
-                              ),
-                            ],
-                          )
-                        else
-                          _MenuCard(
-                            items: [
-                              _MenuItem(
-                                icon: Icons.login_rounded,
-                                iconColor: AppColors.primary,
-                                label: 'Sign In',
-                                labelColor: AppColors.primary,
-                                onTap: () =>
-                                    Navigator.pushNamed(context, '/login'),
-                                showChevron: false,
-                              ),
-                            ],
+                            onTap: _openSusFeedback,
                           ),
+                        ],
+                      ),
 
-                        const SizedBox(height: 32),
-                      ],
-                    ),
+                      const SizedBox(height: 16),
+
+                      // ── Sign Out / Sign In ─────────────────────────────────
+                      if (isAuthenticated)
+                        _MenuCard(
+                          items: [
+                            _MenuItem(
+                              icon: Icons.logout_rounded,
+                              iconColor: AppColors.error,
+                              label: 'Sign Out',
+                              labelColor: AppColors.error,
+                              onTap: () => _showLogoutDialog(context),
+                              showChevron: false,
+                            ),
+                          ],
+                        )
+                      else
+                        _MenuCard(
+                          items: [
+                            _MenuItem(
+                              icon: Icons.login_rounded,
+                              iconColor: AppColors.primary,
+                              label: 'Sign In',
+                              labelColor: AppColors.primary,
+                              onTap: () =>
+                                  Navigator.pushNamed(context, '/login'),
+                              showChevron: false,
+                            ),
+                          ],
+                        ),
+
+                      const SizedBox(height: 120),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -1523,7 +1579,8 @@ class _MenuItem extends StatelessWidget {
                 ),
               ),
             ),
-            ?trailing,
+            // ignore: use_null_aware_elements
+            if (trailing != null) trailing!,
             if (trailingText != null)
               Text(
                 trailingText!,

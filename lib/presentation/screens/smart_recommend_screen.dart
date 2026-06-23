@@ -398,8 +398,18 @@ class _SmartRecommendScreenState extends State<SmartRecommendScreen>
           ? const Color(0xFF0B0F19)
           : Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: AppColors.oceanGradient,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        foregroundColor: Colors.white,
         leading: Center(
           child: GestureDetector(
             onTap: () {
@@ -413,14 +423,12 @@ class _SmartRecommendScreenState extends State<SmartRecommendScreen>
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.05),
+                color: Colors.white.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.arrow_back_rounded,
-                color: isDark ? Colors.white : Colors.black,
+                color: Colors.white,
                 size: 18,
               ),
             ),
@@ -430,10 +438,10 @@ class _SmartRecommendScreenState extends State<SmartRecommendScreen>
           isGuest
               ? 'Smart Recommend'
               : (_generated ? 'Your Smart Recommendations' : 'Smart Recommend'),
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : Colors.black,
+            color: Colors.white,
           ),
         ),
         centerTitle: true,

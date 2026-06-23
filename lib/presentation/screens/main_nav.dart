@@ -27,6 +27,8 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
   late final List<Widget> _screens;
   late final List<AnimationController> _activeControllers;
   late final List<Animation<double>> _activeAnims;
+  final GlobalKey<RestaurantSearchScreenState> _searchKey =
+      GlobalKey<RestaurantSearchScreenState>();
 
   @override
   void initState() {
@@ -48,7 +50,7 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
 
     _screens = [
       const HomeScreen(),
-      const RestaurantSearchScreen(),
+      RestaurantSearchScreen(key: _searchKey),
       const ChatScreen(),
       const FavouriteScreen(),
       const ProfileScreen(),
@@ -88,7 +90,14 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
   }
 
   @override
-  void switchTab(int index) => _onTabTap(index);
+  void switchTab(int index, {String? cuisine}) {
+    _onTabTap(index);
+    if (index == 1 && cuisine != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _searchKey.currentState?.setCategory(cuisine);
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -106,6 +115,10 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: isDark
+            ? Brightness.light
+            : Brightness.dark,
       ),
     );
 
@@ -117,6 +130,7 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
         return Scaffold(
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           extendBody: true,
+          resizeToAvoidBottomInset: false,
           body: IndexedStack(index: currentIndex, children: _screens),
           bottomNavigationBar: isKeyboardOpen
               ? const SizedBox.shrink()
@@ -132,13 +146,6 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
 }
 
 // ─── Floating Nav Bar ────────────────────────────────────────────────────
-//
-// Refined Design:
-//   - Center button: Green circle only (no label, no line)
-//   - Side buttons: Icon + compact label + indicator line
-//   - Reduced spacing between icon and label
-//   - Clean, minimal aesthetic
-//   - NO BADGE on Saved button (removed for consistency)
 
 class _FloatingNavBar extends StatelessWidget {
   final int currentIndex;
@@ -155,7 +162,7 @@ class _FloatingNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomPad = MediaQuery.of(context).padding.bottom;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final activePrimary = isDark ? AppColors.primary : AppColors.primary;
+    final activePrimary = AppColors.primary;
 
     const double barHeight = 68.0;
     const double btnSize = 56.0;
@@ -281,7 +288,7 @@ class _FloatingNavBar extends StatelessWidget {
   }
 }
 
-// ─── Makanbot Raised Button (Design overlap center) ──────────────────────────
+// ─── Makanbot Raised Button ────────────────────────────────────────────────
 
 class _MakanbotRaisedButton extends StatelessWidget {
   final IconData icon;
@@ -355,7 +362,7 @@ class _MakanbotRaisedButton extends StatelessWidget {
   }
 }
 
-// ─── Makanbot Label & Indicator Placeholder ──────────────────────────────────
+// ─── Makanbot Label & Indicator Placeholder ────────────────────────────────
 
 class _MakanbotLabelButton extends StatelessWidget {
   final bool isActive;
@@ -375,55 +382,12 @@ class _MakanbotLabelButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: AnimatedBuilder(
-        animation: animation,
-        builder: (context, _) {
-          final t = animation.value;
-
-          final labelColor = activePrimary;
-
-          final lineWidth = t > 0.1 ? 38.0 : 0.0;
-
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Vertical space allocation for the raised circular button above
-              const SizedBox(height: 24),
-
-              Text(
-                'Makanbot',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: labelColor,
-                  height: 1.0,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-
-              const SizedBox(height: 3),
-
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                width: lineWidth,
-                height: 3,
-                decoration: BoxDecoration(
-                  color: activePrimary,
-                  borderRadius: BorderRadius.circular(1.5),
-                ),
-              ),
-              const SizedBox(height: 5),
-            ],
-          );
-        },
-      ),
+      child: const SizedBox.expand(),
     );
   }
 }
 
-// ─── Navigation Button with Label ────────────────────────────────────────
+// ─── Navigation Button with Label ──────────────────────────────────────────
 
 class _NavButtonWithLabel extends StatelessWidget {
   final IconData inactiveIcon;

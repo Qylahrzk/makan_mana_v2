@@ -1,16 +1,15 @@
 // ============================================================
 // FILE: lib/presentation/screens/favourite_screen.dart
 //
-// UPDATED FOR FAVOURITES:
+// CINEMATIC REDESIGN — OCEAN GRADIENT HEADER EDITION
 //
-// Key changes:
-// 1. Renamed from Wishlist to Favourite throughout
-// 2. Tap heart icon on cards to unfavourite (instead of swipe-to-dismiss)
-// 3. Removed bookmark icon, using love/heart icon consistently
-// 4. Removed back button (uses navigation bar)
-// 5. Added favourite logo image asset for empty state
-// 6. Uses consistent restaurant card styling from other screens
-// 7. Pull-to-refresh awaits proper network completion
+// Key Design Updates:
+// 1. Consistent ocean gradient appbar with curved bottom
+// 2. Dynamic favourite count badge in appbar actions
+// 3. Smooth hint text fade-in when list has items
+// 4. Cinematic card styling with depth shadows
+// 5. Empty state with hero illustration
+// 6. Pull-to-refresh with seamless network completion
 //
 // ============================================================
 
@@ -29,6 +28,7 @@ import '../../logic/cubits/favourite_cubit.dart';
 import '../../models/favourite_model.dart';
 import 'restaurant_detail_screen.dart';
 import '../../models/restaurant_model.dart';
+import '../widgets/curved_header_painter.dart';
 
 class FavouriteScreen extends StatefulWidget {
   const FavouriteScreen({super.key});
@@ -41,11 +41,9 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
   @override
   void initState() {
     super.initState();
-    // Initial load on screen open
     _loadFavourite();
   }
 
-  // ── Initial load ──────────────────────────────────────────────────────────
   Future<void> _loadFavourite() async {
     final user = context.read<AuthCubit>().currentUser;
     if (user != null) {
@@ -53,8 +51,6 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
     }
   }
 
-  // ── Pull-to-refresh handler ───────────────────────────────────────────────
-  // Awaits until the cubit emits a non-loading state (FavouriteLoaded or FavouriteError)
   Future<void> _refresh() async {
     final user = context.read<AuthCubit>().currentUser;
     if (user == null) return;
@@ -72,20 +68,19 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
 
     await completer.future.timeout(
       const Duration(seconds: 10),
-      onTimeout: () {
-        sub.cancel();
-      },
+      onTimeout: () => sub.cancel(),
     );
   }
 
-  // ── Remove item ───────────────────────────────────────────────────────────
   void _removeFavourite(FavouriteModel item) {
     final user = context.read<AuthCubit>().currentUser;
     if (user == null) return;
+
     context.read<FavouriteCubit>().removeFromWishlist(
       userId: user.id,
       wishlistId: item.id,
     );
+
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -101,7 +96,6 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
       );
   }
 
-  // ── Open detail screen ────────────────────────────────────────────────────
   Future<void> _openDetail(FavouriteModel item) async {
     showDialog(
       context: context,
@@ -148,7 +142,6 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
     }
   }
 
-  // ── Fallback restaurant ───────────────────────────────────────────────────
   Restaurant _fallbackRestaurant(FavouriteModel item) {
     return Restaurant(
       id: 0,
@@ -187,8 +180,6 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
     );
   }
 
-  // ── BUILD ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -196,161 +187,207 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: isDark
+            ? Brightness.light
+            : Brightness.dark,
       ),
     );
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── Header ────────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-              child: Row(
-                children: [
-                  // Title (no back button — using nav bar)
-                  Expanded(
-                    child: Text(
-                      'My Favourites',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: Theme.of(context).colorScheme.onSurface,
-                        letterSpacing: -0.5,
+      appBar: _buildAppBar(),
+      body: BlocBuilder<FavouriteCubit, FavouriteState>(
+        builder: (context, state) {
+          if (state is FavouriteLoading) {
+            return Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            );
+          }
+
+          if (state is FavouriteError) {
+            return Padding(
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 110 + 20,
+              ),
+              child: _ErrorState(
+                message: state.message,
+                onRetry: _loadFavourite,
+              ),
+            );
+          }
+
+          if (state is FavouriteLoaded && state.items.isEmpty) {
+            return Padding(
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 110 + 20,
+              ),
+              child: const _EmptyState(),
+            );
+          }
+
+          if (state is FavouriteLoaded) {
+            return RefreshIndicator(
+              onRefresh: _refresh,
+              color: AppColors.primary,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsets.only(
+                      top: MediaQuery.of(context).padding.top + 110 + 4,
+                    ),
+                  ),
+                  // Hint text — fades in when list is populated
+                  SliverToBoxAdapter(
+                    child: AnimatedOpacity(
+                      opacity: 1.0,
+                      duration: const Duration(milliseconds: 400),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 4,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.favorite_rounded,
+                              size: 14,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.45),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Tap the heart to unfavourite',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.45),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-
-                  // Count badge
-                  BlocBuilder<FavouriteCubit, FavouriteState>(
-                    builder: (context, state) {
-                      if (state is! FavouriteLoaded) return const SizedBox();
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '${state.items.length}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            // ── Hint text ─────────────────────────────────────────────────────
-            BlocBuilder<FavouriteCubit, FavouriteState>(
-              builder: (context, state) {
-                if (state is! FavouriteLoaded || state.items.isEmpty) {
-                  return const SizedBox();
-                }
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 4,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.favorite_rounded,
-                        size: 14,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.45),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Tap the heart to unfavourite',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.45),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 8),
-
-            // ── Main content area ─────────────────────────────────────────────
-            Expanded(
-              child: BlocBuilder<FavouriteCubit, FavouriteState>(
-                builder: (context, state) {
-                  if (state is FavouriteLoading) {
-                    return Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                      ),
-                    );
-                  }
-
-                  if (state is FavouriteError) {
-                    return _ErrorState(
-                      message: state.message,
-                      onRetry: _loadFavourite,
-                    );
-                  }
-
-                  if (state is FavouriteLoaded && state.items.isEmpty) {
-                    return const _EmptyState();
-                  }
-
-                  if (state is FavouriteLoaded) {
-                    return RefreshIndicator(
-                      onRefresh: _refresh,
-                      color: AppColors.primary,
-                      child: ListView.builder(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                        itemCount: state.items.length,
-                        itemBuilder: (_, i) => _FavouriteCard(
+                  const SliverToBoxAdapter(child: SizedBox(height: 8)),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (_, i) => _FavouriteCard(
                           item: state.items[i],
                           onTap: () => _openDetail(state.items[i]),
                           onRemove: () => _removeFavourite(state.items[i]),
                         ),
+                        childCount: state.items.length,
                       ),
-                    );
-                  }
-
-                  return const SizedBox();
-                },
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+            );
+          }
+
+          return const SizedBox.shrink();
+        },
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      automaticallyImplyLeading: true,
+      titleSpacing: 0,
+      toolbarHeight: 110,
+      title: const Padding(
+        padding: EdgeInsets.only(left: 8),
+        child: Text(
+          'My Favourites',
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 28,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: -0.5,
+            shadows: [
+              Shadow(
+                offset: Offset(0, 1.5),
+                blurRadius: 4.0,
+                color: Colors.black26,
+              ),
+            ],
+          ),
         ),
       ),
+      actions: [
+        BlocBuilder<FavouriteCubit, FavouriteState>(
+          builder: (context, state) {
+            if (state is! FavouriteLoaded) return const SizedBox.shrink();
+
+            return Padding(
+              padding: const EdgeInsets.only(right: 20),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${state.items.length}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+      flexibleSpace: Stack(
+        children: [
+          ClipPath(
+            clipper: const HeaderCurveClipper(),
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: AppColors.oceanGradient,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -1,
+            left: -1,
+            right: -1,
+            child: CustomPaint(
+              size: const Size(double.infinity, 48),
+              painter: CurvedHeaderPainter.adaptive(context),
+            ),
+          ),
+        ],
+      ),
+      backgroundColor: Colors.transparent,
+      foregroundColor: Colors.white,
+      elevation: 0,
     );
   }
 }
 
 // ─── Favourite Card ───────────────────────────────────────────────────────────
-//
-// Restaurant card for favourite list. Features:
-//   - Tap heart icon to remove from favourites
-//   - Tap card to open detail screen
-//   - Shows: thumbnail, name, location, cuisine types, topic label,
-//     attribute chips (Halal, Parking etc.), rating
-// ─────────────────────────────────────────────────────────────────────────────
 
-class _FavouriteCard extends StatelessWidget {
+class _FavouriteCard extends StatefulWidget {
   final FavouriteModel item;
   final VoidCallback onTap;
   final VoidCallback onRemove;
@@ -360,6 +397,261 @@ class _FavouriteCard extends StatelessWidget {
     required this.onTap,
     required this.onRemove,
   });
+
+  @override
+  State<_FavouriteCard> createState() => _FavouriteCardState();
+}
+
+class _FavouriteCardState extends State<_FavouriteCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _scaleController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _scaleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.98).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _scaleController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final attrs = widget.item.activeAttributes;
+
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: GestureDetector(
+        onTapDown: (_) => _scaleController.forward(),
+        onTapUp: (_) => _scaleController.reverse(),
+        onTapCancel: () => _scaleController.reverse(),
+        onTap: widget.onTap,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white.withValues(alpha: 0.04)
+                  : Colors.black.withValues(alpha: 0.05),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(
+                  alpha: Theme.of(context).brightness == Brightness.dark
+                      ? 0.20
+                      : 0.04,
+                ),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Restaurant thumbnail
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: CachedNetworkImage(
+                    imageUrl: RestaurantImage.getUrl(
+                      widget.item.cuisineType,
+                      seed: widget.item.id.hashCode,
+                    ),
+                    width: 72,
+                    height: 72,
+                    fit: BoxFit.cover,
+                    fadeInDuration: const Duration(milliseconds: 300),
+                    placeholder: (_, _) => _thumbnailFallback(context),
+                    errorWidget: (_, _, _) => _thumbnailFallback(context),
+                  ),
+                ),
+                const SizedBox(width: 14),
+
+                // Restaurant info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.item.restaurantName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on_rounded,
+                            size: 11,
+                            color: AppColors.secondary,
+                          ),
+                          const SizedBox(width: 2),
+                          Expanded(
+                            child: Text(
+                              widget.item.municipality,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.secondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+
+                      if (widget.item.cuisineTypes.isNotEmpty)
+                        Text(
+                          widget.item.cuisineTypes.join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.5),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      const SizedBox(height: 5),
+
+                      if (widget.item.topicLabel.isNotEmpty &&
+                          widget.item.topicLabel != 'No Reviews')
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 5),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.15),
+                            ),
+                          ),
+                          child: Text(
+                            '🍽️ ${widget.item.topicLabel}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 9,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+
+                      if (attrs.isNotEmpty)
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 3,
+                          children: attrs
+                              .take(2)
+                              .map(
+                                (a) => Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.secondary.withValues(
+                                      alpha: 0.08,
+                                    ),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    a,
+                                    style: const TextStyle(
+                                      fontSize: 9,
+                                      color: Color(0xFF2F6F7E),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+
+                      const SizedBox(height: 6),
+
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.star_rounded,
+                            size: 13,
+                            color: AppColors.star,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            AppUtils.formatRating(widget.item.rating),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Heart button
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: widget.onRemove,
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: 1.0, end: 0.85).animate(
+                      CurvedAnimation(
+                        parent: _scaleController,
+                        curve: Curves.easeInOut,
+                      ),
+                    ),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.favorite_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _thumbnailFallback(BuildContext context) => Container(
     width: 72,
@@ -381,235 +673,9 @@ class _FavouriteCard extends StatelessWidget {
       size: 24,
     ),
   );
-
-  @override
-  Widget build(BuildContext context) {
-    final attrs = item.activeAttributes;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white.withValues(alpha: 0.04)
-                : Colors.black.withValues(alpha: 0.05),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(
-                alpha: Theme.of(context).brightness == Brightness.dark
-                    ? 0.20
-                    : 0.04,
-              ),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // ── Restaurant thumbnail image ─────────────────────────────
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: CachedNetworkImage(
-                  imageUrl: RestaurantImage.getUrl(
-                    item.cuisineType,
-                    seed: item.id.hashCode,
-                  ),
-                  width: 72,
-                  height: 72,
-                  fit: BoxFit.cover,
-                  fadeInDuration: const Duration(milliseconds: 300),
-                  placeholder: (_, _) => _thumbnailFallback(context),
-                  errorWidget: (_, _, _) => _thumbnailFallback(context),
-                ),
-              ),
-
-              const SizedBox(width: 14),
-
-              // ── Restaurant info column ────────────────────────────────
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Restaurant name
-                    Text(
-                      item.restaurantName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-
-                    // Location
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.location_on_rounded,
-                          size: 11,
-                          color: AppColors.secondary,
-                        ),
-                        const SizedBox(width: 2),
-                        Expanded(
-                          child: Text(
-                            item.municipality,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.secondary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-
-                    // Cuisine types
-                    if (item.cuisineTypes.isNotEmpty)
-                      Text(
-                        item.cuisineTypes.join(' · '),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.5),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-
-                    const SizedBox(height: 5),
-
-                    // LDA topic label badge
-                    if (item.topicLabel.isNotEmpty &&
-                        item.topicLabel != 'No Reviews')
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 5),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.15),
-                          ),
-                        ),
-                        child: Text(
-                          '🍽️ ${item.topicLabel}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 9,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-
-                    // Attribute chips — max 2 shown
-                    if (attrs.isNotEmpty)
-                      Wrap(
-                        spacing: 4,
-                        runSpacing: 3,
-                        children: attrs
-                            .take(2)
-                            .map(
-                              (a) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 7,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.secondary.withValues(
-                                    alpha: 0.08,
-                                  ),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  a,
-                                  style: const TextStyle(
-                                    fontSize: 9,
-                                    color: Color(0xFF2F6F7E),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            )
-                            .toList(),
-                      ),
-
-                    const SizedBox(height: 6),
-
-                    // Rating
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.star_rounded,
-                          size: 13,
-                          color: AppColors.star,
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          AppUtils.formatRating(item.rating),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── Favourite heart button ─────────────────────────────────
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: onRemove,
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.favorite_rounded,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 // ─── Empty State ──────────────────────────────────────────────────────────────
-//
-// Shown when no favourites are saved.
-// Includes image asset and button to explore restaurants.
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
@@ -622,7 +688,6 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Favourite logo image from assets
             Image.asset(
               'assets/images/favourite_logo.png',
               width: 190,
@@ -652,7 +717,6 @@ class _EmptyState extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 28),
-            // Button to navigate to search/explore
             GestureDetector(
               onTap: () {
                 Navigator.of(context).popUntil((route) => route.isFirst);
@@ -669,6 +733,13 @@ class _EmptyState extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppColors.primary,
                   borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
@@ -695,9 +766,6 @@ class _EmptyState extends StatelessWidget {
 }
 
 // ─── Error State ──────────────────────────────────────────────────────────────
-//
-// Shown when loading fails
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _ErrorState extends StatelessWidget {
   final String message;

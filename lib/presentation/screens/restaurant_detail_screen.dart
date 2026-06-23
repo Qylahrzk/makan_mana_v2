@@ -51,6 +51,7 @@ import '../../logic/cubits/auth_cubit.dart';
 import '../../logic/cubits/favourite_cubit.dart';
 import '../../logic/cubits/restaurant_detail_cubit.dart';
 import '../../models/restaurant_model.dart';
+import '../widgets/gradient_divider.dart';
 
 // ─── Public entry point ───────────────────────────────────────────────────────
 // Creates the cubit, starts compass, and triggers similar restaurant loading.
@@ -123,7 +124,9 @@ class _RestaurantDetailView extends StatelessWidget {
       buffer.writeln('📌 https://maps.google.com/?q=${r.lat},${r.lon}');
     }
     buffer.writeln('\nFound on Makan Mana 🇲🇾');
-    Share.share(buffer.toString(), subject: r.name);
+    SharePlus.instance.share(
+      ShareParams(text: buffer.toString(), subject: r.name),
+    );
   }
 
   // ── Directions ─────────────────────────────────────────────────────────────
@@ -1233,11 +1236,10 @@ class _RestaurantDetailView extends StatelessWidget {
     ),
   );
 
-  Widget _divider(BuildContext context) => Divider(
+  Widget _divider(BuildContext context) => const GradientDivider(
     height: 1,
-    indent: 64,
-    endIndent: 16,
-    color: Theme.of(context).colorScheme.surfaceContainer,
+    thickness: 0.5,
+    margin: EdgeInsets.only(left: 64, right: 16),
   );
 
   Widget _addressCard(BuildContext context, Restaurant r) => GestureDetector(

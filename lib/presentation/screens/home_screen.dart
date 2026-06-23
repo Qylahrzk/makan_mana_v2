@@ -21,6 +21,7 @@ import '../../logic/cubits/recommendation_cubit.dart';
 import '../../logic/cubits/user_preferences_cubit.dart';
 import '../../models/restaurant_model.dart';
 import '../../models/user_preferences_model.dart';
+import '../widgets/curved_header_painter.dart';
 import 'restaurant_detail_screen.dart';
 import 'recommendation_screen.dart';
 
@@ -43,8 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Restaurant> _recommended = [];
   List<Restaurant> _allPopular = [];
   List<Restaurant> _nearby = [];
-  List<Restaurant> _allRestaurants =
-      []; // ✅ FIX: Store all restaurants for category filtering
+
   bool _loadingRecommended = true;
   bool _loadingPopular = true;
   bool _loadingNearby = true;
@@ -209,7 +209,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // Load data synchronously with whatever coordinates we currently have (fallback or cached)
-    await _loadAllRestaurants();
 
     final tasks = <Future<void>>[_loadPopular(), _loadNearby()];
     if (!isGuestUser) {
@@ -220,19 +219,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Kick off location retrieval asynchronously in the background so it doesn't block startup
     _loadLocation(forceRefresh: isRefresh, preloadedPrefs: preloadedPrefs);
-  }
-
-  // ✅ NEW: Load all restaurants for category filtering
-  Future<void> _loadAllRestaurants() async {
-    try {
-      final repo = context.read<RestaurantRepository>();
-      final all = await repo.getAllRestaurants();
-      if (mounted) {
-        setState(() => _allRestaurants = all);
-      }
-    } catch (e) {
-      debugPrint('HomeScreen._loadAllRestaurants error: $e');
-    }
   }
 
   Future<void> _loadRecommended({UserPreferencesModel? preloadedPrefs}) async {
@@ -397,153 +383,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ✅ FIX: Completely rewritten category tap logic
-  Future<void> _onCategoryTap(String cuisine) async {
-    // If "All" is selected, show top rated
-    if (cuisine == 'All') {
-      final topRated = [..._allRestaurants]
-        ..sort((a, b) => b.rating.compareTo(a.rating));
-      final top10 = topRated.take(10).toList();
-
-      if (!mounted) return;
-      if (top10.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('No restaurants available'),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
-        return;
-      }
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => RecommendationScreen(
-            recommendations: top10,
-            isFromApi: false,
-            relaxedFilters: const [],
-          ),
-        ),
-      );
-      return;
-    }
-
-    // For specific cuisines, try API first
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
-      ),
-    );
-
-    try {
-      // ✅ FIX: Try API call first
-      final result = await ApiService.instance.getRecommendations(
-        cuisineType: cuisine,
-        userLat: _userLat,
-        userLon: _userLon,
-        distanceKm: 500.0,
-      );
-
-      if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
-
-      var restaurants = result?.restaurants ?? [];
-
-      // ✅ FIX: If API returns results, use them and sort by rating
-      if (restaurants.isNotEmpty) {
-        restaurants.sort((a, b) => b.rating.compareTo(a.rating));
-        final top10 = restaurants.take(10).toList();
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => RecommendationScreen(
-              recommendations: top10,
-              isFromApi: true,
-              relaxedFilters: result?.filtersRelaxed ?? [],
-            ),
-          ),
-        );
-        return;
-      }
-
-      // ✅ FIX: Fallback to local database filtering
-      final filtered =
-          _allRestaurants.where((r) => r.matchesAnyCuisine([cuisine])).toList()
-            ..sort((a, b) => b.rating.compareTo(a.rating));
-
-      if (filtered.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No $cuisine restaurants found nearby'),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
-        return;
-      }
-
-      final top10 = filtered.take(10).toList();
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => RecommendationScreen(
-            recommendations: top10,
-            isFromApi: false,
-            relaxedFilters: const [],
-          ),
-        ),
-      );
-    } catch (e) {
-      debugPrint('Category tap error: $e');
-      if (mounted) {
-        Navigator.pop(context); // Close loading dialog
-
-        // ✅ FIX: Fallback to local database on API error
-        final filtered =
-            _allRestaurants
-                .where((r) => r.matchesAnyCuisine([cuisine]))
-                .toList()
-              ..sort((a, b) => b.rating.compareTo(a.rating));
-
-        if (filtered.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('No $cuisine restaurants found'),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              margin: const EdgeInsets.all(16),
-            ),
-          );
-          return;
-        }
-
-        final top10 = filtered.take(10).toList();
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => RecommendationScreen(
-              recommendations: top10,
-              isFromApi: false,
-              relaxedFilters: const [],
-            ),
-          ),
-        );
-      }
+  // Link category tap to search screen with filtering
+  void _onCategoryTap(String cuisine) {
+    final proxy = context.findAncestorStateOfType<NavTabProxy>();
+    if (proxy != null) {
+      proxy.switchTab(1, cuisine: cuisine);
     }
   }
 
@@ -605,6 +449,10 @@ class _HomeScreenState extends State<HomeScreen> {
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: isDark
+            ? Brightness.light
+            : Brightness.dark,
       ),
     );
 
@@ -777,168 +625,182 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── Header ────────────────────────────────────────────────────────────────
 
   Widget _buildHeader() {
-    final scaffoldBg = Theme.of(context).scaffoldBackgroundColor;
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: AppColors.oceanGradient,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+        ClipPath(
+          clipper: const HeaderCurveClipper(),
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: AppColors.oceanGradient,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
-          ),
-          child: SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 60),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      GestureDetector(
-                        onTap: _locationLoading
-                            ? null
-                            : () => _loadLocation(forceRefresh: true),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.location_on_rounded,
-                              size: 13,
-                              color: Colors.white70,
-                            ),
-                            const SizedBox(width: 3),
-                            if (_locationLoading)
-                              const SizedBox(
-                                width: 12,
-                                height: 12,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 1.5,
-                                  color: Colors.white70,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 60),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        GestureDetector(
+                          onTap: _locationLoading
+                              ? null
+                              : () => _loadLocation(forceRefresh: true),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.location_on_rounded,
+                                size: 13,
+                                color: Colors.white70,
+                              ),
+                              const SizedBox(width: 3),
+                              if (_locationLoading)
+                                const SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 1.5,
+                                    color: Colors.white70,
+                                  ),
+                                )
+                              else
+                                Text(
+                                  _locationLabel,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.white70,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                              )
-                            else
-                              Text(
-                                _locationLabel,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.white70,
-                                  fontWeight: FontWeight.w500,
+                              const SizedBox(width: 2),
+                              const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 14,
+                                color: Colors.white70,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        BlocBuilder<AuthCubit, AuthState>(
+                          builder: (_, state) {
+                            final name = state is AuthAuthenticated
+                                ? state.user.fullName
+                                : '';
+                            return Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                  width: 1.5,
                                 ),
                               ),
-                            const SizedBox(width: 2),
+                              child: Center(
+                                child: Text(
+                                  _initials(name),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    BlocBuilder<AuthCubit, AuthState>(
+                      builder: (_, state) {
+                        final name = state is AuthAuthenticated
+                            ? state.user.firstName
+                            : 'there';
+                        return Text(
+                          '${_greeting()}, $name! 👋',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.8,
+                            height: 1.15,
+                            shadows: [
+                              Shadow(
+                                offset: Offset(0, 1.5),
+                                blurRadius: 4.0,
+                                color: Colors.black26,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    GestureDetector(
+                      onTap: _switchToExploreTab,
+                      child: Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.10),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 14),
                             const Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              size: 14,
-                              color: Colors.white70,
+                              Icons.search_rounded,
+                              color: AppColors.primary,
+                              size: 22,
+                            ),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Text(
+                                'Search restaurants, cuisine...',
+                                style: TextStyle(
+                                  color: Color(0xFFAAAAAA),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.12,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                Icons.tune_rounded,
+                                size: 18,
+                                color: AppColors.primary,
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      const Spacer(),
-                      BlocBuilder<AuthCubit, AuthState>(
-                        builder: (_, state) {
-                          final name = state is AuthAuthenticated
-                              ? state.user.fullName
-                              : '';
-                          return Container(
-                            width: 38,
-                            height: 38,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.5),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                _initials(name),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  BlocBuilder<AuthCubit, AuthState>(
-                    builder: (_, state) {
-                      final name = state is AuthAuthenticated
-                          ? state.user.firstName
-                          : 'there';
-                      return Text(
-                        '${_greeting()}, $name! 👋',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: _switchToExploreTab,
-                    child: Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.10),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 14),
-                          const Icon(
-                            Icons.search_rounded,
-                            color: AppColors.primary,
-                            size: 22,
-                          ),
-                          const SizedBox(width: 10),
-                          const Expanded(
-                            child: Text(
-                              'Search restaurants, cuisine...',
-                              style: TextStyle(
-                                color: Color(0xFFAAAAAA),
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(
-                              Icons.tune_rounded,
-                              size: 18,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -949,7 +811,7 @@ class _HomeScreenState extends State<HomeScreen> {
           right: -1,
           child: CustomPaint(
             size: const Size(double.infinity, 48),
-            painter: _RoundedTopBodyPainter(bgColor: scaffoldBg),
+            painter: CurvedHeaderPainter.adaptive(context),
           ),
         ),
       ],
@@ -1022,15 +884,17 @@ class _HomeScreenState extends State<HomeScreen> {
           borderRadius: BorderRadius.circular(20),
           gradient: LinearGradient(
             colors: isDark
-                ? const [Color(0xFFFF8A00), Color(0xFFEAA678)]
-                : AppColors.freshMakanGradient,
+                ? const [Color(0xFFFF7A00), Color(0xFFD07E50)]
+                : const [Color(0xFFFF9E40), Color(0xFFFFC78C)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           boxShadow: [
             BoxShadow(
               color:
-                  (isDark ? const Color(0xFFD07E50) : const Color(0xFFFF7A00))
+                  (isDark
+                          ? Color.fromARGB(255, 252, 160, 100)
+                          : Color.fromARGB(255, 255, 158, 64))
                       .withValues(alpha: isDark ? 0.12 : 0.2),
               blurRadius: 12,
               offset: const Offset(0, 6),
@@ -1605,32 +1469,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (parts.length == 1) return parts[0][0].toUpperCase();
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
-}
-
-// ─── Rounded Top Body Painter ──────────────────────────────────────────────────
-
-class _RoundedTopBodyPainter extends CustomPainter {
-  const _RoundedTopBodyPainter({required this.bgColor});
-  final Color bgColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = bgColor
-      ..style = PaintingStyle.fill;
-
-    // Draw a rounded rectangle that covers the bottom of the header,
-    // leaving a curved corner transition where the gradient shows through.
-    final rrect = RRect.fromRectAndCorners(
-      Rect.fromLTRB(0, 16, size.width, size.height),
-      topLeft: const Radius.circular(28),
-      topRight: const Radius.circular(28),
-    );
-    canvas.drawRRect(rrect, paint);
-  }
-
-  @override
-  bool shouldRepaint(_RoundedTopBodyPainter old) => old.bgColor != bgColor;
 }
 
 // ─── Category Chip ────────────────────────────────────────────────────────────

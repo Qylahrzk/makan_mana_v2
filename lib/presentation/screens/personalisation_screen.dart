@@ -5,6 +5,8 @@ import '../../core/app_constants.dart';
 import '../../logic/cubits/auth_cubit.dart';
 import '../../logic/cubits/user_preferences_cubit.dart';
 import '../../models/user_preferences_model.dart';
+import '../widgets/gradient_divider.dart';
+import '../widgets/curved_header_painter.dart';
 
 class PersonalisationScreen extends StatefulWidget {
   const PersonalisationScreen({super.key});
@@ -168,37 +170,76 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
 
         if (_draft == null) {
           return Scaffold(
+            extendBodyBehindAppBar: true,
             backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             appBar: AppBar(
+              toolbarHeight: 110,
               title: const Text(
                 'Personalisation',
                 style: TextStyle(
                   fontFamily: 'Montserrat',
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
+                  shadows: [
+                    Shadow(
+                      offset: Offset(0, 1.5),
+                      blurRadius: 4.0,
+                      color: Colors.black26,
+                    ),
+                  ],
                 ),
               ),
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-            ),
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+              flexibleSpace: Stack(
                 children: [
-                  CircularProgressIndicator(color: AppColors.primary),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Loading your preferences...',
-                    style: TextStyle(
-                      fontFamily: 'OpenSans',
-                      fontSize: 13,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.5),
+                  ClipPath(
+                    clipper: const HeaderCurveClipper(),
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: AppColors.oceanGradient,
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: -1,
+                    left: -1,
+                    right: -1,
+                    child: CustomPaint(
+                      size: const Size(double.infinity, 48),
+                      painter: CurvedHeaderPainter.adaptive(context),
                     ),
                   ),
                 ],
+              ),
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
+            body: Padding(
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 110,
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(color: AppColors.primary),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Loading your preferences...',
+                      style: TextStyle(
+                        fontFamily: 'OpenSans',
+                        fontSize: 13,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           );
@@ -213,15 +254,55 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
-          'Personalisation',
-          style: TextStyle(
-            fontFamily: 'Montserrat',
-            fontWeight: FontWeight.w800,
-            color: Colors.white,
+        automaticallyImplyLeading: true,
+        titleSpacing: 0,
+        toolbarHeight: 110,
+        title: const Padding(
+          padding: EdgeInsets.only(left: 8),
+          child: Text(
+            'Personalisation',
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              letterSpacing: -0.5,
+              shadows: [
+                Shadow(
+                  offset: Offset(0, 1.5),
+                  blurRadius: 4.0,
+                  color: Colors.black26,
+                ),
+              ],
+            ),
           ),
         ),
-        backgroundColor: AppColors.primary,
+        flexibleSpace: Stack(
+          children: [
+            ClipPath(
+              clipper: const HeaderCurveClipper(),
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: AppColors.oceanGradient,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -1,
+              left: -1,
+              right: -1,
+              child: CustomPaint(
+                size: const Size(double.infinity, 48),
+                painter: CurvedHeaderPainter.adaptive(context),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
@@ -328,17 +409,58 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
     final saving = state is PreferencesSaving;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
-          'My Preferences',
-          style: TextStyle(
-            fontFamily: 'Montserrat',
-            fontWeight: FontWeight.w800,
-            color: Colors.white,
+        automaticallyImplyLeading: true,
+        titleSpacing: 0,
+        toolbarHeight: 110,
+        title: const Padding(
+          padding: EdgeInsets.only(left: 8),
+          child: Text(
+            'My Preferences',
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              letterSpacing: -0.5,
+              shadows: [
+                Shadow(
+                  offset: Offset(0, 1.5),
+                  blurRadius: 4.0,
+                  color: Colors.black26,
+                ),
+              ],
+            ),
           ),
         ),
-        backgroundColor: AppColors.primary,
+        flexibleSpace: Stack(
+          children: [
+            ClipPath(
+              clipper: const HeaderCurveClipper(),
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: AppColors.oceanGradient,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -1,
+              left: -1,
+              right: -1,
+              child: CustomPaint(
+                size: const Size(double.infinity, 48),
+                painter: CurvedHeaderPainter.adaptive(context),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -366,7 +488,12 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          MediaQuery.of(context).padding.top + 110 + 4,
+          16,
+          16,
+        ),
         children: [
           // Info banner
           Container(
@@ -869,8 +996,7 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
     );
   }
 
-  Widget _divider() =>
-      Divider(height: 1, thickness: 0.5, color: Theme.of(context).dividerColor);
+  Widget _divider() => const GradientDivider(height: 1, thickness: 0.5);
 }
 
 // ─── Helper Widgets ───────────────────────────────────────────────────────────
@@ -976,7 +1102,8 @@ class _ToggleRow extends StatelessWidget {
         Switch.adaptive(
           value: value,
           onChanged: onChanged,
-          activeColor: AppColors.primary,
+          activeThumbColor: AppColors.primary,
+          activeTrackColor: AppColors.primary.withValues(alpha: 0.5),
         ),
       ],
     ),

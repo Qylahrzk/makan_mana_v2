@@ -9,5 +9,5 @@ import 'package:flutter/material.dart';
 /// Place in: lib/core/nav_tab_proxy.dart
 
 abstract class NavTabProxy<T extends StatefulWidget> extends State<T> {
-  void switchTab(int index);
+  void switchTab(int index, {String? cuisine});
 }

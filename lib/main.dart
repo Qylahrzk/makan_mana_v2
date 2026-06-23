@@ -4,6 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import 'package:flutter/services.dart';
+
 import 'core/app_colors.dart';
 import 'core/app_constants.dart';
 import 'data/restaurant_repository.dart';
@@ -23,6 +25,14 @@ import 'presentation/screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      systemNavigationBarColor: Colors.transparent,
+      statusBarColor: Colors.transparent,
+    ),
+  );
 
   await dotenv.load(fileName: '.env');
 
@@ -110,7 +120,7 @@ class MyApp extends StatelessWidget {
                 tertiary: AppColors.tertiary,
                 onTertiary: Colors.white,
                 surface: AppColors.surface,
-                surfaceContainer: const Color.fromARGB(255, 221, 221, 221),
+                surfaceContainer: AppColors.surfaceContainer,
                 onSurface: AppColors.onSurface,
                 error: AppColors.error,
               ),
@@ -434,7 +444,9 @@ class MyApp extends StatelessWidget {
               ),
 
               chipTheme: ChipThemeData(
-                backgroundColor: const Color(0xFF1A3A3A),
+                backgroundColor: AppColors.darkSecondary.withValues(
+                  alpha: 0.15,
+                ),
                 selectedColor: AppColors.darkSecondary,
                 labelStyle: const TextStyle(
                   fontFamily: 'OpenSans',

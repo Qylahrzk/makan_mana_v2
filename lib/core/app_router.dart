@@ -17,6 +17,7 @@ import '../presentation/screens/smart_recommend_screen.dart';
 import '../presentation/screens/map_screen.dart';
 import '../presentation/screens/favourite_screen.dart';
 import '../presentation/screens/profile_screen.dart';
+import '../presentation/screens/fyp_showcase_screen.dart';
 
 /// AppRouter
 ///
@@ -110,6 +111,9 @@ class AppRouter {
 
       case AppRoutes.smartRecommend:
         return _slide(const SmartRecommendScreen());
+
+      case AppRoutes.fypShowcase:
+        return _slide(const FypShowcaseScreen());
 
       default:
         return _error(settings.name);

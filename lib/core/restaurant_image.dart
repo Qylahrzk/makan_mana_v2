@@ -50,6 +50,11 @@ class RestaurantImage {
       'https://images.unsplash.com/photo-1626804475297-41608ea09aeb?w=600&q=80',
       'https://images.unsplash.com/photo-1569050467447-ce54b3bbc37d?w=600&q=80',
       'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=600&q=80',
+      'https://images.unsplash.com/photo-1541832676-9b763b0239ab?w=600&q=80',
+      'https://images.unsplash.com/photo-1596797038530-2c107229654b?w=600&q=80',
+      'https://images.unsplash.com/photo-1555126634-323283e090fa?w=600&q=80',
+      'https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=600&q=80',
+      'https://images.unsplash.com/photo-1601050690597-df056fb4ce78?w=600&q=80',
     ],
 
     'Cafe': [

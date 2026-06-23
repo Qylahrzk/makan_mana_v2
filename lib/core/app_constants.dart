@@ -50,6 +50,7 @@ class AppRoutes {
   static const String favourite = '/favourite';
   static const String profile = '/profile';
   static const String smartRecommend = '/smart-recommend';
+  static const String fypShowcase = '/fyp-showcase';
 }
 
 // ─────────────────────────────────────────
