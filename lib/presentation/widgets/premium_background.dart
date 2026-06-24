@@ -50,6 +50,8 @@ class PremiumGradientBackground extends StatelessWidget {
           return AppColors.darkWarmGradient;
         case 'vibrant':
           return [AppColors.darkSecondary, AppColors.darkPrimary];
+        case 'soft':
+          return AppColors.darkOceanGradient;
         default:
           return AppColors.darkOceanGradient;
       }
@@ -62,6 +64,8 @@ class PremiumGradientBackground extends StatelessWidget {
           return AppColors.freshMakanGradient;
         case 'vibrant':
           return [AppColors.secondary, AppColors.primary];
+        case 'soft':
+          return [const Color(0xFFEBF5F6), AppColors.background];
         default:
           return AppColors.oceanGradient;
       }
@@ -121,6 +125,8 @@ class PremiumGradientBackgroundWithOverlay extends StatelessWidget {
           return AppColors.darkWarmGradient;
         case 'vibrant':
           return [AppColors.darkSecondary, AppColors.darkPrimary];
+        case 'soft':
+          return AppColors.darkOceanGradient;
         default:
           return AppColors.darkOceanGradient;
       }
@@ -132,6 +138,8 @@ class PremiumGradientBackgroundWithOverlay extends StatelessWidget {
           return AppColors.freshMakanGradient;
         case 'vibrant':
           return [AppColors.secondary, AppColors.primary];
+        case 'soft':
+          return [const Color(0xFFEBF5F6), AppColors.background];
         default:
           return AppColors.oceanGradient;
       }

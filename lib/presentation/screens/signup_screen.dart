@@ -7,7 +7,11 @@ import 'login_screen.dart';
 import 'main_nav.dart';
 import '../widgets/premium_background.dart';
 
-/// SignupScreen
+/// ENHANCED SignupScreen v2
+/// - Full white opaque input fields
+/// - Strong glassmorphism with backdrop blur effect appearance
+/// - Real-time password validation indicators
+/// - Better visual hierarchy
 ///
 /// Place in: lib/presentation/screens/signup_screen.dart
 
@@ -18,16 +22,44 @@ class SignupScreen extends StatefulWidget {
   State<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+class _SignupScreenState extends State<SignupScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
+
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
   bool _agreedToTerms = false;
   bool _submitAttempted = false;
+  late AnimationController _fadeController;
+
+  late FocusNode _nameFocus;
+  late FocusNode _emailFocus;
+  late FocusNode _passwordFocus;
+  late FocusNode _confirmFocus;
+
+  bool _passwordMeetsLength = false;
+  bool _passwordsMatch = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    )..forward();
+
+    _nameFocus = FocusNode();
+    _emailFocus = FocusNode();
+    _passwordFocus = FocusNode();
+    _confirmFocus = FocusNode();
+
+    _passwordCtrl.addListener(_onPasswordChanged);
+    _confirmCtrl.addListener(_onPasswordChanged);
+  }
 
   @override
   void dispose() {
@@ -35,7 +67,21 @@ class _SignupScreenState extends State<SignupScreen> {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmCtrl.dispose();
+    _fadeController.dispose();
+    _nameFocus.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
+    _confirmFocus.dispose();
     super.dispose();
+  }
+
+  void _onPasswordChanged() {
+    setState(() {
+      _passwordMeetsLength = _passwordCtrl.text.length >= 8;
+      _passwordsMatch =
+          _passwordCtrl.text == _confirmCtrl.text &&
+          _passwordCtrl.text.isNotEmpty;
+    });
   }
 
   void _submit() {
@@ -49,7 +95,7 @@ class _SignupScreenState extends State<SignupScreen> {
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
             margin: const EdgeInsets.all(16),
           ),
@@ -69,7 +115,7 @@ class _SignupScreenState extends State<SignupScreen> {
       context,
       PageRouteBuilder(
         pageBuilder: (_, _, _) => const MainNavScreen(),
-        transitionDuration: const Duration(milliseconds: 400),
+        transitionDuration: const Duration(milliseconds: 500),
         transitionsBuilder: (_, anim, _, child) =>
             FadeTransition(opacity: anim, child: child),
       ),
@@ -101,7 +147,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 backgroundColor: AppColors.error,
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 margin: const EdgeInsets.all(16),
               ),
@@ -110,291 +156,160 @@ class _SignupScreenState extends State<SignupScreen> {
       },
       child: Scaffold(
         body: PremiumGradientBackground(
+          style: 'soft',
           child: SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: FadeTransition(
+                opacity: CurvedAnimation(
+                  parent: _fadeController,
+                  curve: Curves.easeOut,
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 24),
 
-                    // ── Back ─────────────────────────────────────────────
-                    _BackButton(),
+                      _BackButton(onTap: () => Navigator.pop(context)),
 
-                    const SizedBox(height: 32),
+                      const SizedBox(height: 48),
 
-                    // ── Heading ──────────────────────────────────────────
-                    Text(
-                      'Create\nAccount ✨',
-                      style: TextStyle(
-                        fontSize: 34,
-                        fontWeight: FontWeight.w900,
-                        color: Theme.of(context).colorScheme.onSurface,
-                        letterSpacing: -0.8,
-                        height: 1.2,
+                      _ScreenHeader(
+                        title: 'Create\nAccount',
+                        subtitle: 'Join Makan Mana and discover great food',
+                        isDark: isDark,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Join Makan Mana and discover great food',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isDark ? Colors.grey[400] : Colors.grey[600],
-                        height: 1.5,
+
+                      const SizedBox(height: 44),
+
+                      // Full Name field
+                      _FormFieldGroup(
+                        label: 'Full Name',
+                        child: _EnhancedInputField(
+                          controller: _nameCtrl,
+                          focusNode: _nameFocus,
+                          hint: 'Your full name',
+                          prefixIcon: Icons.person_outline_rounded,
+                          keyboardType: TextInputType.name,
+                          isDark: isDark,
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              return 'Please enter your full name';
+                            }
+                            if (v.trim().length < 2) {
+                              return 'Name must be at least 2 characters';
+                            }
+                            return null;
+                          },
+                        ),
                       ),
-                    ),
 
-                    const SizedBox(height: 36),
+                      const SizedBox(height: 28),
 
-                    // ── Full Name ────────────────────────────────────────
-                    const _FieldLabel(label: 'Full Name'),
-                    const SizedBox(height: 8),
-                    _InputField(
-                      controller: _nameCtrl,
-                      hint: 'Your full name',
-                      prefixIcon: Icons.person_outline_rounded,
-                      keyboardType: TextInputType.name,
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'Please enter your full name';
-                        }
-                        if (v.trim().length < 2) {
-                          return 'Name must be at least 2 characters';
-                        }
-                        return null;
-                      },
-                    ),
+                      // Email field
+                      _FormFieldGroup(
+                        label: 'Email Address',
+                        child: _EnhancedInputField(
+                          controller: _emailCtrl,
+                          focusNode: _emailFocus,
+                          hint: 'you@example.com',
+                          keyboardType: TextInputType.emailAddress,
+                          prefixIcon: Icons.email_outlined,
+                          isDark: isDark,
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              return 'Please enter your email';
+                            }
+                            if (!v.contains('@') || !v.contains('.')) {
+                              return 'Enter a valid email address';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
 
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 28),
 
-                    // ── Email ────────────────────────────────────────────
-                    const _FieldLabel(label: 'Email Address'),
-                    const SizedBox(height: 8),
-                    _InputField(
-                      controller: _emailCtrl,
-                      hint: 'you@example.com',
-                      keyboardType: TextInputType.emailAddress,
-                      prefixIcon: Icons.email_outlined,
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'Please enter your email';
-                        }
-                        if (!v.contains('@') || !v.contains('.')) {
-                          return 'Enter a valid email address';
-                        }
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // ── Password ─────────────────────────────────────────
-                    const _FieldLabel(label: 'Password'),
-                    const SizedBox(height: 8),
-                    _InputField(
-                      controller: _passwordCtrl,
-                      hint: 'Min. 8 characters',
-                      obscureText: _obscurePassword,
-                      prefixIcon: Icons.lock_outline_rounded,
-                      suffixIcon: GestureDetector(
-                        onTap: () => setState(
+                      // Password field with indicator
+                      _PasswordFieldWithIndicator(
+                        label: 'Password',
+                        controller: _passwordCtrl,
+                        focusNode: _passwordFocus,
+                        obscure: _obscurePassword,
+                        onToggle: () => setState(
                           () => _obscurePassword = !_obscurePassword,
                         ),
-                        child: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          color: Colors.grey[400],
-                          size: 20,
+                        meetsLength: _passwordMeetsLength,
+                        isDark: isDark,
+                      ),
+
+                      const SizedBox(height: 28),
+
+                      // Confirm Password field
+                      _FormFieldGroup(
+                        label: 'Confirm Password',
+                        child: _EnhancedInputField(
+                          controller: _confirmCtrl,
+                          focusNode: _confirmFocus,
+                          hint: 'Re-enter your password',
+                          obscureText: _obscureConfirm,
+                          prefixIcon: Icons.lock_outline_rounded,
+                          isDark: isDark,
+                          hasError:
+                              _confirmCtrl.text.isNotEmpty && !_passwordsMatch,
+                          suffixIcon: _PasswordVisibilityToggle(
+                            obscure: _obscureConfirm,
+                            onToggle: () => setState(
+                              () => _obscureConfirm = !_obscureConfirm,
+                            ),
+                            isDark: isDark,
+                          ),
+                          validator: (v) {
+                            if (v == null || v.isEmpty) {
+                              return 'Please confirm your password';
+                            }
+                            if (v != _passwordCtrl.text) {
+                              return 'Passwords do not match';
+                            }
+                            return null;
+                          },
                         ),
                       ),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) {
-                          return 'Please enter a password';
-                        }
-                        if (v.length < 8) {
-                          return 'Password must be at least 8 characters';
-                        }
-                        return null;
-                      },
-                    ),
 
-                    const SizedBox(height: 20),
-
-                    // ── Confirm Password ─────────────────────────────────
-                    const _FieldLabel(label: 'Confirm Password'),
-                    const SizedBox(height: 8),
-                    _InputField(
-                      controller: _confirmCtrl,
-                      hint: 'Re-enter your password',
-                      obscureText: _obscureConfirm,
-                      prefixIcon: Icons.lock_outline_rounded,
-                      suffixIcon: GestureDetector(
-                        onTap: () =>
-                            setState(() => _obscureConfirm = !_obscureConfirm),
-                        child: Icon(
-                          _obscureConfirm
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          color: Colors.grey[400],
-                          size: 20,
-                        ),
-                      ),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) {
-                          return 'Please confirm your password';
-                        }
-                        if (v != _passwordCtrl.text) {
-                          return 'Passwords do not match';
-                        }
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // ── Terms checkbox ───────────────────────────────────
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: Checkbox(
-                            value: _agreedToTerms,
-                            onChanged: (v) =>
-                                setState(() => _agreedToTerms = v ?? false),
-                            activeColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            side: BorderSide(color: Colors.grey[300]!),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text.rich(
-                            TextSpan(
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[600],
-                              ),
-                              children: [
-                                const TextSpan(text: 'I agree to the '),
-                                TextSpan(
-                                  text: 'Terms of Service',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const TextSpan(text: ' and '),
-                                TextSpan(
-                                  text: 'Privacy Policy',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                      // Password match indicator
+                      if (_confirmCtrl.text.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        _PasswordMatchIndicator(
+                          match: _passwordsMatch,
+                          isDark: isDark,
                         ),
                       ],
-                    ),
 
-                    const SizedBox(height: 28),
+                      const SizedBox(height: 32),
 
-                    // ── Create Account button ────────────────────────────
-                    BlocBuilder<AuthCubit, AuthState>(
-                      buildWhen: (prev, curr) =>
-                          curr is AuthLoading ||
-                          curr is AuthError ||
-                          curr is AuthAuthenticated ||
-                          curr is AuthGuest ||
-                          prev is AuthLoading,
-                      builder: (context, state) {
-                        final loading =
-                            state is AuthLoading && _submitAttempted;
-                        return SizedBox(
-                          width: double.infinity,
-                          height: 54,
-                          child: ElevatedButton(
-                            onPressed: loading ? null : _submit,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              disabledBackgroundColor: AppColors.primary
-                                  .withValues(alpha: 0.6),
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: loading
-                                ? const SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2.5,
-                                    ),
-                                  )
-                                : const Text(
-                                    'Create Account',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                          ),
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 28),
-
-                    // ── Sign in link ─────────────────────────────────────
-                    Center(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Already have an account?',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const LoginScreen(),
-                              ),
-                            ),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                              ),
-                            ),
-                            child: Text(
-                              'Sign In',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
-                        ],
+                      // Terms checkbox
+                      _TermsCheckbox(
+                        agreed: _agreedToTerms,
+                        onChanged: (value) =>
+                            setState(() => _agreedToTerms = value ?? false),
+                        isDark: isDark,
                       ),
-                    ),
 
-                    const SizedBox(height: 20),
-                  ],
+                      const SizedBox(height: 36),
+
+                      // Create Account button
+                      _CreateAccountButton(isDark: isDark),
+
+                      const SizedBox(height: 32),
+
+                      // Sign in link
+                      _SignInLink(isDark: isDark),
+
+                      const SizedBox(height: 32),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -405,128 +320,626 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 }
 
-// ─── Shared sub-widgets ───────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────
 
 class _BackButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _BackButton({required this.onTap});
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
-      onTap: () => Navigator.pop(context),
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
             color: isDark
-                ? Colors.white.withValues(alpha: 0.05)
-                : Colors.black.withValues(alpha: 0.08),
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.15)
+                  : Colors.white.withValues(alpha: 0.5),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.08),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ),
-        child: Icon(
-          Icons.arrow_back_ios_new_rounded,
-          size: 18,
-          color: Theme.of(context).colorScheme.onSurface,
+          child: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 18,
+            color: isDark ? Colors.white : const Color(0xFF1E293B),
+          ),
         ),
       ),
     );
   }
 }
 
-class _FieldLabel extends StatelessWidget {
-  final String label;
-  const _FieldLabel({required this.label});
+class _ScreenHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final bool isDark;
+
+  const _ScreenHeader({
+    required this.title,
+    required this.subtitle,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-        color: Theme.of(context).colorScheme.onSurface,
-        letterSpacing: 0.2,
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 36,
+            fontWeight: FontWeight.w900,
+            color: isDark ? Colors.white : const Color(0xFF1E293B),
+            letterSpacing: -0.8,
+            height: 1.2,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: 50,
+          height: 5,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 14,
+            color: isDark ? Colors.white70 : const Color(0xFF64748B),
+            height: 1.6,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _InputField extends StatelessWidget {
+class _FormFieldGroup extends StatelessWidget {
+  final String label;
+  final Widget child;
+
+  const _FormFieldGroup({required this.label, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: isDark ? Colors.white : const Color(0xFF1E293B),
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 10),
+        child,
+      ],
+    );
+  }
+}
+
+class _EnhancedInputField extends StatefulWidget {
   final TextEditingController controller;
+  final FocusNode focusNode;
   final String hint;
   final bool obscureText;
   final TextInputType? keyboardType;
   final IconData prefixIcon;
   final Widget? suffixIcon;
+  final bool isDark;
+  final bool hasError;
   final String? Function(String?)? validator;
 
-  const _InputField({
+  const _EnhancedInputField({
     required this.controller,
+    required this.focusNode,
     required this.hint,
     required this.prefixIcon,
+    required this.isDark,
     this.obscureText = false,
     this.keyboardType,
     this.suffixIcon,
+    this.hasError = false,
     this.validator,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.08)
-        : Colors.black.withValues(alpha: 0.08);
+  State<_EnhancedInputField> createState() => _EnhancedInputFieldState();
+}
 
-    return TextFormField(
-      controller: controller,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      validator: validator,
-      style: TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w500,
-        color: Theme.of(context).colorScheme.onSurface,
+class _EnhancedInputFieldState extends State<_EnhancedInputField> {
+  late FocusNode _focusNode;
+  bool _isFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = widget.focusNode;
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    super.dispose();
+  }
+
+  void _onFocusChange() {
+    setState(() => _isFocused = _focusNode.hasFocus);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = widget.hasError
+        ? AppColors.error
+        : (_isFocused
+              ? AppColors.primary
+              : (widget.isDark
+                    ? Colors.white.withValues(alpha: 0.15)
+                    : Colors.black.withValues(alpha: 0.08)));
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: _isFocused ? 0.12 : 0.08),
+            blurRadius: _isFocused ? 20 : 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(
-          color: isDark ? Colors.grey[500] : Colors.grey[500],
-          fontSize: 14,
+      child: TextFormField(
+        controller: widget.controller,
+        focusNode: _focusNode,
+        obscureText: widget.obscureText,
+        keyboardType: widget.keyboardType,
+        validator: widget.validator,
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          color: const Color(0xFF1E293B),
         ),
-        prefixIcon: Icon(
-          prefixIcon,
-          size: 20,
-          color: isDark ? Colors.grey[500] : Colors.grey[500],
+        decoration: InputDecoration(
+          hintText: widget.hint,
+          hintStyle: TextStyle(
+            color: const Color(0xFFA0AEC0),
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+          prefixIcon: Icon(
+            widget.prefixIcon,
+            size: 20,
+            color: const Color(0xFF64748B),
+          ),
+          suffixIcon: widget.suffixIcon,
+          filled: true,
+          fillColor: Colors.white, // FULL WHITE
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: borderColor, width: 1.5),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: borderColor, width: 1.5),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: AppColors.primary, width: 2.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: AppColors.error, width: 2.5),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: AppColors.error, width: 2.5),
+          ),
+          errorStyle: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            height: 1.3,
+            color: AppColors.error,
+          ),
         ),
-        suffixIcon: suffixIcon,
-        filled: true,
-        fillColor: isDark ? AppColors.darkSurface : Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
+      ),
+    );
+  }
+}
+
+class _PasswordFieldWithIndicator extends StatefulWidget {
+  final String label;
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final bool obscure;
+  final VoidCallback onToggle;
+  final bool meetsLength;
+  final bool isDark;
+
+  const _PasswordFieldWithIndicator({
+    required this.label,
+    required this.controller,
+    required this.focusNode,
+    required this.obscure,
+    required this.onToggle,
+    required this.meetsLength,
+    required this.isDark,
+  });
+
+  @override
+  State<_PasswordFieldWithIndicator> createState() =>
+      _PasswordFieldWithIndicatorState();
+}
+
+class _PasswordFieldWithIndicatorState
+    extends State<_PasswordFieldWithIndicator> {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: widget.isDark ? Colors.white : const Color(0xFF1E293B),
+            letterSpacing: 0.5,
+          ),
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: borderColor),
+        const SizedBox(height: 10),
+        _EnhancedInputField(
+          controller: widget.controller,
+          focusNode: widget.focusNode,
+          hint: 'Min. 8 characters',
+          obscureText: widget.obscure,
+          prefixIcon: Icons.lock_outline_rounded,
+          isDark: widget.isDark,
+          suffixIcon: _PasswordVisibilityToggle(
+            obscure: widget.obscure,
+            onToggle: widget.onToggle,
+            isDark: widget.isDark,
+          ),
+          validator: (v) {
+            if (v == null || v.isEmpty) {
+              return 'Please enter a password';
+            }
+            if (v.length < 8) {
+              return 'Password must be at least 8 characters';
+            }
+            return null;
+          },
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: borderColor),
+        const SizedBox(height: 8),
+        // Password strength indicator
+        AnimatedOpacity(
+          opacity: widget.controller.text.isNotEmpty ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 200),
+          child: Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.meetsLength
+                      ? Colors.green
+                      : Colors.grey.withValues(alpha: 0.3),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                widget.meetsLength
+                    ? 'Strong password'
+                    : 'At least 8 characters',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: widget.meetsLength
+                      ? Colors.green
+                      : (widget.isDark
+                            ? Colors.white.withValues(alpha: 0.5)
+                            : Colors.grey[600]),
+                ),
+              ),
+            ],
+          ),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+      ],
+    );
+  }
+}
+
+class _PasswordVisibilityToggle extends StatelessWidget {
+  final bool obscure;
+  final VoidCallback onToggle;
+  final bool isDark;
+
+  const _PasswordVisibilityToggle({
+    required this.obscure,
+    required this.onToggle,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onToggle,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(
+            obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+            color: const Color(0xFF64748B),
+            size: 20,
+          ),
         ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.error, width: 1.5),
+      ),
+    );
+  }
+}
+
+class _PasswordMatchIndicator extends StatelessWidget {
+  final bool match;
+  final bool isDark;
+
+  const _PasswordMatchIndicator({required this.match, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: match ? Colors.green : AppColors.error,
+          ),
         ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.error, width: 1.5),
+        const SizedBox(width: 8),
+        Text(
+          match ? 'Passwords match' : 'Passwords do not match',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: match ? Colors.green : AppColors.error,
+          ),
         ),
+      ],
+    );
+  }
+}
+
+class _TermsCheckbox extends StatelessWidget {
+  final bool agreed;
+  final ValueChanged<bool?> onChanged;
+  final bool isDark;
+
+  const _TermsCheckbox({
+    required this.agreed,
+    required this.onChanged,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => onChanged(!agreed),
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: Checkbox(
+                  value: agreed,
+                  onChanged: onChanged,
+                  activeColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  side: BorderSide(color: Colors.grey[400]!, width: 1.5),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? Colors.white70 : Colors.grey[700],
+                      fontWeight: FontWeight.w400,
+                      height: 1.4,
+                    ),
+                    children: [
+                      const TextSpan(text: 'I agree to the '),
+                      TextSpan(
+                        text: 'Terms of Service',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const TextSpan(text: ' and '),
+                      TextSpan(
+                        text: 'Privacy Policy',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CreateAccountButton extends StatelessWidget {
+  final bool isDark;
+
+  const _CreateAccountButton({required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<AuthCubit, AuthState>(
+      buildWhen: (prev, curr) =>
+          curr is AuthLoading ||
+          curr is AuthError ||
+          curr is AuthAuthenticated ||
+          prev is AuthLoading,
+      builder: (context, state) {
+        final loading = state is AuthLoading;
+        return SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: loading
+                  ? null
+                  : () {
+                      final form = context
+                          .findAncestorStateOfType<_SignupScreenState>();
+                      form?._submit();
+                    },
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: AppColors.freshMakanGradient,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: loading
+                    ? const Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        ),
+                      )
+                    : Center(
+                        child: Text(
+                          'Create Account',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SignInLink extends StatelessWidget {
+  final bool isDark;
+
+  const _SignInLink({required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Already have an account? ',
+            style: TextStyle(
+              fontSize: 14,
+              color: isDark ? Colors.white70 : Colors.grey[700],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+              ),
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                child: Text(
+                  'Sign In',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

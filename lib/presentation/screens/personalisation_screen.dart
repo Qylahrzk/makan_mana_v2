@@ -510,7 +510,7 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
               children: [
                 Icon(
                   Icons.auto_awesome_rounded,
-                  color: AppColors.primary,
+                  color: const Color.fromARGB(255, 255, 255, 255),
                   size: 20,
                 ),
                 const SizedBox(width: 10),
@@ -521,7 +521,7 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
                     style: TextStyle(
                       fontFamily: 'OpenSans',
                       fontSize: 12,
-                      color: AppColors.primary,
+                      color: const Color.fromARGB(255, 255, 255, 255),
                       fontWeight: FontWeight.w500,
                     ),
                   ),

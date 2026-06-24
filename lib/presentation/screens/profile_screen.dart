@@ -1301,7 +1301,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ],
                         ),
 
-                      const SizedBox(height: 120),
+                      const SizedBox(height: 160),
                     ],
                   ),
                 ),
@@ -1325,11 +1325,10 @@ class _ProfileCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final initials = _getInitials(user.fullName);
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),

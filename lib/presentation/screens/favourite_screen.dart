@@ -209,7 +209,7 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
           if (state is FavouriteError) {
             return Padding(
               padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 110 + 20,
+                top: MediaQuery.of(context).padding.top + 110 - 150,
               ),
               child: _ErrorState(
                 message: state.message,
@@ -221,7 +221,7 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
           if (state is FavouriteLoaded && state.items.isEmpty) {
             return Padding(
               padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 110 + 20,
+                top: MediaQuery.of(context).padding.top + 110 - 150,
               ),
               child: const _EmptyState(),
             );
@@ -236,7 +236,7 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
                 slivers: [
                   SliverPadding(
                     padding: EdgeInsets.only(
-                      top: MediaQuery.of(context).padding.top + 110 + 4,
+                      top: MediaQuery.of(context).padding.top + 110 - 110,
                     ),
                   ),
                   // Hint text — fades in when list is populated
@@ -682,11 +682,12 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return Align(
+      alignment: const Alignment(0, -0.3),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Image.asset(
               'assets/images/favourite_logo.png',
@@ -719,11 +720,12 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 28),
             GestureDetector(
               onTap: () {
-                Navigator.of(context).popUntil((route) => route.isFirst);
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  final proxy = context.findAncestorStateOfType<NavTabProxy>();
-                  proxy?.switchTab(1);
-                });
+                final proxy = context.findAncestorStateOfType<NavTabProxy>();
+                if (proxy != null) {
+                  proxy.switchTab(1);
+                } else {
+                  Navigator.pushNamed(context, '/search');
+                }
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(

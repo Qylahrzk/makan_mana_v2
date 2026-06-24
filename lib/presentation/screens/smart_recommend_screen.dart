@@ -469,8 +469,8 @@ class _SmartRecommendScreenState extends State<SmartRecommendScreen>
           children: [
             // Shield Lock Icon Card
             Container(
-              width: 100,
-              height: 100,
+              width: 80,
+              height: 80,
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
@@ -613,7 +613,7 @@ class _SmartRecommendScreenState extends State<SmartRecommendScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
           // Large orange sparkles icon card
           Container(
             width: 110,
@@ -641,7 +641,7 @@ class _SmartRecommendScreenState extends State<SmartRecommendScreen>
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           const Text(
             'Find your perfect meal',
             style: TextStyle(
@@ -650,7 +650,7 @@ class _SmartRecommendScreenState extends State<SmartRecommendScreen>
               letterSpacing: -0.5,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
@@ -665,7 +665,7 @@ class _SmartRecommendScreenState extends State<SmartRecommendScreen>
               ),
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 20),
 
           // Signal Rows list
           _buildSignalRow('Favourite cuisines', cuisinesStr),
@@ -674,7 +674,7 @@ class _SmartRecommendScreenState extends State<SmartRecommendScreen>
           _buildSignalRow('Budget', budgetStr),
           _buildSignalRow('Max distance', distanceStr),
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
 
           // Generate Recommendations Button
           SizedBox(
@@ -703,7 +703,7 @@ class _SmartRecommendScreenState extends State<SmartRecommendScreen>
               ),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
 
           // Edit Preferences link
           GestureDetector(
@@ -907,6 +907,7 @@ class _SmartRecommendScreenState extends State<SmartRecommendScreen>
         ? '${rec.distanceKm.toStringAsFixed(1)} km'
         : '0.0 km';
     final priceStr = r.priceLevel != null ? '\$' * r.priceLevel! : '\$\$';
+    final primaryColor = AppColors.adaptivePrimary(context);
 
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
@@ -1181,7 +1182,7 @@ class _SmartRecommendScreenState extends State<SmartRecommendScreen>
                       ),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
@@ -1189,14 +1190,14 @@ class _SmartRecommendScreenState extends State<SmartRecommendScreen>
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFFFF8C42),
+                            color: primaryColor,
                           ),
                         ),
-                        SizedBox(width: 4),
+                        const SizedBox(width: 4),
                         Icon(
                           Icons.chevron_right_rounded,
                           size: 14,
-                          color: Color(0xFFFF8C42),
+                          color: primaryColor,
                         ),
                       ],
                     ),
@@ -1347,7 +1348,7 @@ class _SmartRecommendScreenState extends State<SmartRecommendScreen>
             ElevatedButton(
               onPressed: _navigateToPreferences,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF8C42),
+                backgroundColor: AppColors.adaptivePrimary(context),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -1355,6 +1356,7 @@ class _SmartRecommendScreenState extends State<SmartRecommendScreen>
               ),
               child: const Text('Edit Preferences'),
             ),
+            const SizedBox(height: 24),
           ],
         ),
       ),
