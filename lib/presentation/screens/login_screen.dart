@@ -462,9 +462,7 @@ class _EnhancedInputFieldState extends State<_EnhancedInputField> {
         ? AppColors.error
         : (_isFocused
               ? AppColors.primary
-              : (widget.isDark
-                    ? Colors.white.withValues(alpha: 0.15)
-                    : Colors.black.withValues(alpha: 0.08)));
+              : Colors.white.withValues(alpha: 0.3));
 
     return Container(
       decoration: BoxDecoration(
@@ -582,9 +580,7 @@ class _StyledDivider extends StatelessWidget {
         Expanded(
           child: Container(
             height: 1,
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.2)
-                : Colors.black.withValues(alpha: 0.1),
+            color: Colors.white.withValues(alpha: 0.2),
           ),
         ),
         Padding(
@@ -601,9 +597,7 @@ class _StyledDivider extends StatelessWidget {
         Expanded(
           child: Container(
             height: 1,
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.2)
-                : Colors.black.withValues(alpha: 0.1),
+            color: Colors.white.withValues(alpha: 0.2),
           ),
         ),
       ],

@@ -95,7 +95,11 @@ class AppRouter {
       case AppRoutes.restaurantDetail:
         final args = settings.arguments as RestaurantDetailArgs?;
         if (args == null) return _error(settings.name);
-        return _slide(RestaurantDetailScreen(restaurant: args.restaurant));
+        return _slide(RestaurantDetailScreen(
+          restaurant: args.restaurant,
+          userLat: args.userLat,
+          userLon: args.userLon,
+        ));
 
       case AppRoutes.recommendation:
         final args = settings.arguments as RecommendationArgs?;
@@ -171,7 +175,13 @@ class AppRouter {
 /// Arguments for RestaurantDetailScreen
 class RestaurantDetailArgs {
   final Restaurant restaurant;
-  const RestaurantDetailArgs({required this.restaurant});
+  final double userLat;
+  final double userLon;
+  const RestaurantDetailArgs({
+    required this.restaurant,
+    required this.userLat,
+    required this.userLon,
+  });
 }
 
 /// Arguments for RecommendationScreen

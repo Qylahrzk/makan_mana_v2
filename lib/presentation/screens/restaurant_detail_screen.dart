@@ -1,40 +1,8 @@
 // ============================================================
 // FILE: lib/presentation/screens/restaurant_detail_screen.dart
-//
-// CHANGES FROM OLD VERSION (document 11):
-//
-//   1. StatefulWidget → StatelessWidget split
-//      · RestaurantDetailScreen is now a thin StatelessWidget that
-//        creates the BlocProvider and passes data down.
-//      · All UI lives in _RestaurantDetailView (StatelessWidget).
-//      · Zero setState() calls anywhere in this file.
-//
-//   2. Compass no longer rebuilds the whole screen
-//      · Old: setState() fired 10x/sec on every compass tick,
-//        rebuilding hero image, stat chips, vibe card, everything.
-//      · New: _CompassWidget uses BlocBuilder with buildWhen: so
-//        ONLY the compass arrow repaints on each heading event.
-//
-//   3. Similar restaurants moved to cubit
-//      · Old: _SimilarRestaurantsSection was a StatefulWidget with
-//        its own initState + setState + _loading bool.
-//      · New: reads RestaurantDetailSimilarLoading/Loaded/Error
-//        states from the cubit. No local state at all.
-//
-//   4. Vibe section hidden for 'No Reviews' restaurants
-//      · hasVibe guard prevents the empty vibe card from rendering
-//        for the 193 restaurants with no review data.
-//
-//   5. Delivery buttons added
-//      · 'Order Delivery' button opens a bottom sheet with
-//        GrabFood and FoodPanda deep-link search URLs.
-//
-//   6. Similar restaurants capped at 50 km
-//      · Handled inside RestaurantDetailCubit.loadSimilar().
-//      · Empty state says "No similar restaurants found nearby".
 // ============================================================
 
-import 'dart:math';
+import 'dart:math' show pi;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -52,10 +20,9 @@ import '../../logic/cubits/favourite_cubit.dart';
 import '../../logic/cubits/restaurant_detail_cubit.dart';
 import '../../models/restaurant_model.dart';
 import '../widgets/gradient_divider.dart';
+import '../widgets/restaurant_card.dart';
 
 // ─── Public entry point ───────────────────────────────────────────────────────
-// Creates the cubit, starts compass, and triggers similar restaurant loading.
-// Kept as a StatelessWidget — the cubit owns all mutable state.
 
 class RestaurantDetailScreen extends StatelessWidget {
   final Restaurant restaurant;
@@ -85,9 +52,7 @@ class RestaurantDetailScreen extends StatelessWidget {
   }
 }
 
-// ─── Main view ────────────────────────────────────────────────────────────────
-// Pure layout — no setState, no streams, no async calls.
-// All state comes from cubits via BlocBuilder.
+// ─── Main view (StatelessWidget) ──────────────────────────────────────────────
 
 class _RestaurantDetailView extends StatelessWidget {
   final Restaurant restaurant;
@@ -413,432 +378,524 @@ class _RestaurantDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final r = restaurant;
-    final attrs = r.activeAttributes;
     final scaffoldBg = Theme.of(context).scaffoldBackgroundColor;
-
-    // Only show Vibe section when restaurant has real review data.
-    // 193 restaurants have topicLabel == 'No Reviews' — hide cleanly.
-    final hasVibe = r.topicLabel.isNotEmpty && r.topicLabel != 'No Reviews';
-
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
+    return Scaffold(
+      backgroundColor: scaffoldBg,
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          _buildHeroSection(context, scaffoldBg),
+          _buildStatChips(context),
+          if (restaurant.priceLevel != null) _buildPriceCard(context),
+          _buildCompass(context),
+          _buildFeatureBadges(context),
+          if (restaurant.topicLabel.isNotEmpty &&
+              restaurant.topicLabel != 'No Reviews')
+            _buildVibeCard(context),
+          _buildDetailsCard(context),
+          if (restaurant.address.isNotEmpty) _buildAddressCard(context),
+          _buildSimilarSection(context),
+          _buildActionButtons(context),
+          SliverToBoxAdapter(
+            child: SizedBox(height: MediaQuery.of(context).padding.bottom + 20),
+          ),
+        ],
       ),
-      child: Scaffold(
-        backgroundColor: scaffoldBg,
-        body: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── HERO ──────────────────────────────────────────────
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  SizedBox(
-                    height: _heroHeight,
-                    width: double.infinity,
-                    child: CachedNetworkImage(
-                      imageUrl: RestaurantImage.getUrl(
-                        r.cuisineType,
-                        seed: r.id,
-                      ),
-                      fit: BoxFit.cover,
-                      placeholder: (_, _) => _heroGradient(),
-                      errorWidget: (_, _, _) => _heroGradient(),
-                    ),
-                  ),
+    );
+  }
 
-                  // Back + share + favourite buttons
-                  Positioned(
-                    top: MediaQuery.of(context).padding.top + 10,
-                    left: 16,
-                    right: 16,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _floatingIconButton(
-                          icon: Icons.arrow_back_rounded,
-                          onTap: () => Navigator.pop(context),
-                        ),
-                        Row(
-                          children: [
-                            _floatingIconButton(
-                              icon: Icons.share_rounded,
-                              onTap: _shareRestaurant,
-                            ),
-                            const SizedBox(width: 10),
-                            BlocBuilder<FavouriteCubit, FavouriteState>(
-                              builder: (context, state) {
-                                final saved = state is FavouriteLoaded
-                                    ? state.isSaved(restaurant.name)
-                                    : false;
-                                return _floatingIconButton(
-                                  icon: saved
-                                      ? Icons.favorite_rounded
-                                      : Icons.favorite_border_rounded,
-                                  iconColor: saved
-                                      ? AppColors.favourite
-                                      : Colors.black87,
-                                  onTap: () => GuestGuard.check(
-                                    context,
-                                    featureName:
-                                        'save restaurants to your favourites',
-                                    onAllowed: () {
-                                      final user = context
-                                          .read<AuthCubit>()
-                                          .currentUser;
-                                      if (user == null) return;
-                                      context
-                                          .read<FavouriteCubit>()
-                                          .toggleFavourite(
-                                            userId: user.id,
-                                            restaurant: restaurant,
-                                          );
-                                      ScaffoldMessenger.of(context)
-                                        ..hideCurrentSnackBar()
-                                        ..showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              saved
-                                                  ? 'Removed from favourites'
-                                                  : '❤️ Saved to favourites',
-                                            ),
-                                            behavior: SnackBarBehavior.floating,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                            ),
-                                            margin: const EdgeInsets.all(16),
-                                            duration: const Duration(
-                                              seconds: 1,
-                                            ),
-                                          ),
-                                        );
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+  // ─── Hero Section ─────────────────────────────────────────────────────
 
-                  // Curved white transition at bottom of hero
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: CustomPaint(
-                      size: const Size(double.infinity, _curveHeight),
-                      painter: _WhiteTopCurvePainter(color: scaffoldBg),
-                    ),
-                  ),
-                ],
+  Widget _buildHeroSection(BuildContext context, Color curveColor) {
+    return SliverAppBar(
+      expandedHeight: _heroHeight,
+      pinned: false,
+      elevation: 0,
+      backgroundColor: Colors.black,
+      leading: GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.4),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.4),
+              width: 1.2,
+            ),
+          ),
+          child: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+        ),
+      ),
+      actions: [
+        // Share Button
+        GestureDetector(
+          onTap: () => _shareRestaurant(),
+          child: Container(
+            margin: const EdgeInsets.all(8),
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.4),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.4),
+                width: 1.2,
               ),
-
-              // ── CONTENT ───────────────────────────────────────────
-              Container(
-                color: scaffoldBg,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Name
-                      Text(
-                        r.name,
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
-
-                      // Location + distance row
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on_rounded,
-                            size: 14,
-                            color: AppColors.secondary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            r.municipality,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.55),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Icon(
-                            Icons.near_me_rounded,
-                            size: 13,
-                            color: AppColors.secondary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${_distance.toStringAsFixed(1)} km away',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.55),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Stat chips
-                      Row(
-                        children: [
-                          _statChip(
-                            context,
-                            icon: Icons.star_rounded,
-                            iconColor: AppColors.star,
-                            value: AppUtils.formatRating(r.rating),
-                            label: r.ratingBand.isNotEmpty
-                                ? r.ratingBand
-                                : 'Rating',
-                          ),
-                          const SizedBox(width: 10),
-                          _statChip(
-                            context,
-                            icon: Icons.access_time_rounded,
-                            iconColor: AppColors.secondary,
-                            value: '~${(_distance * 3).round()} min',
-                            label: 'Drive time',
-                          ),
-                          const SizedBox(width: 10),
-                          _statChip(
-                            context,
-                            icon: Icons.category_rounded,
-                            iconColor: AppColors.primary,
-                            value: r.categories.isNotEmpty
-                                ? r.categories
-                                : 'Restaurant',
-                            label: 'Category',
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Price level
-                      if (r.priceLevel != null) ...[
-                        _buildPriceLevelCard(context, r.priceLevel!),
-                        const SizedBox(height: 14),
-                      ],
-
-                      // Compass — only _CompassWidget rebuilds on heading events.
-                      // The rest of this Column is completely unaffected.
-                      _CompassWidget(
-                        userLat: userLat,
-                        userLon: userLon,
-                        restaurant: restaurant,
-                        distance: _distance,
-                      ),
-
-                      // Feature badges
-                      if (attrs.isNotEmpty) ...[
-                        const SizedBox(height: 20),
-                        _sectionTitle(context, 'Features'),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: attrs
-                              .map((a) => _attributeBadge(context, a))
-                              .toList(),
-                        ),
-                      ],
-
-                      // Vibe — hidden for 'No Reviews' restaurants
-                      if (hasVibe) ...[
-                        const SizedBox(height: 20),
-                        _sectionTitle(context, 'The Vibe'),
-                        const SizedBox(height: 10),
-                        _vibeCard(context, r),
-                      ],
-
-                      const SizedBox(height: 20),
-                      _sectionTitle(context, 'Restaurant Details'),
-                      const SizedBox(height: 10),
-                      _detailsCard(context, r),
-
-                      if (r.address.isNotEmpty) ...[
-                        const SizedBox(height: 20),
-                        _sectionTitle(context, 'Address'),
-                        const SizedBox(height: 10),
-                        _addressCard(context, r),
-                      ],
-
-                      const SizedBox(height: 20),
-                      _sectionTitle(context, 'Similar Restaurants'),
-                      const SizedBox(height: 10),
-
-                      // Similar section reads from cubit — no local setState
-                      _SimilarRestaurantsSection(
-                        restaurant: restaurant,
-                        userLat: userLat,
-                        userLon: userLon,
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Action row 1 — Directions + Share
-                      Row(
-                        children: [
-                          Expanded(
-                            child: SizedBox(
-                              height: 54,
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  elevation: 0,
-                                ),
-                                icon: const Icon(
-                                  Icons.directions_rounded,
-                                  size: 20,
-                                ),
-                                label: const Text(
-                                  'Directions',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                                onPressed: () => _showDirectionsSheet(context),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: SizedBox(
-                              height: 54,
-                              child: OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.secondary,
-                                  side: BorderSide(
-                                    color: AppColors.secondary.withValues(
-                                      alpha: 0.5,
-                                    ),
-                                    width: 1.5,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                ),
-                                icon: const Icon(Icons.share_rounded, size: 18),
-                                label: const Text(
-                                  'Share',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                                onPressed: _shareRestaurant,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Action row 2 — Order Delivery
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF00B14F),
-                            side: BorderSide(
-                              color: const Color(
-                                0xFF00B14F,
-                              ).withValues(alpha: 0.5),
-                              width: 1.5,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          icon: const Icon(
-                            Icons.delivery_dining_rounded,
-                            size: 18,
-                          ),
-                          label: const Text(
-                            'Order Delivery',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                            ),
-                          ),
-                          onPressed: () => _showDeliverySheet(context),
-                        ),
-                      ),
-
-                      SizedBox(
-                        height: MediaQuery.of(context).padding.bottom + 8,
-                      ),
+            ),
+            child: const Icon(
+              Icons.share_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+          ),
+        ),
+        // Favourite Button
+        GestureDetector(
+          onTap: () => GuestGuard.check(
+            context,
+            featureName: 'save restaurants to your favourites',
+            onAllowed: () {
+              final user = context.read<AuthCubit>().currentUser;
+              if (user == null) return;
+              final isAlreadySaved = context.read<FavouriteCubit>().isSaved(
+                restaurant.name,
+              );
+              context.read<FavouriteCubit>().toggleFavourite(
+                userId: user.id,
+                restaurant: restaurant,
+              );
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      isAlreadySaved
+                          ? 'Removed from favourites'
+                          : '❤️ Saved to favourites',
+                    ),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    margin: const EdgeInsets.all(16),
+                    duration: const Duration(seconds: 1),
+                  ),
+                );
+            },
+          ),
+          child: Container(
+            margin: const EdgeInsets.only(
+              top: 8,
+              bottom: 8,
+              right: 16,
+              left: 4,
+            ),
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.4),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.4),
+                width: 1.2,
+              ),
+            ),
+            child: BlocBuilder<FavouriteCubit, FavouriteState>(
+              builder: (ctx, state) {
+                final isSaved = state is FavouriteLoaded
+                    ? state.isSaved(restaurant.name)
+                    : ctx.read<FavouriteCubit>().isSaved(restaurant.name);
+                return Icon(
+                  isSaved
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  color: isSaved ? AppColors.favourite : Colors.white,
+                  size: 18,
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+      flexibleSpace: FlexibleSpaceBar(
+        background: Stack(
+          fit: StackFit.expand,
+          children: [
+            CachedNetworkImage(
+              imageUrl: RestaurantImage.getUrl(
+                restaurant.cuisineType,
+                seed: restaurant.id,
+              ),
+              fit: BoxFit.cover,
+              placeholder: (context, url) => _heroGradient(),
+              errorWidget: (context, url, error) => _heroGradient(),
+            ),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.4),
+                      Colors.transparent,
                     ],
                   ),
                 ),
+                height: 100,
               ),
-            ],
-          ),
+            ),
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: CustomPaint(
+                size: const Size(double.infinity, _curveHeight),
+                painter: _WhiteTopCurvePainter(color: curveColor),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // ── Small helpers ──────────────────────────────────────────────────────────
+  // ─── Stat Chips ───────────────────────────────────────────────────────
+
+  Widget _buildStatChips(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Name
+            Text(
+              restaurant.name,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 6),
+            // Location
+            Row(
+              children: [
+                Icon(
+                  Icons.location_on_rounded,
+                  size: 14,
+                  color: AppColors.secondary,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  restaurant.municipality,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.55),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Icon(
+                  Icons.near_me_rounded,
+                  size: 13,
+                  color: AppColors.secondary,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${_distance.toStringAsFixed(1)} km away',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.55),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Chips row
+            Row(
+              children: [
+                _statChip(
+                  context,
+                  icon: Icons.star_rounded,
+                  iconColor: AppColors.star,
+                  value: AppUtils.formatRating(restaurant.rating),
+                  label: restaurant.ratingBand.isNotEmpty
+                      ? restaurant.ratingBand
+                      : 'Rating',
+                ),
+                const SizedBox(width: 10),
+                _statChip(
+                  context,
+                  icon: Icons.access_time_rounded,
+                  iconColor: AppColors.secondary,
+                  value: '~${(_distance * 3).round()} min',
+                  label: 'Drive time',
+                ),
+                const SizedBox(width: 10),
+                _statChip(
+                  context,
+                  icon: Icons.category_rounded,
+                  iconColor: AppColors.primary,
+                  value: restaurant.categories.isNotEmpty
+                      ? restaurant.categories
+                      : 'Restaurant',
+                  label: 'Category',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Price Card ────────────────────────────────────────────────────────
+
+  Widget _buildPriceCard(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+        child: _buildPriceLevelCard(context, restaurant.priceLevel ?? 1),
+      ),
+    );
+  }
+
+  // ─── Compass ──────────────────────────────────────────────────────────
+
+  Widget _buildCompass(BuildContext context) {
+    if (restaurant.lat == null || restaurant.lon == null) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+        child: _CompassWidget(
+          userLat: userLat,
+          userLon: userLon,
+          restaurant: restaurant,
+          distance: _distance,
+        ),
+      ),
+    );
+  }
+
+  // ─── Feature Badges ────────────────────────────────────────────────────
+
+  Widget _buildFeatureBadges(BuildContext context) {
+    final attrs = restaurant.activeAttributes;
+    if (attrs.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle(context, 'Features'),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: attrs.map((a) => _attributeBadge(context, a)).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Vibe Card ─────────────────────────────────────────────────────────
+
+  Widget _buildVibeCard(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle(context, 'The Vibe'),
+            const SizedBox(height: 10),
+            _vibeCard(context, restaurant),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Details Card ──────────────────────────────────────────────────────
+
+  Widget _buildDetailsCard(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle(context, 'Restaurant Details'),
+            const SizedBox(height: 10),
+            _detailsCard(context, restaurant),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Address Card ──────────────────────────────────────────────────────
+
+  Widget _buildAddressCard(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle(context, 'Address'),
+            const SizedBox(height: 10),
+            _addressCard(context, restaurant),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Similar Restaurants Section ───────────────────────────────────────
+
+  Widget _buildSimilarSection(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
+            child: _sectionTitle(context, 'Similar Restaurants'),
+          ),
+          _SimilarRestaurantsSection(
+            restaurant: restaurant,
+            userLat: userLat,
+            userLon: userLon,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Action Buttons ────────────────────────────────────────────────────
+
+  Widget _buildActionButtons(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 54,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      icon: const Icon(Icons.directions_rounded, size: 20),
+                      label: const Text(
+                        'Directions',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                      onPressed: () => _showDirectionsSheet(context),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: SizedBox(
+                    height: 54,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.secondary,
+                        side: BorderSide(
+                          color: AppColors.secondary.withValues(alpha: 0.5),
+                          width: 1.5,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      icon: const Icon(Icons.share_rounded, size: 18),
+                      label: const Text(
+                        'Share',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                      onPressed: _shareRestaurant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF00B14F),
+                  side: BorderSide(
+                    color: const Color(0xFF00B14F).withValues(alpha: 0.5),
+                    width: 1.5,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                icon: const Icon(Icons.delivery_dining_rounded, size: 18),
+                label: const Text(
+                  'Order Delivery',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                ),
+                onPressed: () => _showDeliverySheet(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Helper Methods ────────────────────────────────────────────────────
 
   Widget _heroGradient() => Container(
-    decoration: BoxDecoration(
-      gradient: const LinearGradient(
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
         colors: AppColors.oceanGradient,
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
-    ),
-  );
-
-  Widget _floatingIconButton({
-    required IconData icon,
-    Color? iconColor,
-    required VoidCallback onTap,
-  }) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Icon(icon, size: 20, color: iconColor ?? const Color(0xFF3A2F2F)),
     ),
   );
 
@@ -1316,10 +1373,6 @@ class _RestaurantDetailView extends StatelessWidget {
 }
 
 // ─── Compass Widget ────────────────────────────────────────────────────────────
-//
-// Standalone StatelessWidget. Rebuilds ONLY when the cubit emits
-// RestaurantDetailCompassUpdated — never on similar loading events.
-// The parent screen Column stays completely still during compass ticks.
 
 class _CompassWidget extends StatelessWidget {
   final double userLat;
@@ -1337,17 +1390,13 @@ class _CompassWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<RestaurantDetailCubit, RestaurantDetailState>(
-      // KEY: only rebuild this widget when the compass heading changes.
-      // Similar loading states are ignored here entirely.
       buildWhen: (_, current) =>
           current is RestaurantDetailCompassUpdated ||
           current is RestaurantDetailInitial,
       builder: (context, state) {
-        // Don't render until the device sends a valid heading
         if (state is! RestaurantDetailCompassUpdated) {
           return const SizedBox.shrink();
         }
-        // Don't render if the restaurant has no GPS coordinates
         if (restaurant.lat == null || restaurant.lon == null) {
           return const SizedBox.shrink();
         }
@@ -1440,9 +1489,6 @@ class _CompassWidget extends StatelessWidget {
 }
 
 // ─── Similar Restaurants Section ──────────────────────────────────────────────
-//
-// Now a StatelessWidget that reads from RestaurantDetailCubit.
-// No initState, no setState, no _loading bool — all state lives in the cubit.
 
 class _SimilarRestaurantsSection extends StatelessWidget {
   final Restaurant restaurant;
@@ -1458,7 +1504,6 @@ class _SimilarRestaurantsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<RestaurantDetailCubit, RestaurantDetailState>(
-      // Only rebuild when similar loading state changes — never on compass ticks
       buildWhen: (_, current) =>
           current is RestaurantDetailSimilarLoading ||
           current is RestaurantDetailSimilarLoaded ||
@@ -1517,201 +1562,27 @@ class _SimilarRestaurantsSection extends StatelessWidget {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: state.similar.length,
-            itemBuilder: (_, i) => _SimilarCard(
+            itemBuilder: (_, i) => RestaurantCard(
               restaurant: state.similar[i],
+              variant: RestaurantCardVariant.similar,
               userLat: userLat,
               userLon: userLon,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RestaurantDetailScreen(
+                    restaurant: state.similar[i],
+                    userLat: userLat,
+                    userLon: userLon,
+                  ),
+                ),
+              ),
             ),
           ),
         );
       },
     );
   }
-}
-
-// ─── Similar Card ──────────────────────────────────────────────────────────────
-
-class _SimilarCard extends StatelessWidget {
-  final Restaurant restaurant;
-  final double userLat;
-  final double userLon;
-
-  const _SimilarCard({
-    required this.restaurant,
-    required this.userLat,
-    required this.userLon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final r = restaurant;
-    final km = AppUtils.calculateDistance(
-      userLat,
-      userLon,
-      r.lat ?? userLat,
-      r.lon ?? userLon,
-    );
-
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => RestaurantDetailScreen(
-            restaurant: r,
-            userLat: userLat,
-            userLon: userLon,
-          ),
-        ),
-      ),
-      child: Container(
-        width: 200,
-        margin: const EdgeInsets.only(right: 14),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white.withValues(alpha: 0.04)
-                : Colors.black.withValues(alpha: 0.05),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(
-                alpha: Theme.of(context).brightness == Brightness.dark
-                    ? 0.20
-                    : 0.04,
-              ),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.horizontal(
-                left: Radius.circular(20),
-              ),
-              child: CachedNetworkImage(
-                imageUrl: RestaurantImage.getUrl(r.cuisineType, seed: r.id),
-                width: 90,
-                height: 170,
-                fit: BoxFit.cover,
-                placeholder: (_, _) => _imgPlaceholder(context),
-                errorWidget: (_, _, _) => _imgPlaceholder(context),
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 14,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      r.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Theme.of(context).colorScheme.onSurface,
-                        height: 1.3,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.secondary.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        r.cuisineType,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.secondary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.star_rounded,
-                          size: 13,
-                          color: Color(0xFFFBBF24),
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          AppUtils.formatRating(r.rating),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.near_me_rounded,
-                          size: 11,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.4),
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          '${km.toStringAsFixed(1)} km',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.45),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _imgPlaceholder(BuildContext context) => Container(
-    width: 90,
-    height: 170,
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [
-          AppColors.adaptiveSecondary(context).withValues(alpha: 0.18),
-          AppColors.adaptiveSecondary(context).withValues(alpha: 0.05),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-    ),
-    child: Icon(
-      Icons.restaurant_rounded,
-      color: AppColors.adaptiveSecondary(context).withValues(alpha: 0.5),
-      size: 26,
-    ),
-  );
 }
 
 // ─── Wave Painter ──────────────────────────────────────────────────────────────

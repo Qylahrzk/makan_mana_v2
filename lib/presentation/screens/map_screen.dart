@@ -1016,8 +1016,11 @@ class _MapScreenState extends State<MapScreen>
                             onPressed: () => Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) =>
-                                    RestaurantDetailScreen(restaurant: r),
+                                builder: (_) => RestaurantDetailScreen(
+                                  restaurant: r,
+                                  userLat: _userLat,
+                                  userLon: _userLon,
+                                ),
                               ),
                             ),
                             child: const Text(
@@ -1046,8 +1049,11 @@ class _MapScreenState extends State<MapScreen>
                           onPressed: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  RestaurantDetailScreen(restaurant: r),
+                              builder: (_) => RestaurantDetailScreen(
+                                restaurant: r,
+                                userLat: _userLat,
+                                userLon: _userLon,
+                              ),
                             ),
                           ),
                           child: Row(

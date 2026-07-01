@@ -1,12 +1,14 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_text_styles.dart';
 import '../../core/app_utils.dart';
-import '../../core/restaurant_image.dart';
-import '../../models/restaurant_model.dart';
-import 'restaurant_detail_screen.dart';
 import '../../data/location_service.dart';
+import '../../models/restaurant_model.dart';
+import '../widgets/restaurant_card.dart';
+import 'restaurant_detail_screen.dart';
 
 class RecommendationScreen extends StatefulWidget {
   final List<Restaurant> recommendations;
@@ -60,34 +62,6 @@ class _RecommendationScreenState extends State<RecommendationScreen>
     super.dispose();
   }
 
-  Color _rankColor(int index) {
-    switch (index) {
-      case 0:
-        return const Color(0xFFFF8C42);
-      case 1:
-        return const Color(0xFF7B8FA1);
-      case 2:
-        return const Color(0xFFB87333);
-      default:
-        return const Color(0xFFCBD5E0);
-    }
-  }
-
-  Color? _rankBg(int index, BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    if (isDark) return Theme.of(context).colorScheme.surfaceContainer;
-    switch (index) {
-      case 0:
-        return const Color(0xFFFFF3E8);
-      case 1:
-        return const Color(0xFFF2F4F6);
-      case 2:
-        return const Color(0xFFF7EFE8);
-      default:
-        return Theme.of(context).colorScheme.surface;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -109,8 +83,7 @@ class _RecommendationScreenState extends State<RecommendationScreen>
     );
   }
 
-  // ─── Sliver Header ────────────────────────────────────────────────────────
-
+  // ─── Sliver Header ────────────────────────────────────────────────────
   Widget _buildSliverHeader(BuildContext context) {
     return SliverAppBar(
       expandedHeight: 160,
@@ -276,8 +249,7 @@ class _RecommendationScreenState extends State<RecommendationScreen>
     );
   }
 
-  // ─── Source Card (Similar Mode) ───────────────────────────────────────────
-
+  // ─── Source Card (Similar Mode) ───────────────────────────────────────
   Widget _buildSourceCard() {
     final target = widget.selectedRestaurant!;
     return SliverToBoxAdapter(
@@ -306,121 +278,16 @@ class _RecommendationScreenState extends State<RecommendationScreen>
         ),
         child: Row(
           children: [
-            // ✅ Real photo for source restaurant
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: CachedNetworkImage(
-                imageUrl: RestaurantImage.getUrl(
-                  target.cuisineType,
-                  seed: target.id,
-                ),
-                width: 52,
-                height: 52,
-                fit: BoxFit.cover,
-                placeholder: (_, _) => Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColors.secondary.withValues(alpha: 0.18),
-                        AppColors.secondary.withValues(alpha: 0.05),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(
-                    Icons.restaurant_rounded,
-                    color: AppColors.primary,
-                    size: 24,
-                  ),
-                ),
-                errorWidget: (_, _, _) => Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColors.secondary.withValues(alpha: 0.18),
-                        AppColors.secondary.withValues(alpha: 0.05),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(
-                    Icons.restaurant_rounded,
-                    color: AppColors.primary,
-                    size: 24,
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(width: 14),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'BECAUSE YOU LIKED',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    target.name,
-                    style: AppTextStyles.titleMedium.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.secondary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          target.topicLabel.isNotEmpty
-                              ? target.topicLabel
-                              : target.cuisineType,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.secondary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(Icons.star_rounded, size: 13, color: AppColors.star),
-                      const SizedBox(width: 3),
-                      Text(
-                        AppUtils.formatRating(target.rating),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: RestaurantCard(
+                  restaurant: target,
+                  variant: RestaurantCardVariant.compact,
+                  userLat: _userLat,
+                  userLon: _userLon,
+                  onTap: () {}, // Already on detail screen
+                ),
               ),
             ),
           ],
@@ -429,8 +296,7 @@ class _RecommendationScreenState extends State<RecommendationScreen>
     );
   }
 
-  // ─── Algorithm Badge ──────────────────────────────────────────────────────
-
+  // ─── Algorithm Badge ──────────────────────────────────────────────────
   Widget _buildAlgorithmBadge() {
     return SliverToBoxAdapter(
       child: Container(
@@ -510,8 +376,7 @@ class _RecommendationScreenState extends State<RecommendationScreen>
     );
   }
 
-  // ─── Relaxed Warning ──────────────────────────────────────────────────────
-
+  // ─── Relaxed Warning ──────────────────────────────────────────────────
   Widget _buildRelaxedWarning() {
     return SliverToBoxAdapter(
       child: Container(
@@ -547,8 +412,7 @@ class _RecommendationScreenState extends State<RecommendationScreen>
     );
   }
 
-  // ─── Section Label ────────────────────────────────────────────────────────
-
+  // ─── Section Label ────────────────────────────────────────────────────
   Widget _buildSectionLabel() {
     return SliverToBoxAdapter(
       child: Padding(
@@ -579,8 +443,7 @@ class _RecommendationScreenState extends State<RecommendationScreen>
     );
   }
 
-  // ─── Results List ─────────────────────────────────────────────────────────
-
+  // ─── Results List ─────────────────────────────────────────────────────
   Widget _buildResultsList() {
     if (widget.recommendations.isEmpty) {
       return SliverFillRemaining(child: _buildEmptyState());
@@ -603,260 +466,29 @@ class _RecommendationScreenState extends State<RecommendationScreen>
               ),
             );
           },
-          child: _buildRankCard(context, index, widget.recommendations[index]),
+          child: RestaurantCard(
+            restaurant: widget.recommendations[index],
+            variant: RestaurantCardVariant.rank,
+            rankIndex: index,
+            userLat: _userLat,
+            userLon: _userLon,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => RestaurantDetailScreen(
+                  restaurant: widget.recommendations[index],
+                  userLat: _userLat,
+                  userLon: _userLon,
+                ),
+              ),
+            ),
+          ),
         );
       }, childCount: widget.recommendations.length),
     );
   }
 
-  // ─── Rank Card ────────────────────────────────────────────────────────────
-
-  Widget _buildRankCard(BuildContext context, int index, Restaurant r) {
-    final km = AppUtils.calculateDistance(
-      _userLat,
-      _userLon,
-      r.lat ?? _userLat,
-      r.lon ?? _userLon,
-    );
-    final mins = (km * 3).round();
-    final rankColor = _rankColor(index);
-    final isTopThree = index < 3;
-
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => RestaurantDetailScreen(restaurant: r),
-        ),
-      ),
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        decoration: BoxDecoration(
-          color: _rankBg(index, context),
-          borderRadius: BorderRadius.circular(20),
-          border: isTopThree
-              ? Border.all(color: rankColor.withValues(alpha: 0.3), width: 1.5)
-              : Border.all(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white.withValues(alpha: 0.04)
-                      : Colors.black.withValues(alpha: 0.05),
-                ),
-          boxShadow: [
-            BoxShadow(
-              color: isTopThree
-                  ? rankColor.withValues(
-                      alpha: Theme.of(context).brightness == Brightness.dark
-                          ? 0.20
-                          : 0.10,
-                    )
-                  : Colors.black.withValues(
-                      alpha: Theme.of(context).brightness == Brightness.dark
-                          ? 0.20
-                          : 0.04,
-                    ),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              // ── Rank badge ────────────────────────────────────────────
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: isTopThree
-                      ? rankColor
-                      : Theme.of(context).colorScheme.surfaceContainer,
-                  shape: BoxShape.circle,
-                  boxShadow: isTopThree
-                      ? [
-                          BoxShadow(
-                            color: rankColor.withValues(alpha: 0.4),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Center(
-                  child: Text(
-                    '#${index + 1}',
-                    style: TextStyle(
-                      fontSize: isTopThree ? 11 : 10,
-                      fontWeight: FontWeight.w900,
-                      color: isTopThree
-                          ? Colors.white
-                          : Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.45),
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(width: 12),
-
-              // ── Thumbnail with real photo ─────────────────────────────
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: CachedNetworkImage(
-                  imageUrl: RestaurantImage.getUrl(r.cuisineType, seed: r.id),
-                  width: 68,
-                  height: 68,
-                  fit: BoxFit.cover,
-                  placeholder: (_, _) =>
-                      _thumbnailFallback(isTopThree: isTopThree),
-                  errorWidget: (_, _, _) =>
-                      _thumbnailFallback(isTopThree: isTopThree),
-                ),
-              ),
-
-              const SizedBox(width: 12),
-
-              // ── Info ──────────────────────────────────────────────────
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      r.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: Theme.of(context).colorScheme.onSurface,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${r.categories} · ${r.cuisineType}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.secondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    if (r.topicLabel.isNotEmpty && r.topicLabel != 'No Reviews')
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 5),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.secondary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          r.topicLabel,
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.secondary,
-                          ),
-                        ),
-                      ),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.star_rounded,
-                          size: 14,
-                          color: AppColors.star,
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          AppUtils.formatRating(r.rating),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Icon(
-                          Icons.access_time_rounded,
-                          size: 12,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.45),
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          '$mins min · ${km.toStringAsFixed(1)} km',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.5),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── Chevron ───────────────────────────────────────────────
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: isTopThree
-                      ? rankColor.withValues(alpha: 0.12)
-                      : Theme.of(context).colorScheme.surfaceContainer,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.chevron_right_rounded,
-                  size: 18,
-                  color: isTopThree
-                      ? rankColor
-                      : Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.4),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Thumbnail fallback ────────────────────────────────────────────────────
-  Widget _thumbnailFallback({required bool isTopThree}) => Container(
-    width: 68,
-    height: 68,
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [
-          AppColors.secondary.withValues(alpha: isTopThree ? 0.18 : 0.10),
-          AppColors.secondary.withValues(alpha: isTopThree ? 0.05 : 0.03),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: Icon(
-      Icons.restaurant_rounded,
-      color: isTopThree
-          ? AppColors.primary
-          : AppColors.primary.withValues(alpha: 0.5),
-      size: 24,
-    ),
-  );
-
-  // ─── Empty State ──────────────────────────────────────────────────────────
-
+  // ─── Empty State ──────────────────────────────────────────────────────
   Widget _buildEmptyState() {
     return Center(
       child: Padding(

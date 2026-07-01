@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/app_colors.dart';
 import '../../core/nav_tab_proxy.dart';
-import '../../core/guest_guard.dart';
 import '../../logic/cubits/auth_cubit.dart';
 import '../../logic/cubits/favourite_cubit.dart';
 import '../../logic/cubits/profile_cubit.dart';
@@ -67,21 +66,13 @@ class _MainNavScreenState extends NavTabProxy<MainNavScreen>
     }
   }
 
+  /// ✅ FIXED: Removed GuestGuard.check() for Favourite tab
+  /// Guests can now tap all tabs freely.
+  /// Auth gating happens at the ACTION level (e.g., saving a favourite),
+  /// not at the TAB level.
   void _onTabTap(int index) {
     final prev = _tabIndex.value;
     if (prev == index) return;
-
-    if (index == 3) {
-      final authState = context.read<AuthCubit>().state;
-      if (authState is! AuthAuthenticated) {
-        GuestGuard.check(
-          context,
-          featureName: 'save restaurants to your favourites',
-          onAllowed: () {},
-        );
-        return;
-      }
-    }
 
     _activeControllers[prev].reverse();
     _activeControllers[index].forward();

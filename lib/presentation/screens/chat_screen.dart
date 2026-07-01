@@ -2,10 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/app_colors.dart';
-import '../../core/app_utils.dart';
-import '../../core/restaurant_image.dart';
 import '../../data/restaurant_repository.dart';
 import '../../logic/cubits/chat_cubit.dart';
 import '../../logic/cubits/user_preferences_cubit.dart';
@@ -14,6 +11,9 @@ import '../../models/restaurant_model.dart';
 import 'restaurant_detail_screen.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/gradient_divider.dart';
+import '../widgets/restaurant_card.dart';
+import '../../data/location_service.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -26,6 +26,27 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _textCtrl = TextEditingController();
   final ScrollController _scrollCtrl = ScrollController();
   final FocusNode _focusNode = FocusNode();
+
+  double _userLat = LocationService.fallbackLat;
+  double _userLon = LocationService.fallbackLon;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocation();
+  }
+
+  Future<void> _loadLocation() async {
+    try {
+      final pos = await LocationService.instance.getPosition();
+      if (mounted) {
+        setState(() {
+          _userLat = pos.latitude;
+          _userLon = pos.longitude;
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -105,7 +126,11 @@ class _ChatScreenState extends State<ChatScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => RestaurantDetailScreen(restaurant: match),
+          builder: (_) => RestaurantDetailScreen(
+            restaurant: match,
+            userLat: _userLat,
+            userLon: _userLon,
+          ),
         ),
       );
     } catch (_) {
@@ -716,8 +741,11 @@ class _ChatScreenState extends State<ChatScreen> {
                         .toList();
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: _RestaurantCompactCard(
+                      child: RestaurantCard(
                         restaurant: _previewToRestaurant(r),
+                        variant: RestaurantCardVariant.compact,
+                        userLat: _userLat,
+                        userLon: _userLon,
                         matchedFilters: matchedFilters,
                         onTap: () => _openRestaurant(r),
                       ),
@@ -731,7 +759,7 @@ class _ChatScreenState extends State<ChatScreen> {
           if (isUser) const SizedBox(width: 10),
         ],
       ),
-    );
+    ).animate().fadeIn(duration: 200.ms).slideY(begin: 0.2, end: 0);
   }
 
   Widget _buildModelBadge(ChatMessageModel msg, Color activeSecondary) {
@@ -1762,188 +1790,6 @@ class _AIAuraState extends State<AIAura> with TickerProviderStateMixin {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _RestaurantCompactCard extends StatelessWidget {
-  final Restaurant restaurant;
-  final List<String> matchedFilters;
-  final VoidCallback onTap;
-
-  const _RestaurantCompactCard({
-    required this.restaurant,
-    required this.matchedFilters,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final activeSecondary = isDark
-        ? AppColors.darkSecondary
-        : AppColors.secondary;
-
-    final mainCuisine = restaurant.cuisineTypes.isNotEmpty
-        ? restaurant.cuisineTypes.first
-        : 'Other';
-    final imageUrl = RestaurantImage.getUrl(mainCuisine, seed: restaurant.id);
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.05)
-              : Colors.white.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: activeSecondary.withValues(alpha: 0.12),
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(8),
-        child: Row(
-          children: [
-            // Left Image
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: CachedNetworkImage(
-                imageUrl: imageUrl,
-                width: 72,
-                height: 72,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  width: 72,
-                  height: 72,
-                  color: isDark
-                      ? Colors.white10
-                      : Colors.black.withValues(alpha: 0.05),
-                  child: const Center(
-                    child: SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  ),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  width: 72,
-                  height: 72,
-                  color: isDark
-                      ? Colors.white10
-                      : Colors.black.withValues(alpha: 0.05),
-                  child: const Icon(
-                    Icons.restaurant_rounded,
-                    size: 24,
-                    color: Colors.grey,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // Middle Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    restaurant.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(Icons.star_rounded, size: 12, color: AppColors.star),
-                      const SizedBox(width: 4),
-                      Text(
-                        AppUtils.formatRating(restaurant.rating),
-                        style: TextStyle(
-                          fontFamily: 'JetBrainsMono',
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white : AppColors.textPrimary,
-                        ),
-                      ),
-                      if (restaurant.isHalal) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 1,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: Colors.green.withValues(alpha: 0.25),
-                            ),
-                          ),
-                          child: const Text(
-                            'Halal',
-                            style: TextStyle(
-                              fontFamily: 'OpenSans',
-                              fontSize: 8,
-                              color: Colors.green,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on_rounded,
-                        size: 12,
-                        color: activeSecondary,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          restaurant.municipality,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: 'OpenSans',
-                            fontSize: 11,
-                            color: activeSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-
-            // Right Arrow
-            Icon(
-              Icons.chevron_right_rounded,
-              color: activeSecondary.withValues(alpha: 0.5),
-            ),
-          ],
-        ),
       ),
     );
   }

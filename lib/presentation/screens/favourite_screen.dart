@@ -29,6 +29,7 @@ import '../../models/favourite_model.dart';
 import 'restaurant_detail_screen.dart';
 import '../../models/restaurant_model.dart';
 import '../widgets/curved_header_painter.dart';
+import '../../data/location_service.dart';
 
 class FavouriteScreen extends StatefulWidget {
   const FavouriteScreen({super.key});
@@ -115,13 +116,18 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
         orElse: () => _fallbackRestaurant(item),
       );
 
+      final pos = await LocationService.instance.getPosition();
       if (!mounted) return;
       Navigator.pop(context);
 
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => RestaurantDetailScreen(restaurant: match),
+          builder: (_) => RestaurantDetailScreen(
+            restaurant: match,
+            userLat: pos.latitude,
+            userLon: pos.longitude,
+          ),
         ),
       );
     } catch (_) {

@@ -1,29 +1,6 @@
-// ============================================================
-// FILE: lib/logic/cubits/restaurant_detail_cubit.dart
-//
-// Manages two independent concerns for the restaurant detail screen:
-//   1. Compass heading (streamed from FlutterCompass, emitted as state)
-//   2. Similar restaurants loading (async, from RestaurantRepository)
-//
-// WHY A CUBIT:
-//   The old _RestaurantDetailScreenState called setState() on every
-//   compass event (up to 10x per second), rebuilding the ENTIRE screen
-//   tree including hero image, stat chips, vibe card, etc.
-//   By moving compass + similar loading into this cubit, the screen
-//   uses BlocBuilder with buildWhen: to rebuild ONLY the compass widget
-//   and the similar section — not the whole page.
-//
-// USAGE in restaurant_detail_screen.dart:
-//   BlocProvider(
-//     create: (_) => RestaurantDetailCubit(repository)
-//       ..startCompass()
-//       ..loadSimilar(restaurant, userLat, userLon),
-//     child: const RestaurantDetailScreen(...),
-//   )
-// ============================================================
-
 import 'dart:async';
-import 'dart:math';
+import 'dart:math' hide log;
+import 'dart:developer';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_compass/flutter_compass.dart';
@@ -37,19 +14,19 @@ class RestaurantDetailCubit extends Cubit<RestaurantDetailState> {
   final RestaurantRepository _repository;
   StreamSubscription<CompassEvent>? _compassSub;
 
-  // 50 km cap — similar restaurants further than this from the
-  // current restaurant are excluded regardless of topic/cuisine match.
   static const double maxSimilarKm = 50.0;
 
   RestaurantDetailCubit(this._repository)
     : super(const RestaurantDetailInitial());
 
-  // ── Compass ───────────────────────────────────────────────────────────────
+  // ─ COMPASS LIFECYCLE ──────────────────────────────────────────────────────
 
-  /// Subscribes to the device compass stream.
-  /// Emits [RestaurantDetailCompassUpdated] on every valid heading reading.
+  /// Subscribes to device compass stream.
+  /// Emits [RestaurantDetailCompassUpdated] on valid heading reads.
   /// Safe to call multiple times — cancels previous subscription first.
   void startCompass() {
+    log('startCompass: subscribing to compass stream', name: 'DetailCubit');
+
     _compassSub?.cancel();
     _compassSub = FlutterCompass.events?.listen((CompassEvent event) {
       if (event.heading != null && !isClosed) {
@@ -58,30 +35,33 @@ class RestaurantDetailCubit extends Cubit<RestaurantDetailState> {
     });
   }
 
-  /// Cancels the compass subscription. Called from dispose().
+  /// Explicitly cancels the compass subscription.
+  /// Called from close() to ensure cleanup.
   void stopCompass() {
+    log('stopCompass: cancelling compass subscription', name: 'DetailCubit');
     _compassSub?.cancel();
     _compassSub = null;
   }
 
-  // ── Similar restaurants ───────────────────────────────────────────────────
+  // ─ SIMILAR RESTAURANTS ────────────────────────────────────────────────────
 
-  /// Loads up to 6 similar restaurants using a 3-tier fallback strategy:
-  ///   1. Same dominant topic AND same cuisine within 50km
-  ///   2. Same dominant topic only within 50km
-  ///   3. Same cuisine only within 50km
-  /// Results are sorted by rating descending.
+  /// Loads similar restaurants using 3-tier fallback:
+  ///   Tier 1: Same dominant topic + same cuisine within 50km
+  ///   Tier 2: Same dominant topic only within 50km
+  ///   Tier 3: Same cuisine only within 50km
+  /// Results sorted by rating descending, capped at 6.
   Future<void> loadSimilar(
     Restaurant restaurant,
     double userLat,
     double userLon,
   ) async {
+    log('loadSimilar: starting for "${restaurant.name}"', name: 'DetailCubit');
+
     emit(const RestaurantDetailSimilarLoading());
     try {
       final all = await _repository.getAllRestaurants();
 
-      // Distance from the current restaurant (not the user) — keeps
-      // "nearby similar" meaningful even when the user is far away.
+      // Distance from the current restaurant (not user)
       double distFromTarget(Restaurant x) => AppUtils.calculateDistance(
         restaurant.lat ?? userLat,
         restaurant.lon ?? userLon,
@@ -102,6 +82,11 @@ class RestaurantDetailCubit extends Cubit<RestaurantDetailState> {
           )
           .toList();
 
+      log(
+        'loadSimilar: Tier 1 candidates = ${candidates.length}',
+        name: 'DetailCubit',
+      );
+
       // Tier 2 — same topic only
       if (candidates.length < 3) {
         candidates = all
@@ -112,6 +97,10 @@ class RestaurantDetailCubit extends Cubit<RestaurantDetailState> {
                   withinCap(x),
             )
             .toList();
+        log(
+          'loadSimilar: Tier 2 candidates = ${candidates.length}',
+          name: 'DetailCubit',
+        );
       }
 
       // Tier 3 — same cuisine only
@@ -127,16 +116,26 @@ class RestaurantDetailCubit extends Cubit<RestaurantDetailState> {
         for (final c in byCuisine) {
           if (!candidates.any((x) => x.id == c.id)) candidates.add(c);
         }
+        log(
+          'loadSimilar: Tier 3 candidates = ${candidates.length}',
+          name: 'DetailCubit',
+        );
       }
 
       candidates.sort((a, b) => b.rating.compareTo(a.rating));
-      emit(RestaurantDetailSimilarLoaded(candidates.take(6).toList()));
-    } catch (_) {
+      final final6 = candidates.take(6).toList();
+      log(
+        'loadSimilar: ✅ loaded ${final6.length} similar restaurants',
+        name: 'DetailCubit',
+      );
+      emit(RestaurantDetailSimilarLoaded(final6));
+    } catch (e) {
+      log('loadSimilar ERROR: $e', name: 'DetailCubit');
       emit(const RestaurantDetailSimilarError());
     }
   }
 
-  // ── Bearing helpers (used by the compass widget) ──────────────────────────
+  // ─ BEARING HELPERS ────────────────────────────────────────────────────────
 
   static double bearingTo(
     double userLat,
@@ -152,24 +151,31 @@ class RestaurantDetailCubit extends Cubit<RestaurantDetailState> {
     return (_toDeg(atan2(y, x)) + 360) % 360;
   }
 
+  /// Returns cardinal direction label (8-point compass).
+  /// ✅ FIXED: Correct angle boundaries for 8-point compass
   static String directionLabel(double relativeBearing) {
     final b = (relativeBearing + 360) % 360;
-    if (b < 22.5 || b >= 337.5) return 'North';
-    if (b < 67.5) return 'North-East';
-    if (b < 112.5) return 'East';
-    if (b < 157.5) return 'South-East';
-    if (b < 202.5) return 'South';
-    if (b < 247.5) return 'South-West';
-    if (b < 292.5) return 'West';
-    return 'North-West';
+    if (b < 22.5 || b >= 337.5) return 'North'; // N: 337.5–22.5
+    if (b < 67.5) return 'North-East'; // NE: 22.5–67.5
+    if (b < 112.5) return 'East'; // E: 67.5–112.5
+    if (b < 157.5) return 'South-East'; // SE: 112.5–157.5
+    if (b < 202.5) return 'South'; // S: 157.5–202.5
+    if (b < 247.5) return 'South-West'; // SW: 202.5–247.5
+    if (b < 292.5) return 'West'; // W: 247.5–292.5
+    return 'North-West'; // NW: 292.5–337.5
   }
 
   static double _toRad(double deg) => deg * pi / 180;
   static double _toDeg(double rad) => rad * 180 / pi;
 
+  // ─ LIFECYCLE ──────────────────────────────────────────────────────────────
+
+  /// ✅ CRITICAL: Ensure compass stops when cubit is disposed.
+  /// Without this, compass stream keeps running even after screen pops.
   @override
   Future<void> close() {
-    _compassSub?.cancel();
+    log('close: cleaning up compass subscription', name: 'DetailCubit');
+    stopCompass();
     return super.close();
   }
 }
