@@ -757,15 +757,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       automaticallyImplyLeading: false,
+      titleSpacing: 0,
       toolbarHeight: 110,
       title: const Padding(
-        padding: EdgeInsets.only(left: 8),
+        padding: EdgeInsets.only(left: 18),
         child: Text(
           'My Profile',
           style: TextStyle(
             fontFamily: 'Montserrat',
-            fontSize: 28,
-            fontWeight: FontWeight.w900,
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
             color: Colors.white,
             letterSpacing: -0.5,
             shadows: [

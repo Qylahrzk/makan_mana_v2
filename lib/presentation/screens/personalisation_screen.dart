@@ -173,20 +173,27 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
             extendBodyBehindAppBar: true,
             backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             appBar: AppBar(
+              automaticallyImplyLeading: true,
+              titleSpacing: 0,
               toolbarHeight: 110,
-              title: const Text(
-                'Personalisation',
-                style: TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  shadows: [
-                    Shadow(
-                      offset: Offset(0, 1.5),
-                      blurRadius: 4.0,
-                      color: Colors.black26,
-                    ),
-                  ],
+              title: const Padding(
+                padding: EdgeInsets.only(left: 18),
+                child: Text(
+                  'Personalisation',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: -0.5,
+                    shadows: [
+                      Shadow(
+                        offset: Offset(0, 1.5),
+                        blurRadius: 4.0,
+                        color: Colors.black26,
+                      ),
+                    ],
+                  ),
                 ),
               ),
               flexibleSpace: Stack(
@@ -258,13 +265,13 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
         titleSpacing: 0,
         toolbarHeight: 110,
         title: const Padding(
-          padding: EdgeInsets.only(left: 8),
+          padding: EdgeInsets.only(left: 18),
           child: Text(
             'Personalisation',
             style: TextStyle(
               fontFamily: 'Montserrat',
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
               color: Colors.white,
               letterSpacing: -0.5,
               shadows: [
@@ -416,13 +423,13 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
         titleSpacing: 0,
         toolbarHeight: 110,
         title: const Padding(
-          padding: EdgeInsets.only(left: 8),
+          padding: EdgeInsets.only(left: 18),
           child: Text(
             'My Preferences',
             style: TextStyle(
               fontFamily: 'Montserrat',
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
               color: Colors.white,
               letterSpacing: -0.5,
               shadows: [
@@ -886,10 +893,11 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
           _PrefsCard(
             children: [
               Padding(
-                padding: const EdgeInsets.all(14),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                child: Column(
                   children:
                       [
                         (null, 'Any'),
@@ -901,58 +909,62 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
                         final val = opt.$1;
                         final label = opt.$2;
                         final selected = draft.budget == val;
-                        return GestureDetector(
-                          onTap: () => setState(() {
-                            _draft = draft.copyWith(
-                              budget: val,
-                              clearBudget: val == null,
-                            );
-                          }),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: selected
-                                  ? AppColors.primary
-                                  : Theme.of(
-                                      context,
-                                    ).colorScheme.surfaceContainer,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
+                        return Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: GestureDetector(
+                            onTap: () => setState(() {
+                              _draft = draft.copyWith(
+                                budget: val,
+                                clearBudget: val == null,
+                              );
+                            }),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
                                 color: selected
                                     ? AppColors.primary
-                                    : Theme.of(context).dividerColor,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (selected) ...[
-                                  const Icon(
-                                    Icons.check_rounded,
-                                    size: 13,
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(width: 4),
-                                ],
-                                Text(
-                                  label,
-                                  style: TextStyle(
-                                    fontFamily: 'OpenSans',
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: selected
-                                        ? Colors.white
-                                        : Theme.of(context)
-                                              .colorScheme
-                                              .onSurface
-                                              .withValues(alpha: 0.7),
-                                  ),
+                                    : Theme.of(
+                                        context,
+                                      ).colorScheme.surfaceContainer,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: selected
+                                      ? AppColors.primary
+                                      : Theme.of(context).dividerColor,
                                 ),
-                              ],
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  if (selected) ...[
+                                    const Icon(
+                                      Icons.check_rounded,
+                                      size: 16,
+                                      color: Colors.white,
+                                    ),
+                                    const SizedBox(width: 6),
+                                  ],
+                                  Text(
+                                    label,
+                                    style: TextStyle(
+                                      fontFamily: 'OpenSans',
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: selected
+                                          ? Colors.white
+                                          : Theme.of(context)
+                                                .colorScheme
+                                                .onSurface
+                                                .withValues(alpha: 0.7),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         );

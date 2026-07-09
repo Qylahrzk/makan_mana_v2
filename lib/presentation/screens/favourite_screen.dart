@@ -1,18 +1,3 @@
-// ============================================================
-// FILE: lib/presentation/screens/favourite_screen.dart
-//
-// CINEMATIC REDESIGN — OCEAN GRADIENT HEADER EDITION
-//
-// Key Design Updates:
-// 1. Consistent ocean gradient appbar with curved bottom
-// 2. Dynamic favourite count badge in appbar actions
-// 3. Smooth hint text fade-in when list has items
-// 4. Cinematic card styling with depth shadows
-// 5. Empty state with hero illustration
-// 6. Pull-to-refresh with seamless network completion
-//
-// ============================================================
-
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -39,6 +24,9 @@ class FavouriteScreen extends StatefulWidget {
 }
 
 class _FavouriteScreenState extends State<FavouriteScreen> {
+  // ─── Named constants for padding/layout ─────────────────────────────────
+  static const double _headerHeight = 110.0;
+
   @override
   void initState() {
     super.initState();
@@ -189,6 +177,9 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final user = context.read<AuthCubit>().currentUser;
+    final isGuest = user == null;
+
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -204,103 +195,105 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
       extendBodyBehindAppBar: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(),
-      body: BlocBuilder<FavouriteCubit, FavouriteState>(
-        builder: (context, state) {
-          if (state is FavouriteLoading) {
-            return Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            );
-          }
+      body: _buildBody(isGuest),
+    );
+  }
 
-          if (state is FavouriteError) {
-            return Padding(
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 110 - 150,
-              ),
-              child: _ErrorState(
-                message: state.message,
-                onRetry: _loadFavourite,
-              ),
-            );
-          }
+  /// Build the body content based on auth state and favourite state
+  Widget _buildBody(bool isGuest) {
+    if (isGuest) {
+      return _LockedGuestState(
+        onAuth: () => Navigator.pushNamed(context, '/welcome'),
+      );
+    }
 
-          if (state is FavouriteLoaded && state.items.isEmpty) {
-            return Padding(
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 110 - 150,
-              ),
-              child: const _EmptyState(),
-            );
-          }
+    return BlocBuilder<FavouriteCubit, FavouriteState>(
+      builder: (context, state) {
+        if (state is FavouriteLoading) {
+          return Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
+          );
+        }
 
-          if (state is FavouriteLoaded) {
-            return RefreshIndicator(
-              onRefresh: _refresh,
-              color: AppColors.primary,
-              child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  SliverPadding(
-                    padding: EdgeInsets.only(
-                      top: MediaQuery.of(context).padding.top + 110 - 110,
-                    ),
+        if (state is FavouriteError) {
+          return _ErrorState(message: state.message, onRetry: _loadFavourite);
+        }
+
+        if (state is FavouriteLoaded && state.items.isEmpty) {
+          return const _EmptyState();
+        }
+
+        if (state is FavouriteLoaded) {
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            color: AppColors.primary,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                // Account for header height
+                SliverPadding(
+                  padding: EdgeInsets.only(
+                    top: MediaQuery.of(context).padding.top + _headerHeight,
                   ),
-                  // Hint text — fades in when list is populated
-                  SliverToBoxAdapter(
-                    child: AnimatedOpacity(
-                      opacity: 1.0,
-                      duration: const Duration(milliseconds: 400),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 4,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.favorite_rounded,
-                              size: 14,
+                ),
+
+                // Hint text — fades in when list is populated
+                SliverToBoxAdapter(
+                  child: AnimatedOpacity(
+                    opacity: 1.0,
+                    duration: const Duration(milliseconds: 400),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.favorite_rounded,
+                            size: 14,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.45),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Tap the heart to unfavourite',
+                            style: TextStyle(
+                              fontSize: 12,
                               color: Theme.of(
                                 context,
                               ).colorScheme.onSurface.withValues(alpha: 0.45),
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Tap the heart to unfavourite',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurface.withValues(alpha: 0.45),
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 8)),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (_, i) => _FavouriteCard(
-                          item: state.items[i],
-                          onTap: () => _openDetail(state.items[i]),
-                          onRemove: () => _removeFavourite(state.items[i]),
-                        ),
-                        childCount: state.items.length,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
-          return const SizedBox.shrink();
-        },
-      ),
+                // List of favourite items
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (_, i) => _FavouriteCard(
+                        item: state.items[i],
+                        onTap: () => _openDetail(state.items[i]),
+                        onRemove: () => _removeFavourite(state.items[i]),
+                      ),
+                      childCount: state.items.length,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return const SizedBox.shrink();
+      },
     );
   }
 
@@ -308,15 +301,15 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
     return AppBar(
       automaticallyImplyLeading: true,
       titleSpacing: 0,
-      toolbarHeight: 110,
+      toolbarHeight: _headerHeight,
       title: const Padding(
-        padding: EdgeInsets.only(left: 8),
+        padding: EdgeInsets.only(left: 18),
         child: Text(
           'My Favourites',
           style: TextStyle(
             fontFamily: 'Montserrat',
-            fontSize: 28,
-            fontWeight: FontWeight.w900,
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
             color: Colors.white,
             letterSpacing: -0.5,
             shadows: [
@@ -681,15 +674,118 @@ class _FavouriteCardState extends State<_FavouriteCard>
   );
 }
 
-// ─── Empty State ──────────────────────────────────────────────────────────────
+// ─── Locked Guest State ────────────────────────────────────────────────────────
+/// Content widget for when guest user tries to access favourites
+/// NO Scaffold — just content that sits in the main FavouriteScreen's body
+class _LockedGuestState extends StatelessWidget {
+  final VoidCallback onAuth;
 
+  const _LockedGuestState({required this.onAuth});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.center,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Locked illustration
+            Image.asset(
+              'assets/images/favourite_locked.png',
+              width: 190,
+              height: 190,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => Container(
+                width: 190,
+                height: 190,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.lock_rounded,
+                  size: 64,
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                ),
+              ),
+            ),
+            const SizedBox(height: 3),
+
+            // Heading
+            Text(
+              'Your Favourites are Locked!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Theme.of(context).colorScheme.onSurface,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Description
+            Text(
+              "You're using a guest account. Sign up or log in to save your favourites and access them anytime!",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.5),
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 28),
+
+            // Sign Up / Login button
+            GestureDetector(
+              onTap: onAuth,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Text(
+                  'Sign Up / Login',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Empty State ──────────────────────────────────────────────────────────────
+/// Content widget for when authenticated user has no saved favourites
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
 
   @override
   Widget build(BuildContext context) {
     return Align(
-      alignment: const Alignment(0, -0.3),
+      alignment: Alignment.center,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40),
         child: Column(
@@ -774,7 +870,7 @@ class _EmptyState extends StatelessWidget {
 }
 
 // ─── Error State ──────────────────────────────────────────────────────────────
-
+/// Content widget for when there's an error loading favourites
 class _ErrorState extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;

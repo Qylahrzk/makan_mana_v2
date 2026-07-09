@@ -513,7 +513,7 @@ class RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                     slivers: [
                       SliverPadding(
                         padding: EdgeInsets.only(
-                          top: MediaQuery.of(context).padding.top + 164 + 4,
+                          top: MediaQuery.of(context).padding.top + 154,
                         ),
                       ),
                       // Recent searches
@@ -654,15 +654,16 @@ class RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       automaticallyImplyLeading: false,
-      toolbarHeight: 68,
+      titleSpacing: 0,
+      toolbarHeight: 82,
       title: const Padding(
-        padding: EdgeInsets.only(left: 8),
+        padding: EdgeInsets.only(left: 18),
         child: Text(
           'Discovery',
           style: TextStyle(
             fontFamily: 'Montserrat',
-            fontSize: 28,
-            fontWeight: FontWeight.w900,
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
             color: Colors.white,
             letterSpacing: -0.5,
             shadows: [
@@ -725,9 +726,9 @@ class RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         ],
       ),
       bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(96),
+        preferredSize: const Size.fromHeight(75),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
           child: Container(
             height: 48,
             decoration: BoxDecoration(
@@ -1058,10 +1059,10 @@ class RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   // ─── Horizontal card row ──────────────────────────────────────────────────
   Widget _buildHorizontalCardRow(List<Restaurant> list) {
     return SizedBox(
-      height: 205,
+      height: 220,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         itemCount: list.take(10).length,
         itemBuilder: (_, i) => RestaurantCard(
           restaurant: list[i],
