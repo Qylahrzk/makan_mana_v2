@@ -197,27 +197,29 @@ class _ChatScreenState extends State<ChatScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
-    return SingleChildScrollView(
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 20),
-
-          // ── Main Heading ───────────────────────────────────────────────
-          Text(
-            'Makan mana rini?',
-            style: TextStyle(
-              fontFamily: 'Montserrat',
-              fontSize: 30,
-              fontWeight: FontWeight.w900,
-              color: isDark ? Colors.white : AppColors.textPrimary,
-              height: 1.2,
+    return Align(
+      alignment: const Alignment(0, 0.2),
+      child: SingleChildScrollView(
+        physics: isKeyboardOpen
+            ? const BouncingScrollPhysics()
+            : const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Main Heading ───────────────────────────────────────────────
+            Text(
+              'Makan mana rini?',
+              style: TextStyle(
+                fontFamily: 'Montserrat',
+                fontSize: 30,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white : AppColors.textPrimary,
+                height: 2.5,
+              ),
             ),
-          ),
 
-          if (!isKeyboardOpen) ...[
             const SizedBox(height: 12),
 
             // ── Mascot + Speech Bubble ─────────────────────────────────
@@ -228,10 +230,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 clipBehavior: Clip.none,
                 children: [
                   Positioned(
-                    right: -20,
-                    top: -10,
+                    right: -15,
+                    top: -15,
                     bottom: 0,
-                    width: 180,
+                    width: 140,
                     child: Image.asset(
                       'assets/images/chatbot.png',
                       fit: BoxFit.contain,
@@ -240,7 +242,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                   Positioned(
                     left: 0,
-                    right: 85,
+                    right: 125,
                     top: 5,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -341,22 +343,22 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: Container(
                     decoration: BoxDecoration(
                       color: isDark
-                          ? Colors.white.withValues(alpha: 0.05)
-                          : Colors.white.withValues(alpha: 0.7),
+                          ? Colors.white.withValues(alpha: 0.07)
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : AppColors.secondary.withValues(alpha: 0.1),
-                        width: 1.2,
+                            ? Colors.white.withValues(alpha: 0.15)
+                            : AppColors.secondary.withValues(alpha: 0.25),
+                        width: 1.5,
                       ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(
-                            alpha: isDark ? 0.08 : 0.02,
+                            alpha: isDark ? 0.12 : 0.04,
                           ),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
@@ -399,9 +401,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 );
               },
             ),
+            const SizedBox(height: 12),
           ],
-          const SizedBox(height: 12),
-        ],
+        ),
       ),
     );
   }
@@ -985,8 +987,8 @@ class _ChatScreenState extends State<ChatScreen> {
     final isKeyboardOpen = bottomInset > 0;
 
     final double bottomPad = MediaQuery.of(context).viewPadding.bottom;
-    final double navBarHeight = 68.0 + (bottomPad > 0 ? bottomPad + 6 : 14);
-    final double bottomPadding = isKeyboardOpen ? 8.0 : (navBarHeight + 80.0);
+    final double navBarHeight = 130.0 + (bottomPad > 0 ? bottomPad + 6 : 14);
+    final double bottomPadding = isKeyboardOpen ? 20.0 : (navBarHeight + 20.0);
 
     return Container(
       padding: EdgeInsets.fromLTRB(16, 4, 16, bottomPadding),
