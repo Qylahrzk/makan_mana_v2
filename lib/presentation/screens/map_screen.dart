@@ -32,9 +32,11 @@ class _MapScreenState extends State<MapScreen>
   Set<Marker> _markers = {};
   Restaurant? _selectedRestaurant;
   bool _isLoading = true;
-  String _searchQuery = '';
   String _selectedCuisine = 'All';
   final Map<String, BitmapDescriptor> _customMarkerCache = {};
+
+  bool _isSearchingOnMap = false;
+  String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
   double _userLat = LocationService.fallbackLat;
@@ -387,7 +389,7 @@ class _MapScreenState extends State<MapScreen>
 
   @override
   Widget build(BuildContext context) {
-    final topOffset = MediaQuery.of(context).padding.top + 178;
+    final topOffset = MediaQuery.of(context).padding.top + 82 + 68;
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBodyBehindAppBar: true,
@@ -574,70 +576,49 @@ class _MapScreenState extends State<MapScreen>
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       automaticallyImplyLeading: true,
-      toolbarHeight: 56,
+      toolbarHeight: 82,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
         onPressed: () => Navigator.pop(context),
       ),
       titleSpacing: 0,
-      title: const Padding(
-        padding: EdgeInsets.only(left: 4),
-        child: Text(
-          'Map Explorer',
-          style: TextStyle(
-            fontFamily: 'Montserrat',
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-            color: Colors.white,
-            letterSpacing: -0.3,
-            shadows: [
-              Shadow(
-                offset: Offset(0, 1),
-                blurRadius: 3.0,
-                color: Colors.black12,
-              ),
-            ],
-          ),
-        ),
-      ),
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(126),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                height: 48,
+      title: _isSearchingOnMap
+          ? Padding(
+              padding: const EdgeInsets.only(left: 18, right: 8),
+              child: Container(
+                height: 44,
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.10),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
                     ),
                   ],
                 ),
                 child: Row(
                   children: [
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     const Icon(
                       Icons.search_rounded,
                       color: AppColors.primary,
-                      size: 22,
+                      size: 20,
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: TextField(
                         controller: _searchController,
+                        autofocus: true,
                         style: const TextStyle(
                           fontSize: 14,
                           color: AppColors.textPrimary,
                         ),
                         onChanged: (v) {
-                          setState(() => _searchQuery = v);
+                          setState(() {
+                            _searchQuery = v;
+                          });
                           _applyFilter();
                         },
                         decoration: const InputDecoration(
@@ -675,60 +656,123 @@ class _MapScreenState extends State<MapScreen>
                           _applyFilter();
                         },
                       ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 34,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: CuisineOptions.all.length,
-                  itemBuilder: (_, i) {
-                    final c = CuisineOptions.all[i];
-                    final active = _selectedCuisine == c;
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() => _selectedCuisine = c);
-                        _applyFilter();
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 13),
-                        decoration: BoxDecoration(
-                          color: active
-                              ? AppColors.primary
-                              : Colors.white.withValues(alpha: 0.95),
-                          borderRadius: BorderRadius.circular(18),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            c,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: active
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                              color: active
-                                  ? Colors.white
-                                  : AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
+            )
+          : const Padding(
+              padding: EdgeInsets.only(left: 18),
+              child: Text(
+                'Map Explorer',
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: -0.5,
+                  shadows: [
+                    Shadow(
+                      offset: Offset(0, 1.5),
+                      blurRadius: 4.0,
+                      color: Colors.black26,
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
+      actions: [
+        IconButton(
+          icon: Icon(
+            _isSearchingOnMap ? Icons.close_rounded : Icons.search_rounded,
+            color: Colors.white,
+          ),
+          onPressed: () {
+            setState(() {
+              if (_isSearchingOnMap) {
+                _searchController.clear();
+                _searchQuery = '';
+                _isSearchingOnMap = false;
+                _applyFilter();
+              } else {
+                _isSearchingOnMap = true;
+              }
+            });
+          },
+        ),
+        const SizedBox(width: 12),
+      ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(68),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(0, 0, 0, 32),
+          child: SizedBox(
+            height: 36,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: CuisineOptions.all.length,
+              itemBuilder: (_, i) {
+                final c = CuisineOptions.all[i];
+                final active = _selectedCuisine == c;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() => _selectedCuisine = c);
+                    _applyFilter();
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
+                    constraints: const BoxConstraints(minWidth: 70),
+                    decoration: BoxDecoration(
+                      color: active
+                          ? AppColors.primary
+                          : Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                        color: active
+                            ? AppColors.primary
+                            : Theme.of(
+                                context,
+                              ).colorScheme.outline.withValues(alpha: 0.15),
+                        width: 1.5,
+                      ),
+                      boxShadow: active
+                          ? [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.25,
+                                ),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Center(
+                      child: Text(
+                        c,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: active
+                              ? FontWeight.w700
+                              : FontWeight.w600,
+                          color: active
+                              ? Colors.white
+                              : Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ),

@@ -581,12 +581,21 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.all(14),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: CuisineOptions.all.where((c) => c != 'All').map((
-                    cuisine,
-                  ) {
+                child: GridView.builder(
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                    childAspectRatio: 2.5,
+                  ),
+                  itemCount: CuisineOptions.all.where((c) => c != 'All').length,
+                  itemBuilder: (context, index) {
+                    final cuisine = CuisineOptions.all
+                        .where((c) => c != 'All')
+                        .elementAt(index);
                     final selected = draft.cuisineTypes.contains(cuisine);
                     return GestureDetector(
                       onTap: () => setState(() {
@@ -596,49 +605,57 @@ class _PersonalisationScreenState extends State<PersonalisationScreen> {
                       }),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
                         decoration: BoxDecoration(
                           color: selected
                               ? AppColors.primary
                               : Theme.of(context).colorScheme.surfaceContainer,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                             color: selected
                                 ? AppColors.primary
                                 : Theme.of(context).dividerColor,
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (selected) ...[
-                              const Icon(
-                                Icons.check_rounded,
-                                size: 13,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(width: 4),
-                            ],
-                            Text(
-                              cuisine,
-                              style: TextStyle(
-                                fontFamily: 'OpenSans',
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: selected
-                                    ? Colors.white
-                                    : Theme.of(context).colorScheme.onSurface
-                                          .withValues(alpha: 0.7),
-                              ),
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (selected) ...[
+                                  const Icon(
+                                    Icons.check_rounded,
+                                    size: 13,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 4),
+                                ],
+                                Flexible(
+                                  child: Text(
+                                    cuisine,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontFamily: 'OpenSans',
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: selected
+                                          ? Colors.white
+                                          : Theme.of(context)
+                                                .colorScheme
+                                                .onSurface
+                                                .withValues(alpha: 0.7),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     );
-                  }).toList(),
+                  },
                 ),
               ),
             ],

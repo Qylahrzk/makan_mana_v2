@@ -493,6 +493,7 @@ class RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
               content: Text(state.message),
               backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 40),
             ),
           );
         }

@@ -78,7 +78,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
-              margin: const EdgeInsets.all(16),
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 40),
             ),
           );
         }
@@ -93,7 +93,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
-            margin: const EdgeInsets.all(16),
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 110),
           ),
         );
       }
@@ -449,7 +449,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        margin: const EdgeInsets.all(16),
+                        margin: const EdgeInsets.fromLTRB(16, 16, 16, 110),
                       ),
                     );
                   }
@@ -856,7 +856,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  margin: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.fromLTRB(16, 16, 16, 110),
                   duration: const Duration(seconds: 2),
                 ),
               );
@@ -871,7 +871,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  margin: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.fromLTRB(16, 16, 16, 110),
                 ),
               );
           }
@@ -1107,7 +1107,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(10),
                                       ),
-                                      margin: const EdgeInsets.all(16),
+                                      margin: const EdgeInsets.fromLTRB(
+                                        16,
+                                        16,
+                                        16,
+                                        110,
+                                      ),
                                       action: SnackBarAction(
                                         label: 'Sign Up',
                                         textColor: Colors.white,

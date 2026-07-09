@@ -79,7 +79,7 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          margin: const EdgeInsets.all(16),
+          margin: const EdgeInsets.fromLTRB(16, 16, 16, 40),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -130,7 +130,7 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          margin: const EdgeInsets.all(16),
+          margin: const EdgeInsets.fromLTRB(16, 16, 16, 110),
         ),
       );
     }
@@ -233,7 +233,10 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
                 // Account for header height
                 SliverPadding(
                   padding: EdgeInsets.only(
-                    top: MediaQuery.of(context).padding.top + _headerHeight,
+                    top:
+                        MediaQuery.of(context).padding.top +
+                        _headerHeight -
+                        110,
                   ),
                 ),
 

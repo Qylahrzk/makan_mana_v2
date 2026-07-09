@@ -425,14 +425,14 @@ class _HomeScreenState extends State<HomeScreen> {
           ..showSnackBar(
             SnackBar(
               content: Text(
-                nowSaved ? '❤️ Saved to favourites' : 'Removed from favourites',
+                nowSaved ? 'Removed from favourites' : '❤️ Saved to favourites',
               ),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
-              margin: const EdgeInsets.all(16),
-              duration: const Duration(seconds: 2),
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+              duration: const Duration(seconds: 1),
             ),
           );
       },
