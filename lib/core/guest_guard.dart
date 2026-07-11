@@ -48,6 +48,10 @@ class _GuestBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final feature = featureName ?? 'use this feature';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeSecondary = isDark
+        ? AppColors.darkSecondary
+        : AppColors.secondary;
 
     return Container(
       padding: EdgeInsets.fromLTRB(
@@ -132,7 +136,7 @@ class _GuestBottomSheet extends StatelessWidget {
               _FeatureChip(
                 icon: Icons.person_rounded,
                 label: 'Your Profile',
-                color: AppColors.secondary,
+                color: activeSecondary,
               ),
               _FeatureChip(
                 icon: Icons.recommend_rounded,

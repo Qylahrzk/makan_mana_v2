@@ -815,6 +815,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeSecondary = isDark
+        ? AppColors.darkSecondary
+        : AppColors.secondary;
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -965,15 +968,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                AppColors.secondary.withValues(alpha: 0.12),
-                                AppColors.secondary.withValues(alpha: 0.04),
+                                activeSecondary.withValues(alpha: 0.12),
+                                activeSecondary.withValues(alpha: 0.04),
                               ],
                             ),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: AppColors.secondary.withValues(
-                                alpha: 0.25,
-                              ),
+                              color: activeSecondary.withValues(alpha: 0.25),
                             ),
                           ),
                           child: Row(
@@ -1076,7 +1077,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
                                           color: prefs?.hasAnyPreference == true
-                                              ? AppColors.secondary
+                                              ? activeSecondary
                                               : Theme.of(context)
                                                     .colorScheme
                                                     .onSurface
@@ -1203,7 +1204,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           _MenuItem(
                             icon: Icons.notifications_none_rounded,
-                            iconColor: AppColors.secondary,
+                            iconColor: activeSecondary,
                             label: 'Notifications',
                             onTap: () => _showNotificationSheet(context),
                           ),
@@ -1234,7 +1235,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           _MenuItem(
                             icon: Icons.school_rounded,
-                            iconColor: AppColors.secondary,
+                            iconColor: activeSecondary,
                             label: 'FYP Project',
                             trailingText: 'UiTM',
                             onTap: () => Navigator.pushNamed(

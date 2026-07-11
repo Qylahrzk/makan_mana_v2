@@ -638,7 +638,7 @@ class _RestaurantDetailView extends StatelessWidget {
                 _statChip(
                   context,
                   icon: Icons.access_time_rounded,
-                  iconColor: AppColors.secondary,
+                  iconColor: activeSecondary,
                   value: '~${(_distance * 3).round()} min',
                   label: 'Drive time',
                 ),
@@ -795,6 +795,11 @@ class _RestaurantDetailView extends StatelessWidget {
   // ─── Action Buttons ────────────────────────────────────────────────────
 
   Widget _buildActionButtons(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeSecondary = isDark
+        ? AppColors.darkSecondary
+        : AppColors.secondary;
+
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
@@ -832,9 +837,9 @@ class _RestaurantDetailView extends StatelessWidget {
                     height: 54,
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.secondary,
+                        foregroundColor: activeSecondary,
                         side: BorderSide(
-                          color: AppColors.secondary.withValues(alpha: 0.5),
+                          color: activeSecondary.withValues(alpha: 0.5),
                           width: 1.5,
                         ),
                         shape: RoundedRectangleBorder(
@@ -1122,7 +1127,12 @@ class _RestaurantDetailView extends StatelessWidget {
           const SizedBox(height: 14),
           _topicBar(context, 'Food Quality', r.topic1Pct, AppColors.primary),
           const SizedBox(height: 8),
-          _topicBar(context, 'Ambience', r.topic2Pct, AppColors.secondary),
+          _topicBar(
+            context,
+            'Ambience',
+            r.topic2Pct,
+            AppColors.adaptiveSecondary(context),
+          ),
           const SizedBox(height: 8),
           _topicBar(context, 'Service', r.topic3Pct, AppColors.tertiary),
         ],
@@ -1396,6 +1406,11 @@ class _CompassWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeSecondary = isDark
+        ? AppColors.darkSecondary
+        : AppColors.secondary;
+
     return BlocBuilder<RestaurantDetailCubit, RestaurantDetailState>(
       buildWhen: (_, current) =>
           current is RestaurantDetailCompassUpdated ||
@@ -1439,7 +1454,7 @@ class _CompassWidget extends StatelessWidget {
                   angle: relative * pi / 180,
                   child: Icon(
                     Icons.navigation_rounded,
-                    color: AppColors.secondary,
+                    color: activeSecondary,
                     size: 28,
                   ),
                 ),
@@ -1474,7 +1489,7 @@ class _CompassWidget extends StatelessWidget {
                     vertical: 5,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.secondary.withValues(alpha: 0.1),
+                    color: activeSecondary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -1482,7 +1497,7 @@ class _CompassWidget extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.secondary,
+                      color: activeSecondary,
                     ),
                   ),
                 ),

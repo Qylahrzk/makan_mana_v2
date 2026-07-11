@@ -430,6 +430,10 @@ class _FavouriteCardState extends State<_FavouriteCard>
   @override
   Widget build(BuildContext context) {
     final attrs = widget.item.activeAttributes;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeSecondary = isDark
+        ? AppColors.darkSecondary
+        : AppColors.secondary;
 
     return ScaleTransition(
       scale: _scaleAnimation,
@@ -505,7 +509,7 @@ class _FavouriteCardState extends State<_FavouriteCard>
                           Icon(
                             Icons.location_on_rounded,
                             size: 11,
-                            color: AppColors.secondary,
+                            color: activeSecondary,
                           ),
                           const SizedBox(width: 2),
                           Expanded(
@@ -515,7 +519,7 @@ class _FavouriteCardState extends State<_FavouriteCard>
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 12,
-                                color: AppColors.secondary,
+                                color: activeSecondary,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -579,16 +583,16 @@ class _FavouriteCardState extends State<_FavouriteCard>
                                     vertical: 2,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: AppColors.secondary.withValues(
+                                    color: activeSecondary.withValues(
                                       alpha: 0.08,
                                     ),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
                                     a,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 9,
-                                      color: Color(0xFF2F6F7E),
+                                      color: activeSecondary,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -655,26 +659,32 @@ class _FavouriteCardState extends State<_FavouriteCard>
     );
   }
 
-  Widget _thumbnailFallback(BuildContext context) => Container(
-    width: 72,
-    height: 72,
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [
-          AppColors.secondary.withValues(alpha: 0.18),
-          AppColors.secondary.withValues(alpha: 0.05),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
+  Widget _thumbnailFallback(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeSecondary = isDark
+        ? AppColors.darkSecondary
+        : AppColors.secondary;
+    return Container(
+      width: 72,
+      height: 72,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            activeSecondary.withValues(alpha: 0.18),
+            activeSecondary.withValues(alpha: 0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
       ),
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: Icon(
-      Icons.restaurant_rounded,
-      color: AppColors.primary.withValues(alpha: 0.7),
-      size: 24,
-    ),
-  );
+      child: Icon(
+        Icons.restaurant_rounded,
+        color: AppColors.primary.withValues(alpha: 0.7),
+        size: 24,
+      ),
+    );
+  }
 }
 
 // ─── Locked Guest State ────────────────────────────────────────────────────────
