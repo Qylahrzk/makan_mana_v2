@@ -12,6 +12,7 @@ dependencies:
 
   # ── UI ──────────────────────────────────────────────────────────────────
   cupertino_icons: ^1.0.8
+  flutter_animate: ^4.5.0
 
   # ── State Management ────────────────────────────────────────────────────
   flutter_bloc: ^9.1.1
@@ -73,8 +74,10 @@ flutter:
     - assets/images/onboard_2.png
     - assets/images/onboard_3.png
     - assets/images/favourite_logo.png
+    - assets/images/favourite_locked.png
     - assets/images/no_results.png
     - assets/images/chatbot.png
+    - assets/images/main_logo.png
 
   fonts:
     # ── Montserrat — Headlines & Restaurant Names ──────────────────────────

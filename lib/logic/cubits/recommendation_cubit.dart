@@ -349,35 +349,49 @@ class RecommendationCubit extends Cubit<RecommendationState> {
           }
 
           double bonus = 0.0;
-          if (res.isHalal && target.isHalal)
+          if (res.isHalal && target.isHalal) {
             bonus += RecConfig.booleanMatchBonus;
-          if (res.isVegetarian && target.isVegetarian)
+          }
+          if (res.isVegetarian && target.isVegetarian) {
             bonus += RecConfig.booleanMatchBonus;
-          if (res.isVegan && target.isVegan)
+          }
+          if (res.isVegan && target.isVegan) {
             bonus += RecConfig.booleanMatchBonus;
-          if (res.hasParking && target.hasParking)
+          }
+          if (res.hasParking && target.hasParking) {
             bonus += RecConfig.booleanMatchBonus;
-          if (res.hasWifi && target.hasWifi)
+          }
+          if (res.hasWifi && target.hasWifi) {
             bonus += RecConfig.booleanMatchBonus;
+          }
           if (res.hasAc && target.hasAc) bonus += RecConfig.booleanMatchBonus;
-          if (res.hasOutdoor && target.hasOutdoor)
+          if (res.hasOutdoor && target.hasOutdoor) {
             bonus += RecConfig.booleanMatchBonus;
-          if (res.isAccessible && target.isAccessible)
+          }
+          if (res.isAccessible && target.isAccessible) {
             bonus += RecConfig.booleanMatchBonus;
-          if (res.isFamilyFriendly && target.isFamilyFriendly)
+          }
+          if (res.isFamilyFriendly && target.isFamilyFriendly) {
             bonus += RecConfig.booleanMatchBonus;
-          if (res.isGroupFriendly && target.isGroupFriendly)
+          }
+          if (res.isGroupFriendly && target.isGroupFriendly) {
             bonus += RecConfig.booleanMatchBonus;
-          if (res.isCasual && target.isCasual)
+          }
+          if (res.isCasual && target.isCasual) {
             bonus += RecConfig.booleanMatchBonus;
-          if (res.isRomantic && target.isRomantic)
+          }
+          if (res.isRomantic && target.isRomantic) {
             bonus += RecConfig.booleanMatchBonus;
-          if (res.hasScenicView && target.hasScenicView)
+          }
+          if (res.hasScenicView && target.hasScenicView) {
             bonus += RecConfig.booleanMatchBonus;
-          if (res.isWorthIt && target.isWorthIt)
+          }
+          if (res.isWorthIt && target.isWorthIt) {
             bonus += RecConfig.booleanMatchBonus;
-          if (res.isFastService && target.isFastService)
+          }
+          if (res.isFastService && target.isFastService) {
             bonus += RecConfig.booleanMatchBonus;
+          }
           if (res.cuisineType.isNotEmpty &&
               res.cuisineType == target.cuisineType) {
             bonus += RecConfig.booleanMatchBonus;

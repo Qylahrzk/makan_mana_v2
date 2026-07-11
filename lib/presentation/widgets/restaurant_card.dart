@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/app_colors.dart';
-import '../../core/app_text_styles.dart';
 import '../../core/app_utils.dart';
 import '../../core/restaurant_image.dart';
 import '../../models/restaurant_model.dart';

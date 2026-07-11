@@ -1,0 +1,118 @@
+﻿<USER_REQUEST>
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../core/app_colors.dart';
+import '../../core/app_utils.dart';
+import '../../core/restaurant_image.dart';
+import '../../core/guest_guard.dart';
+import '../../data/restaurant_repository.dart';
+import '../../logic/cubits/chat_cubit.dart';
+import '../../logic/cubits/user_preferences_cubit.dart';
+import '../../logic/cubits/auth_cubit.dart';
+import '../../logic/cubits/favourite_cubit.dart';
+import '../../models/chat_message_model.dart';
+import '../../models/restaurant_model.dart';
+import 'restaurant_detail_screen.dart';
+import '../widgets/premium_background.dart';
+import '../widgets/gradient_divider.dart';
+
+class ChatScreen extends StatefulWidget {
+  const ChatScreen({super.key});
+
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  final TextEditingController _textCtrl = TextEditingController();
+  final ScrollController _scrollCtrl = ScrollController();
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _textCtrl.dispose();
+    _scrollCtrl.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _sendText(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+
+    final prefs = context.read<UserPreferencesCubit>().current;
+    context.read<ChatCubit>().sendMessage(
+      trimmed,
+      halal: prefs?.halal ?? false,
+      vegetarian: prefs?.vegetarian ?? false,
+      vegan: prefs?.vegan ?? false,
+      parking: prefs?.hasParking ?? false,
+      wifi: prefs?.hasWifi ?? false,
+      ac: prefs?.hasAc ?? false,
+      outdoor: prefs?.hasOutdoor ?? false,
+      accessible: prefs?.accessible ?? false,
+      familyFriendly: prefs?.familyFriendly ?? false,
+     
+<truncated 45214 bytes>
+olor: activeSecondary.withValues(alpha: opacity),
+                shape: BoxShape.circle,
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// COMPACT RESTAURANT CARD (Hybrid layout)
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+class _RestaurantCompactCard extends StatelessWidget {
+  final Restaurant restaurant;
+  final List<String> matchedFilters;
+  final VoidCallback onTap;
+
+  const _RestaurantCompactCard({
+    required this.restaurant,
+    required this.matchedFilters,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeSecondary = isDark
+        ? AppColors.darkSecondary
+        : AppColors.secondary;
+
+    final mainCuisine = restaurant.cuisineTypes.isNotEmpty
+        ? restaurant.cuisineTypes.first
+        : 'Other';
+    final imageUrl =
+        RestaurantImage.getUrl(mainCuisine, seed: restaurant.id);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.05)
+              : Colors.white.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: activeSecondary.withValues(alpha: 0.12),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blur
+<truncated 5328 bytes>
+
+NOTE: The output was truncated because it was too long. Use a more targeted query or a smaller range to get the information you need.

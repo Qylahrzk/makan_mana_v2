@@ -174,15 +174,15 @@ class _SignupScreenState extends State<SignupScreen>
 
                       _BackButton(onTap: () => Navigator.pop(context)),
 
-                      const SizedBox(height: 48),
+                      const SizedBox(height: 20),
 
                       _ScreenHeader(
-                        title: 'Create\nAccount',
+                        title: 'Create Account',
                         subtitle: 'Join Makan Mana and discover great food',
                         isDark: isDark,
                       ),
 
-                      const SizedBox(height: 44),
+                      const SizedBox(height: 14),
 
                       // Full Name field
                       _FormFieldGroup(
@@ -206,7 +206,7 @@ class _SignupScreenState extends State<SignupScreen>
                         ),
                       ),
 
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 16),
 
                       // Email field
                       _FormFieldGroup(
@@ -230,7 +230,7 @@ class _SignupScreenState extends State<SignupScreen>
                         ),
                       ),
 
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 16),
 
                       // Password field with indicator
                       _PasswordFieldWithIndicator(
@@ -245,7 +245,7 @@ class _SignupScreenState extends State<SignupScreen>
                         isDark: isDark,
                       ),
 
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 16),
 
                       // Confirm Password field
                       _FormFieldGroup(
@@ -287,7 +287,7 @@ class _SignupScreenState extends State<SignupScreen>
                         ),
                       ],
 
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 16),
 
                       // Terms checkbox
                       _TermsCheckbox(
@@ -297,17 +297,17 @@ class _SignupScreenState extends State<SignupScreen>
                         isDark: isDark,
                       ),
 
-                      const SizedBox(height: 36),
+                      const SizedBox(height: 20),
 
                       // Create Account button
                       _CreateAccountButton(isDark: isDark),
 
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 16),
 
                       // Sign in link
                       _SignInLink(isDark: isDark),
 
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
@@ -441,7 +441,7 @@ class _FormFieldGroup extends StatelessWidget {
             letterSpacing: 0.5,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 6),
         child,
       ],
     );
@@ -619,7 +619,7 @@ class _PasswordFieldWithIndicatorState
             letterSpacing: 0.5,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 6),
         _EnhancedInputField(
           controller: widget.controller,
           focusNode: widget.focusNode,
@@ -642,12 +642,9 @@ class _PasswordFieldWithIndicatorState
             return null;
           },
         ),
-        const SizedBox(height: 8),
-        // Password strength indicator
-        AnimatedOpacity(
-          opacity: widget.controller.text.isNotEmpty ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 200),
-          child: Row(
+        if (widget.controller.text.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Row(
             children: [
               Container(
                 width: 6,
@@ -676,7 +673,7 @@ class _PasswordFieldWithIndicatorState
               ),
             ],
           ),
-        ),
+        ],
       ],
     );
   }
@@ -796,7 +793,7 @@ class _TermsCheckbox extends StatelessWidget {
                       TextSpan(
                         text: 'Terms of Service',
                         style: TextStyle(
-                          color: AppColors.primary,
+                          color: const Color.fromARGB(255, 0, 0, 0),
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -804,7 +801,7 @@ class _TermsCheckbox extends StatelessWidget {
                       TextSpan(
                         text: 'Privacy Policy',
                         style: TextStyle(
-                          color: AppColors.primary,
+                          color: const Color.fromARGB(255, 0, 0, 0),
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -930,7 +927,7 @@ class _SignInLink extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
+                    color: const Color.fromARGB(255, 0, 0, 0),
                     letterSpacing: 0.3,
                   ),
                 ),

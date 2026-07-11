@@ -1589,6 +1589,10 @@ class _RestaurantCard extends StatelessWidget {
         : null;
     final attrs = r.activeAttributes;
     final isSaved = context.watch<FavouriteCubit>().isSaved(r.name);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeSecondary = isDark
+        ? AppColors.darkSecondary
+        : AppColors.secondary;
 
     return GestureDetector(
       onTap: onTap,
@@ -1763,7 +1767,7 @@ class _RestaurantCard extends StatelessWidget {
                       Icon(
                         Icons.location_on_rounded,
                         size: 11,
-                        color: AppColors.secondary,
+                        color: activeSecondary,
                       ),
                       const SizedBox(width: 2),
                       Expanded(
@@ -1785,9 +1789,7 @@ class _RestaurantCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.4),
+                            color: activeSecondary,
                           ),
                         ),
                     ],
@@ -1805,16 +1807,14 @@ class _RestaurantCard extends StatelessWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.secondary.withValues(
-                                  alpha: 0.08,
-                                ),
+                                color: activeSecondary.withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 a,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 9,
-                                  color: AppColors.secondary,
+                                  color: activeSecondary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),

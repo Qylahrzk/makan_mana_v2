@@ -140,16 +140,16 @@ class _LoginScreenState extends State<LoginScreen>
                       // Back button
                       _BackButton(onTap: () => Navigator.pop(context)),
 
-                      const SizedBox(height: 48),
+                      const SizedBox(height: 20),
 
                       // Header
                       _ScreenHeader(
-                        title: 'Welcome\nBack',
+                        title: 'Welcome Back',
                         subtitle: 'Sign in to your Makan Mana account',
                         isDark: isDark,
                       ),
 
-                      const SizedBox(height: 48),
+                      const SizedBox(height: 20),
 
                       // Email field
                       _FormFieldGroup(
@@ -177,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                       ),
 
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 16),
 
                       // Password field
                       _FormFieldGroup(
@@ -245,27 +245,27 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                       ),
 
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 16),
 
                       // Sign In button
                       _SignInButton(isDark: isDark),
 
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 16),
 
                       // Divider
                       _StyledDivider(isDark: isDark),
 
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 16),
 
                       // Google Sign-in button
                       _GoogleSignInButton(isDark: isDark),
 
-                      const SizedBox(height: 36),
+                      const SizedBox(height: 20),
 
                       // Sign up link
                       _SignUpLink(isDark: isDark),
 
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
@@ -399,7 +399,7 @@ class _FormFieldGroup extends StatelessWidget {
             letterSpacing: 0.5,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 6),
         child,
       ],
     );
@@ -774,7 +774,7 @@ class _SignUpLink extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
+                    color: const Color.fromARGB(255, 0, 0, 0),
                     letterSpacing: 0.3,
                   ),
                 ),

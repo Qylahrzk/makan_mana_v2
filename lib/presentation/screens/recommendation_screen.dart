@@ -1,10 +1,5 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/app_colors.dart';
-import '../../core/app_text_styles.dart';
-import '../../core/app_utils.dart';
 import '../../data/location_service.dart';
 import '../../models/restaurant_model.dart';
 import '../widgets/restaurant_card.dart';

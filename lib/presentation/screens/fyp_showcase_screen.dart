@@ -30,21 +30,24 @@ class FypShowcaseScreen extends StatelessWidget {
         ),
       ),
       titleSpacing: 0,
-      title: const Text(
-        'MakanMana Recommends',
-        style: TextStyle(
-          fontFamily: 'Montserrat',
-          fontSize: 20,
-          fontWeight: FontWeight.w900,
-          color: Colors.white,
-          letterSpacing: -0.5,
-          shadows: [
-            Shadow(
-              offset: Offset(0, 1.5),
-              blurRadius: 4.0,
-              color: Colors.black26,
-            ),
-          ],
+      title: const Padding(
+        padding: EdgeInsets.only(left: 18),
+        child: Text(
+          'MakanMana Recommends',
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+            letterSpacing: -0.5,
+            shadows: [
+              Shadow(
+                offset: Offset(0, 1.5),
+                blurRadius: 4.0,
+                color: Colors.black26,
+              ),
+            ],
+          ),
         ),
       ),
       flexibleSpace: Stack(

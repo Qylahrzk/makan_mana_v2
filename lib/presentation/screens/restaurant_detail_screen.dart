@@ -567,6 +567,11 @@ class _RestaurantDetailView extends StatelessWidget {
   // ─── Stat Chips ───────────────────────────────────────────────────────
 
   Widget _buildStatChips(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeSecondary = isDark
+        ? AppColors.darkSecondary
+        : AppColors.secondary;
+
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -592,7 +597,7 @@ class _RestaurantDetailView extends StatelessWidget {
                 Icon(
                   Icons.location_on_rounded,
                   size: 14,
-                  color: AppColors.secondary,
+                  color: activeSecondary,
                 ),
                 const SizedBox(width: 4),
                 Text(
@@ -600,26 +605,18 @@ class _RestaurantDetailView extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.55),
+                    color: activeSecondary,
                   ),
                 ),
                 const SizedBox(width: 12),
-                Icon(
-                  Icons.near_me_rounded,
-                  size: 13,
-                  color: AppColors.secondary,
-                ),
+                Icon(Icons.near_me_rounded, size: 13, color: activeSecondary),
                 const SizedBox(width: 4),
                 Text(
                   '${_distance.toStringAsFixed(1)} km away',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.55),
+                    color: activeSecondary,
                   ),
                 ),
               ],
@@ -1033,6 +1030,10 @@ class _RestaurantDetailView extends StatelessWidget {
   };
 
   Widget _attributeBadge(BuildContext context, String label) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeSecondary = isDark
+        ? AppColors.darkSecondary
+        : AppColors.secondary;
     const icons = <String, IconData>{
       'Halal': Icons.verified_rounded,
       'Vegetarian': Icons.eco_rounded,
@@ -1047,9 +1048,9 @@ class _RestaurantDetailView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.secondary.withValues(alpha: 0.08),
+        color: activeSecondary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.2)),
+        border: Border.all(color: activeSecondary.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1057,7 +1058,7 @@ class _RestaurantDetailView extends StatelessWidget {
           Icon(
             icons[label] ?? Icons.check_circle_rounded,
             size: 14,
-            color: AppColors.secondary,
+            color: activeSecondary,
           ),
           const SizedBox(width: 5),
           Text(
@@ -1065,7 +1066,7 @@ class _RestaurantDetailView extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: AppColors.secondary,
+              color: activeSecondary,
             ),
           ),
         ],
@@ -1238,60 +1239,66 @@ class _RestaurantDetailView extends StatelessWidget {
     required String label,
     required String value,
     VoidCallback? onTap,
-  }) => GestureDetector(
-    onTap: onTap,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: AppColors.secondary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeSecondary = isDark
+        ? AppColors.darkSecondary
+        : AppColors.secondary;
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: activeSecondary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 17, color: activeSecondary),
             ),
-            child: Icon(icon, size: 17, color: AppColors.secondary),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.5),
-                    fontWeight: FontWeight.w500,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.5),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface,
+                  const SizedBox(height: 1),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          if (onTap != null)
-            Icon(
-              Icons.copy_rounded,
-              size: 15,
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.45),
-            ),
-        ],
+            if (onTap != null)
+              Icon(
+                Icons.copy_rounded,
+                size: 15,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.45),
+              ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 
   Widget _divider(BuildContext context) => const GradientDivider(
     height: 1,
@@ -1558,13 +1565,14 @@ class _SimilarRestaurantsSection extends StatelessWidget {
         }
 
         return SizedBox(
-          height: 170,
+          height: 220,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
             itemCount: state.similar.length,
             itemBuilder: (_, i) => RestaurantCard(
               restaurant: state.similar[i],
-              variant: RestaurantCardVariant.similar,
+              variant: RestaurantCardVariant.portrait,
               userLat: userLat,
               userLon: userLon,
               onTap: () => Navigator.push(
