@@ -3,8 +3,9 @@
 //
 // BLoC for managing chat state and sending messages.
 //
-// UPDATED FOR v4.1:
+// UPDATED FOR v4.2:
 // - Preserve preferences for follow-up questions
+// - Translate checkbox filters to hidden tokens for API matching
 // - Detect follow-up queries ("more suggestions", "lagi", etc.)
 // - Builds conversation history from current messages
 // - Passes history to service
@@ -22,9 +23,8 @@ part 'chat_state.dart';
 class ChatCubit extends Cubit<ChatState> {
   final ChatService _chatService;
 
-  // ── v4.1 NEW: Context preservation for follow-ups ──────────────────
+  // ── v4.2 STABILIZED PARAMETERS ─────────────────────────────────────
   /// Stores the last user preferences extracted from the previous query.
-  /// Used to preserve filters when user asks "more suggestions"
   Map<String, dynamic> _lastPreferences = {};
 
   /// Tracks if current message is a follow-up to enable context preservation
@@ -38,11 +38,7 @@ class ChatCubit extends Cubit<ChatState> {
     : _chatService = chatService,
       super(const ChatInitial());
 
-  // ── v4.1 NEW: Follow-up Question Detection ────────────────────────
-
-  /// Detects if a message is asking for "more suggestions" or similar follow-ups.
-  ///
-  /// Returns: true if message contains follow-up keywords
+  // ── FOLLOW-UP DETECTION LOGIC ──────────────────────────────────────
   bool _isFollowUpQuery(String message) {
     final followUpKeywords = [
       // English
@@ -57,21 +53,11 @@ class ChatCubit extends Cubit<ChatState> {
       'yang lain pula', 'lagi apa', 'apa lg', 'ada lain',
     ];
 
-    final msgLower = message.toLowerCase();
-
-    // For very short messages (1-3 words), use keyword matching
-    final wordCount = message.split(RegExp(r'\s+')).length;
-    if (wordCount <= 3) {
-      return followUpKeywords.any((kw) => msgLower.contains(kw));
-    }
-
-    // For longer messages, require at least one follow-up keyword
+    final msgLower = message.toLowerCase().trim();
     return followUpKeywords.any((kw) => msgLower.contains(kw));
   }
 
-  // ── v4.1 NEW: Preference Preservation ──────────────────────────────
-
-  /// Preserves the current user preferences to use in follow-up questions.
+  // ── PREFERENCE UTILITY STATE ROUTINES ──────────────────────────────
   void _savePreferencesForFollowUp({
     required bool halal,
     required bool vegetarian,
@@ -108,12 +94,11 @@ class ChatCubit extends Cubit<ChatState> {
     };
 
     log(
-      '[v4.1] Preferences saved for follow-up: halal=$halal, casual=$casual, romantic=$romantic',
+      '[v4.2] Ground State Preferences Saved: halal=$halal, romantic=$romantic, scenicView=$scenicView',
       name: 'ChatCubit',
     );
   }
 
-  /// Applies saved preferences to follow-up questions UNLESS explicitly overridden.
   Map<String, bool> _applySavedPreferencesIfFollowUp({
     required bool isFollowUp,
     required bool halal,
@@ -133,7 +118,6 @@ class ChatCubit extends Cubit<ChatState> {
     required bool fastService,
   }) {
     if (!isFollowUp || _lastPreferences.isEmpty) {
-      // Not a follow-up or no saved preferences
       return {
         'halal': halal,
         'vegetarian': vegetarian,
@@ -153,7 +137,6 @@ class ChatCubit extends Cubit<ChatState> {
       };
     }
 
-    // Apply saved preferences for follow-up questions
     return {
       'halal': halal || (_lastPreferences['halal'] as bool? ?? false),
       'vegetarian':
@@ -181,9 +164,33 @@ class ChatCubit extends Cubit<ChatState> {
     };
   }
 
-  // ── v4.1 UPDATED: sendMessage with Follow-up Support ────────────────
+  /// v4.2 FIX: Translates active UI checkbox filters into explicit string
+  /// tokens so your Python API keywords extraction engine matches correctly.
+  String _buildHiddenPayloadTokens(Map<String, bool> prefs) {
+    final List<String> tokens = [];
+    if (prefs['halal'] == true) tokens.add('halal');
+    if (prefs['vegetarian'] == true) tokens.add('vegetarian');
+    if (prefs['vegan'] == true) tokens.add('vegan');
+    if (prefs['parking'] == true) tokens.add('parking');
+    if (prefs['wifi'] == true) tokens.add('wifi');
+    if (prefs['ac'] == true) tokens.add('air-cond');
+    if (prefs['outdoor'] == true) tokens.add('outdoor open air luar');
+    if (prefs['accessible'] == true) tokens.add('accessible');
+    if (prefs['familyFriendly'] == true)
+      tokens.add('family friendly keluarga anak');
+    if (prefs['groupFriendly'] == true) tokens.add('group friendly ramai');
+    if (prefs['casual'] == true) tokens.add('casual santai');
+    if (prefs['romantic'] == true) tokens.add('romantic date pasangan');
+    if (prefs['scenicView'] == true)
+      tokens.add('scenic view pantai pata pemandangan laut');
+    if (prefs['worthIt'] == true) tokens.add('worth it');
+    if (prefs['fastService'] == true) tokens.add('fast service');
 
-  /// Sends a message with v4.1 follow-up question support.
+    if (tokens.isEmpty) return '';
+    return '[Context Flags: ${tokens.join(" ")}]';
+  }
+
+  // ── INTERACTIVE CORE TRANSACTION VALUE METHOD ──────────────────────
   Future<void> sendMessage(
     String message, {
     bool halal = false,
@@ -204,7 +211,6 @@ class ChatCubit extends Cubit<ChatState> {
   }) async {
     if (message.isEmpty) return;
 
-    // Get current messages
     final currentMessages = (state is ChatLoaded)
         ? List<ChatMessageModel>.from((state as ChatLoaded).messages)
         : (state is ChatSending)
@@ -213,29 +219,21 @@ class ChatCubit extends Cubit<ChatState> {
         ? List<ChatMessageModel>.from((state as ChatError).messages)
         : <ChatMessageModel>[];
 
-    // Remove typing indicators
     currentMessages.removeWhere((m) => m.isTyping);
-
-    // Add user message (optimistic update)
     currentMessages.add(ChatMessageModel.user(message));
-
-    // Add typing indicator
     currentMessages.add(ChatMessageModel.typing());
-
     emit(ChatSending(List.from(currentMessages)));
 
     try {
-      // ── v4.1: DETECT FOLLOW-UP ────────────────────────────────────
       _isFollowUpQuestion = _isFollowUpQuery(message);
 
       if (_isFollowUpQuestion) {
         log(
-          '[v4.1] Follow-up question detected: "$message"',
+          '[v4.2] Follow-up query state triggered: "$message"',
           name: 'ChatCubit',
         );
       }
 
-      // ── v4.1: PRESERVE PREFERENCES FOR FOLLOW-UPS ─────────────────
       final finalPreferences = _applySavedPreferencesIfFollowUp(
         isFollowUp: _isFollowUpQuestion,
         halal: halal,
@@ -257,27 +255,50 @@ class ChatCubit extends Cubit<ChatState> {
 
       if (_isFollowUpQuestion) {
         log(
-          '[v4.1] Applied saved preferences: '
-          'halal=${finalPreferences['halal']}, '
-          'romantic=${finalPreferences['romantic']}, '
-          'casual=${finalPreferences['casual']}',
+          '[v4.2] Applied state variables: halal=${finalPreferences['halal']}, romantic=${finalPreferences['romantic']}',
           name: 'ChatCubit',
         );
       }
 
-      // ── v4.1: BUILD CONVERSATION HISTORY ──────────────────────────
-      final conversationHistory = _buildConversationHistory(currentMessages);
+      // Format payload string footprints
+      final hiddenTokens = _buildHiddenPayloadTokens(finalPreferences);
+
+      // Build context history array (passing tokens safely inside user turns)
+      final List<Map<String, String>> conversationHistory = [];
+      for (var idx = 0; idx < currentMessages.length; idx++) {
+        final msg = currentMessages[idx];
+        if (msg.isTyping || msg.isError || msg.text.isEmpty) continue;
+
+        if (msg.isUser) {
+          // If this is the active message turn, append the active hidden token footprint
+          if (idx == currentMessages.length - 2 && hiddenTokens.isNotEmpty) {
+            conversationHistory.add({
+              'role': 'user',
+              'content': '${msg.text} $hiddenTokens'.trim(),
+            });
+          } else {
+            conversationHistory.add({'role': 'user', 'content': msg.text});
+          }
+        } else {
+          conversationHistory.add({'role': 'assistant', 'content': msg.text});
+        }
+      }
+
+      // Strip trailing elements to balance the processing footprint
+      if (conversationHistory.isNotEmpty) conversationHistory.removeLast();
 
       if (conversationHistory.isNotEmpty) {
         log(
-          '[v4.1] Sending conversation history: ${conversationHistory.length} messages',
+          '[v4.2] Dispatching history footprint: ${conversationHistory.length} turns',
           name: 'ChatCubit',
         );
       }
 
-      // ── CALL SERVICE WITH UPDATED PREFERENCES ─────────────────────
+      // Call ChatService carrying payload dependencies
       final response = await _chatService.sendMessage(
-        message: message,
+        message: hiddenTokens.isNotEmpty && !_isFollowUpQuestion
+            ? '$message $hiddenTokens'.trim()
+            : message,
         conversationHistory: conversationHistory,
         halal: finalPreferences['halal'] ?? false,
         vegetarian: finalPreferences['vegetarian'] ?? false,
@@ -296,10 +317,8 @@ class ChatCubit extends Cubit<ChatState> {
         fastService: finalPreferences['fastService'] ?? false,
       );
 
-      // Remove typing indicator
       currentMessages.removeWhere((m) => m.isTyping);
 
-      // Parse response
       final reply = (response['reply'] as String?)?.trim() ?? 'No response';
       final modelUsed = response['model_used'] ?? 'Unknown';
       final isOnTopic = response['is_on_topic'] ?? true;
@@ -307,12 +326,12 @@ class ChatCubit extends Cubit<ChatState> {
           (response['restaurants'] as List?)?.cast<Map<String, dynamic>>() ??
           [];
 
-      final rawRelaxed = response['relaxed_criteria'] as List<dynamic>? ?? [];
+      final rawRelaxed = response['relaxed_criteria'] as List? ?? [];
       final relaxedCriteria = rawRelaxed.map((e) => e.toString()).toList();
       final hasPartialMatch = response['has_partial_match'] as bool? ?? false;
       final searchUsed = response['search_used'] as bool? ?? false;
 
-      // ── v4.1: SAVE PREFERENCES FOR NEXT FOLLOW-UP ─────────────────
+      // Sync state preferences for follow-up reference limits
       _savePreferencesForFollowUp(
         halal: finalPreferences['halal'] ?? false,
         vegetarian: finalPreferences['vegetarian'] ?? false,
@@ -331,7 +350,7 @@ class ChatCubit extends Cubit<ChatState> {
         fastService: finalPreferences['fastService'] ?? false,
       );
 
-      // Add bot message
+      // Append verified response item model to list
       currentMessages.add(
         ChatMessageModel.ai(
           reply,
@@ -344,7 +363,6 @@ class ChatCubit extends Cubit<ChatState> {
         ),
       );
 
-      // Update state
       emit(
         ChatLoaded(
           messages: List.from(currentMessages),
@@ -353,8 +371,7 @@ class ChatCubit extends Cubit<ChatState> {
       );
 
       log(
-        '[v4.1] Message processed successfully. '
-        'Follow-up=$_isFollowUpQuestion, Restaurants=${restaurants.length}',
+        '[v4.2] Dynamic processing complete. Found locations: ${restaurants.length}',
         name: 'ChatCubit',
       );
     } catch (e) {
@@ -366,39 +383,19 @@ class ChatCubit extends Cubit<ChatState> {
           errorMessage: e.toString(),
         ),
       );
-
-      log('[v4.1] Error: ${e.toString()}', name: 'ChatCubit');
+      log('[v4.2 Exception Block Triggered]: $e', name: 'ChatCubit');
     }
   }
 
-  /// Builds conversation history from chat messages.
-  /// Filters out typing indicators and error messages.
-  List<Map<String, String>> _buildConversationHistory(
-    List<ChatMessageModel> messages,
-  ) {
-    return messages
-        .where((msg) => !msg.isTyping && !msg.isError && msg.text.isNotEmpty)
-        .map(
-          (msg) => {
-            'role': msg.isUser ? 'user' : 'assistant',
-            'content': msg.text,
-          },
-        )
-        .toList();
-  }
-
-  /// Clears all chat messages and resets follow-up context.
   void clearChat() {
     _lastPreferences.clear();
     _isFollowUpQuestion = false;
     _lastCuisineType = '';
     _lastVibe = '';
     emit(const ChatInitial());
-
-    log('[v4.1] Chat cleared. Follow-up context reset.', name: 'ChatCubit');
+    log('[v4.2] Chat state trace completely cleared.', name: 'ChatCubit');
   }
 
-  /// Returns current messages from state.
   List<ChatMessageModel> get currentMessages {
     final s = state;
     if (s is ChatLoaded) return s.messages;
@@ -407,21 +404,17 @@ class ChatCubit extends Cubit<ChatState> {
     return [];
   }
 
-  /// Returns true if currently sending a message.
   bool get isSending => state is ChatSending;
 
-  // ── v4.1: DEBUGGING HELPERS ──────────────────────────────────────
-
-  /// Returns debug info about current follow-up state.
-  /// Useful for testing conversation continuity.
+  // ── DEBUGGING LOG ARCHITECTURE UTILITIES ───────────────────────────
   String get debugFollowUpInfo {
     return '''
-[v4.1 Debug Info]
-IsFollowUp: $_isFollowUpQuestion
-SavedPreferences: ${_lastPreferences.entries.where((e) => e.value == true).map((e) => e.key).toList()}
-LastCuisine: $_lastCuisineType
-LastVibe: $_lastVibe
-MessageCount: ${currentMessages.length}
+[v4.2 System Monitor Debug Payload Logs]
+IsFollowUpActive: $_isFollowUpQuestion
+SavedToggles: ${_lastPreferences.entries.where((e) => e.value == true).map((e) => e.key).toList()}
+LastCuisineTracked: $_lastCuisineType
+LastVibeTracked: $_lastVibe
+MessageMemoryArrayDepth: ${currentMessages.length}
 ''';
   }
 }

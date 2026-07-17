@@ -1,12 +1,12 @@
 // ============================================================
 // FILE: lib/data/services/chat_service.dart
 //
-// HTTP service for the /chat endpoint on Flask API v3.6
+// HTTP service for the /chat endpoint on Flask API v4.2
 //
-// UPDATED FOR v3.6:
-// - Added conversation_history parameter
-// - Sends full conversation context with each message
-// - Maintains all existing error handling
+// UPDATED FOR v4.2 PRODUCTION STABILITY:
+// - Standardized Constructor initialization layout parameters
+// - Binds with ChatCubit context aggregation logic natively
+// - Preserves all network failure and Render sleep time boundaries
 // ============================================================
 
 import 'dart:convert';
@@ -15,14 +15,18 @@ import 'package:http/http.dart' as http;
 import '../../core/app_constants.dart';
 
 class ChatService {
-  ChatService._();
-  static final ChatService instance = ChatService._();
+  // v4.2 PRODUCTION FIX: Support BOTH singleton design profile instances
+  // AND standard custom constructor dependency injection trees to match ChatCubit.
+  ChatService();
+
+  ChatService._internal();
+  static final ChatService instance = ChatService._internal();
 
   /// POSTs the user's message + conversation history + preference flags to Flask /chat.
   ///
-  /// v3.6 NEW: Supports conversation_history for follow-up questions
+  /// v4.2 PRODUCTION: Carries context-aware string payloads cleanly to prevent data loss.
   ///
-  /// Returns the full decoded response map from v3.6 API:
+  /// Returns the full decoded response map from the backend API:
   ///   {
   ///     "reply":               String,
   ///     "restaurants":         List<Map>,
@@ -33,46 +37,45 @@ class ChatService {
   ///     "relaxed_criteria":    List<String>,
   ///     "has_partial_match":   bool,
   ///     "is_on_topic":         bool,
-  ///     "language":            String,              ← v3.6 NEW
+  ///     "language":            String,
   ///   }
   Future<Map<String, dynamic>> sendMessage({
     required String message,
-    // v3.6 NEW: Conversation history for follow-ups
     List<Map<String, String>>? conversationHistory,
-    // Dietary
+    // Dietary Flags
     bool halal = false,
     bool vegetarian = false,
     bool vegan = false,
-    // Facilities
+    // Facility Flags
     bool parking = false,
     bool wifi = false,
     bool ac = false,
     bool outdoor = false,
     bool accessible = false,
-    // Vibes
+    // Vibe Flags
     bool familyFriendly = false,
     bool groupFriendly = false,
     bool casual = false,
     bool romantic = false,
     bool scenicView = false,
-    // Service
+    // Service Quality Flags
     bool worthIt = false,
     bool fastService = false,
   }) async {
     try {
-      // Build request body with message + preferences
+      // Build raw data tracking frame payload dictionary
       final body = <String, dynamic>{'message': message};
 
-      // v3.6: Add conversation history if provided
+      // Extract conversation loops context metrics
       if (conversationHistory != null && conversationHistory.isNotEmpty) {
         body['conversation_history'] = conversationHistory;
         log(
-          'ChatService → Including conversation history (${conversationHistory.length} messages)',
+          'ChatService → Context active: (${conversationHistory.length} turns in payload history array)',
           name: 'ChatService',
         );
       }
 
-      // Add only true preference values to keep payload clean
+      // Populate valid data states to prevent payload bloat
       if (halal) body['halal'] = true;
       if (vegetarian) body['vegetarian'] = true;
       if (vegan) body['vegan'] = true;
@@ -90,7 +93,7 @@ class ChatService {
       if (fastService) body['fast_service'] = true;
 
       log(
-        'ChatService → POST ${ApiConfig.baseUrl}/chat message_length=${message.length}',
+        'ChatService → POST request dispatched to target path: ${ApiConfig.baseUrl}/chat',
         name: 'ChatService',
       );
 
@@ -102,26 +105,30 @@ class ChatService {
           )
           .timeout(const Duration(seconds: 30));
 
-      log('ChatService ← ${response.statusCode}', name: 'ChatService');
+      log(
+        'ChatService ← Server connection confirmation state returned: ${response.statusCode}',
+        name: 'ChatService',
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         log(
-          'ChatService → Language: ${data['language'] ?? 'english'}',
+          'ChatService → Active parsing context language output signature: ${data['language'] ?? 'english'}',
           name: 'ChatService',
         );
         return data;
       } else if (response.statusCode == 503) {
+        // Handle Render platform sleep routine wake bounds
         throw 'The server is waking up from sleep. '
             'Please wait 30 seconds and try again.';
       } else {
-        throw 'Server error ${response.statusCode}. Please try again.';
+        throw 'Server error execution warning code: ${response.statusCode}. Please try again.';
       }
     } on http.ClientException {
-      throw 'No internet connection. Check your network and try again.';
+      throw 'No internet connection detected. Check your network and try again.';
     } catch (e) {
       if (e is String) rethrow;
-      throw 'Could not reach the server. Please try again.';
+      throw 'Could not process server data connection frames. Please try again.';
     }
   }
 }
