@@ -1,26 +1,28 @@
 // ============================================================
-// FILE: lib/data/chat_service.dart
+// FILE: lib/data/services/chat_service.dart
 //
-// HTTP service for the /chat endpoint on Flask API.
+// HTTP service for the /chat endpoint on Flask API v3.6
 //
-// STATUS: ✓ Compatible with v4.0 API as-is
-// - No changes needed
-// - Service is request-agnostic, returns full response map
-// - Cubit extracts fields from response
+// UPDATED FOR v3.6:
+// - Added conversation_history parameter
+// - Sends full conversation context with each message
+// - Maintains all existing error handling
 // ============================================================
 
 import 'dart:convert';
 import 'dart:developer';
 import 'package:http/http.dart' as http;
-import '../core/app_constants.dart';
+import '../../core/app_constants.dart';
 
 class ChatService {
   ChatService._();
   static final ChatService instance = ChatService._();
 
-  /// POSTs the user's message + all preference flags to Flask /chat.
+  /// POSTs the user's message + conversation history + preference flags to Flask /chat.
   ///
-  /// Returns the full decoded response map from v4.0 API:
+  /// v3.6 NEW: Supports conversation_history for follow-up questions
+  ///
+  /// Returns the full decoded response map from v3.6 API:
   ///   {
   ///     "reply":               String,
   ///     "restaurants":         List<Map>,
@@ -30,16 +32,13 @@ class ChatService {
   ///     "intent":              String,
   ///     "relaxed_criteria":    List<String>,
   ///     "has_partial_match":   bool,
-  ///     "is_on_topic":         bool,              ← v4.0 NEW
-  ///     "scope_confidence":    double,             ← v4.0 NEW
-  ///     "detected_keywords":   List<String>,      ← v4.0 NEW
-  ///     "validation": {                            ← v4.0 NEW
-  ///       "had_hallucinations": bool,
-  ///       "hallucination_rate": double,
-  ///     }
+  ///     "is_on_topic":         bool,
+  ///     "language":            String,              ← v3.6 NEW
   ///   }
   Future<Map<String, dynamic>> sendMessage({
     required String message,
+    // v3.6 NEW: Conversation history for follow-ups
+    List<Map<String, String>>? conversationHistory,
     // Dietary
     bool halal = false,
     bool vegetarian = false,
@@ -61,8 +60,19 @@ class ChatService {
     bool fastService = false,
   }) async {
     try {
-      // Only send true values to keep the payload clean
+      // Build request body with message + preferences
       final body = <String, dynamic>{'message': message};
+
+      // v3.6: Add conversation history if provided
+      if (conversationHistory != null && conversationHistory.isNotEmpty) {
+        body['conversation_history'] = conversationHistory;
+        log(
+          'ChatService → Including conversation history (${conversationHistory.length} messages)',
+          name: 'ChatService',
+        );
+      }
+
+      // Add only true preference values to keep payload clean
       if (halal) body['halal'] = true;
       if (vegetarian) body['vegetarian'] = true;
       if (vegan) body['vegan'] = true;
@@ -80,7 +90,7 @@ class ChatService {
       if (fastService) body['fast_service'] = true;
 
       log(
-        'ChatService → POST ${ApiConfig.baseUrl}/chat  body=$body',
+        'ChatService → POST ${ApiConfig.baseUrl}/chat message_length=${message.length}',
         name: 'ChatService',
       );
 
@@ -95,7 +105,12 @@ class ChatService {
       log('ChatService ← ${response.statusCode}', name: 'ChatService');
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        log(
+          'ChatService → Language: ${data['language'] ?? 'english'}',
+          name: 'ChatService',
+        );
+        return data;
       } else if (response.statusCode == 503) {
         throw 'The server is waking up from sleep. '
             'Please wait 30 seconds and try again.';
