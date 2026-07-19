@@ -63,6 +63,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
@@ -121,3 +122,13 @@ flutter:
           weight: 600
         - asset: assets/fonts/JetBrainsMono-Bold.ttf
           weight: 700
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/images/main_logo.png"
+  
+  # Adaptive settings for Android to prevent cropping
+  adaptive_icon_background: "#FFFFFF" 
+  adaptive_icon_foreground: "assets/images/main_logo.png"
