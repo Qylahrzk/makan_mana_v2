@@ -374,6 +374,13 @@ class ChatCubit extends Cubit<ChatState> {
         '[v4.2] Dynamic processing complete. Found locations: ${restaurants.length}',
         name: 'ChatCubit',
       );
+      for (var i = 0; i < restaurants.length; i++) {
+        final r = restaurants[i];
+        log(
+          '  📍 Restaurant [#${i + 1}]: ${r['name']} | Rating: ${r['rating']} | Location: ${r['municipality']} | Filters: ${r['matched_filters']}',
+          name: 'ChatCubit',
+        );
+      }
     } catch (e) {
       currentMessages.removeWhere((m) => m.isTyping);
       currentMessages.add(ChatMessageModel.error(e.toString()));

@@ -598,6 +598,19 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildMessageBubble(ChatMessageModel msg) {
     if (msg.isTyping) return _buildTypingState();
     final isUser = msg.isUser;
+
+    if (!isUser && msg.restaurants.isNotEmpty) {
+      print(
+        '[CHAT_SCREEN_DEBUG] Rendering bot message with ${msg.restaurants.length} restaurants:',
+      );
+      for (var i = 0; i < msg.restaurants.length && i < 3; i++) {
+        final r = msg.restaurants[i];
+        print(
+          '  [#${i + 1}] ${r['name']} | Rating: ${r['rating']} | ${r['municipality']}',
+        );
+      }
+    }
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final activePrimary = isDark ? AppColors.darkPrimary : AppColors.primary;
     final activeSecondary = isDark

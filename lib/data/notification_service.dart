@@ -42,9 +42,9 @@ class NotificationService {
     // Initialize with your App ID
     OneSignal.initialize(appId);
 
-    // Request permission — shows system dialog on first launch
-    await OneSignal.Notifications.requestPermission(true);
-
+    // Notification permission request disabled until notifications integration
+    // await OneSignal.Notifications.requestPermission(true);
+    
     // Listen for foreground notifications
     OneSignal.Notifications.addForegroundWillDisplayListener(
         _onForegroundNotification);
@@ -126,9 +126,9 @@ class NotificationService {
 
   // ── Permission helpers ────────────────────────────────────────────────────
 
-  bool get hasPermission => OneSignal.Notifications.permission;
+  bool get hasPermission => false;
 
   Future<void> requestPermission() async {
-    await OneSignal.Notifications.requestPermission(true);
+    // Notification permission disabled until notifications feature is enabled
   }
 }

@@ -79,6 +79,7 @@ flutter:
     - assets/images/no_results.png
     - assets/images/chatbot.png
     - assets/images/main_logo.png
+    - assets/images/app_logo.png
 
   fonts:
     # ── Montserrat — Headlines & Restaurant Names ──────────────────────────
@@ -127,8 +128,8 @@ flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
   remove_alpha_ios: true
-  image_path: "assets/images/main_logo.png"
-  
-  # Adaptive settings for Android to prevent cropping
-  adaptive_icon_background: "#FFFFFF" 
-  adaptive_icon_foreground: "assets/images/main_logo.png"
+  image_path: "assets/images/app_logo.png"
+
+  # Adaptive settings for Android to ensure proper framing
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "assets/images/app_logo.png"
